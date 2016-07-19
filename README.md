@@ -10,6 +10,13 @@ read our semi-comprehensive guide on how to build packages from an ABBS tree
 Kernel variants
 ---------------
 
-- Linux Kernel with machine specific optimizations
+#### march-kernel/\*
+
+This class of packages provides Linux Kernel with machine-specific
+optimizations, while retaining all the features that a mainline AOSC kernel
+provides - `linux-kernel-broadwell` for instance, is a Kernel configuration with
+standard features, but specifically optimized for Intel Broadwell processors
+during build-time. Which should provide a significant boost in performance on
+machines with the respective processor family.
 
 (More to come in the future)
