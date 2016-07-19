@@ -1,0 +1,2 @@
+VER=4.7-rc7
+SRCTBL="https://mirrors.ustc.edu.cn/kernel.org/linux/kernel/v${VER:0:1}.x/testing/linux-${VER}.tar.xz"
