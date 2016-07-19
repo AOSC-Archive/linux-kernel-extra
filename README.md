@@ -13,7 +13,8 @@ Kernel variants
 #### march-kernel/\*
 
 This class of packages provides Linux Kernel with machine-specific
-optimizations, while retaining all the features that a mainline AOSC kernel
+optimizations, while retaining all the features that a mainline
+[AOSC kernel](https://github.com/AOSC-Dev/aosc-os-abbs/tree/staging/extra-kernel/linux-kernel)
 provides - `linux-kernel-broadwell` for instance, is a Kernel configuration with
 standard features, but specifically optimized for Intel Broadwell processors
 during build-time. Which should provide a significant boost in performance on
