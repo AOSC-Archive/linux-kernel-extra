@@ -1,2 +1,2 @@
-VER=4.7-rc7
-SRCTBL="https://kernel.org/pub/linux/kernel/v${VER:0:1}.x/testing/linux-${VER}.tar.xz"
+VER=4.7
+SRCTBL="https://kernel.org/pub/linux/kernel/v${VER:0:1}.x/linux-${VER}.tar.xz"
