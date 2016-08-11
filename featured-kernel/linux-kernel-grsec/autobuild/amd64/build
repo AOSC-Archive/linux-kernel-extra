@@ -31,7 +31,7 @@ mkdir -p "$destdir"
 (cd $objtree; tar -c -f - -T "$objtree/debian/hdrobjfiles") | (cd $destdir; tar -xf -)
 rm -f "$objtree/debian/hdrsrcfiles" "$objtree/debian/hdrobjfiles"
 export ARCH=$OLDARCH
-rm -fr "$PKGDIR"/usr/src/linux-headers-${version}/"$PKGDIR"
+rm -fr "$PKGDIR"/usr/src/linux-headers-grsec-${version}/"$PKGDIR"
 
 rm -rf "$PKGDIR"/lib/modules/${version}${LOCALNAME}/{build,source}
 ln -sfv /usr/src/linux-headers-grsec-$version "$PKGDIR"/lib/modules/${version}${LOCALNAME}/build
