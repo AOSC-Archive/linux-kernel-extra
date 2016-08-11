@@ -34,5 +34,5 @@ export ARCH=$OLDARCH
 rm -fr "$PKGDIR"/usr/src/linux-headers-${version}/"$PKGDIR"
 
 rm -rf "$PKGDIR"/lib/modules/${version}${LOCALNAME}/{build,source}
-ln -sfv /usr/src/linux-headers-$version "$PKGDIR"/lib/modules/${version}${LOCALNAME}/build
-ln -sfv /usr/src/linux-headers-$version "$PKGDIR"/lib/modules/${version}${LOCALNAME}/source
+ln -sfv /usr/src/linux-headers-grsec-$version "$PKGDIR"/lib/modules/${version}${LOCALNAME}/build
+ln -sfv /usr/src/linux-headers-grsec-$version "$PKGDIR"/lib/modules/${version}${LOCALNAME}/source
