@@ -1,0 +1,91 @@
+Implement rudimentary cpufreq load signalling for schedutil governor to work.
+
+-ck
+
+---
+ kernel/sched/bfs.c       |   20 ++++++++++++++++----
+ kernel/sched/bfs_sched.h |   14 +++++++++++++-
+ 2 files changed, 29 insertions(+), 5 deletions(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:57.187743509 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:57.184743528 +1000
+@@ -1020,13 +1020,14 @@ static inline void deactivate_task(struc
+ #ifdef CONFIG_SMP
+ void set_task_cpu(struct task_struct *p, unsigned int cpu)
+ {
++	unsigned int tcpu;
+ #ifdef CONFIG_LOCKDEP
+ 	/*
+ 	 * The caller should hold grq lock.
+ 	 */
+ 	WARN_ON_ONCE(debug_locks && !lockdep_is_held(&grq.lock));
+ #endif
+-	if (task_cpu(p) == cpu)
++	if ((tcpu = task_cpu(p)) == cpu)
+ 		return;
+ 	trace_sched_migrate_task(p, cpu);
+ 	perf_event_task_migrate(p);
+@@ -1038,8 +1039,13 @@ void set_task_cpu(struct task_struct *p,
+ 	 */
+ 	smp_wmb();
+ 	if (p->on_rq) {
+-		task_rq(p)->soft_affined--;
+-		cpu_rq(cpu)->soft_affined++;
++		/*
++		 * set_task_cpu can be set on other CPUs so call cpufreq_trigger
++		 * explicitly telling it what CPU is being updated as the value
++		 * of soft_affined has changed.
++		 */
++		other_cpufreq_trigger(tcpu, grq.niffies, --task_rq(p)->soft_affined);
++		other_cpufreq_trigger(cpu, grq.niffies, ++cpu_rq(cpu)->soft_affined);
+ 	}
+ 	task_thread_info(p)->cpu = cpu;
+ }
+@@ -3093,8 +3099,14 @@ void scheduler_tick(void)
+ 	update_cpu_clock_tick(rq, rq->curr);
+ 	if (!rq_idle(rq))
+ 		task_running_tick(rq);
+-	else
++	else {
++		/*
++		 * Trigger cpufreq update while we're idle. Soft affined will
++		 * be zero unless we have uninterruptible tasks.
++		 */
++		cpufreq_trigger(grq.niffies, rq->soft_affined);
+ 		no_iso_tick();
++	}
+ 	rq->last_tick = rq->clock;
+ 	perf_event_task_tick();
+ }
+Index: linux-4.7-ck5/kernel/sched/bfs_sched.h
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs_sched.h	2016-09-23 08:32:57.187743509 +1000
++++ linux-4.7-ck5/kernel/sched/bfs_sched.h	2016-09-23 08:32:57.184743528 +1000
+@@ -203,12 +203,24 @@ static inline void cpufreq_trigger(u64 t
+ 
+        data = rcu_dereference_sched(*this_cpu_ptr(&cpufreq_update_util_data));
+        if (data)
+-               data->func(data, time, util, 0);
++               data->func(data, time, util, 1);
++}
++
++static inline void other_cpufreq_trigger(int cpu, u64 time, unsigned long util)
++{
++       struct update_util_data *data;
++
++       data = rcu_dereference_sched(*per_cpu_ptr(&cpufreq_update_util_data, cpu));
++       if (data)
++               data->func(data, time, util, 1);
+ }
+ #else
+ static inline void cpufreq_trigger(u64 time, unsigned long util)
+ {
+ }
++static inline void other_cpufreq_trigger(int cpu, u64 time, unsigned long util)
++{
++}
+ #endif /* CONFIG_CPU_FREQ */
+ 
+ #ifdef arch_scale_freq_capacity

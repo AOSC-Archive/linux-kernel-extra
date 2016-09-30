@@ -1,0 +1,37 @@
+Do not bias away from siblings that are busy.
+
+-ck
+
+---
+ kernel/sched/bfs.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:56.948745011 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:56.946745023 +1000
+@@ -706,7 +706,7 @@ static inline bool scaling_rq(struct rq
+  * lowest value would give the most suitable CPU to schedule p onto next. The
+  * order works out to be the following:
+  *
+- * Same core, idle or busy cache, idle or busy threads
++ * Same thread, idle or busy cache, idle or busy threads
+  * Other core, same cache, idle or busy cache, idle threads.
+  * Same node, other CPU, idle cache, idle threads.
+  * Same node, other CPU, busy cache, idle threads.
+@@ -744,13 +744,13 @@ static int best_mask_cpu(int best_cpu, s
+ #ifdef CONFIG_SCHED_MC
+ 		else if (locality == 2)
+ 			ranking |= CPUIDLE_DIFF_CORE;
+-		if (!(tmp_rq->cache_idle(cpu_tmp)))
++		else if (!(tmp_rq->cache_idle(cpu_tmp)))
+ 			ranking |= CPUIDLE_CACHE_BUSY;
+ #endif
+ #ifdef CONFIG_SCHED_SMT
+ 		if (locality == 1)
+ 			ranking |= CPUIDLE_DIFF_THREAD;
+-		if (!(tmp_rq->siblings_idle(cpu_tmp)))
++		else if (!(tmp_rq->siblings_idle(cpu_tmp)))
+ 			ranking |= CPUIDLE_THREAD_BUSY;
+ #endif
+ 		if (scaling_rq(tmp_rq))

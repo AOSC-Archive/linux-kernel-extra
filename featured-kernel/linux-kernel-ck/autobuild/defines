@@ -1,0 +1,12 @@
+PKGNAME=linux-kernel-ck5-4.7.5
+PKGSEC=kernel
+PKGDEP=""
+BUILDDEP="bc dracut git"
+if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
+    BUILDDEP+=" grub"
+fi
+PKGDES="Linux Kernel version 4.7.5 with ck5 patchset, designed to improve system responsiveness and interactivity with specific emphasis on the desktop, but suitable to any workload"
+
+ABSTRIP=no
+ABELFDEP=no
+ABRPMAUTOPROVONLY=yes

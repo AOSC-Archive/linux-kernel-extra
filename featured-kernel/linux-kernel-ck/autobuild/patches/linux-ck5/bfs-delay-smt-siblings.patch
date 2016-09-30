@@ -1,0 +1,146 @@
+sibling_cpu_map may be undefined till later in boot process so use blank
+placeholders for smt sibling test functions until sched_smp_init is completing.
+
+-ck
+
+---
+ kernel/sched/bfs.c |   45 ++++++++++++++++++++++++++++-----------------
+ 1 file changed, 28 insertions(+), 17 deletions(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:56.716746469 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:56.714746481 +1000
+@@ -818,6 +818,13 @@ static int task_prio_bias(struct task_st
+ 	return MAX_PRIO - p->static_prio;
+ }
+ 
++static bool smt_always_schedule(struct task_struct __maybe_unused *p, int __maybe_unused cpu)
++{
++	return true;
++}
++
++static bool (*smt_schedule)(struct task_struct __maybe_unused *p, int __maybe_unused cpu) = &smt_always_schedule;
++
+ /* We've already decided p can run on CPU, now test if it shouldn't for SMT
+  * nice reasons. */
+ static bool smt_should_schedule(struct task_struct *p, int cpu)
+@@ -847,7 +854,7 @@ static bool smt_should_schedule(struct t
+ 	return false;
+ }
+ #else
+-#define smt_should_schedule(p, cpu) (1)
++#define smt_schedule(p, cpu) (true)
+ #endif
+ 
+ static bool resched_best_idle(struct task_struct *p)
+@@ -857,10 +864,8 @@ static bool resched_best_idle(struct tas
+ 
+ 	cpumask_and(&tmpmask, &p->cpus_allowed, &grq.cpu_idle_map);
+ 	best_cpu = best_mask_cpu(task_cpu(p), task_rq(p), &tmpmask);
+-#ifdef CONFIG_SMT_NICE
+-	if (!smt_should_schedule(p, best_cpu))
++	if (!smt_schedule(p, best_cpu))
+ 		return false;
+-#endif
+ 	resched_curr(cpu_rq(best_cpu));
+ 	return true;
+ }
+@@ -1400,7 +1405,7 @@ static void try_preempt(struct task_stru
+ 	/* See if this task can preempt the task on the current CPU first. */
+ 	cpu = cpu_of(this_rq);
+ 	if (cpumask_test_cpu(cpu, &tmp)) {
+-		if (smt_should_schedule(p, cpu) && can_preempt(p, this_rq->rq_prio, this_rq->rq_deadline)) {
++		if (smt_schedule(p, cpu) && can_preempt(p, this_rq->rq_prio, this_rq->rq_deadline)) {
+ 			resched_curr(this_rq);
+ 			return;
+ 		}
+@@ -1429,10 +1434,8 @@ static void try_preempt(struct task_stru
+ 
+ 	if (likely(highest_prio_rq)) {
+ 		cpu = cpu_of(highest_prio_rq);
+-#ifdef CONFIG_SMT_NICE
+-		if (!smt_should_schedule(p, cpu))
++		if (!smt_schedule(p, cpu))
+ 			return;
+-#endif
+ 		if (can_preempt(p, highest_prio, latest_deadline)) {
+ 			/*
+ 			 * If we have decided this task should preempt this CPU,
+@@ -3316,10 +3319,8 @@ task_struct *earliest_deadline_task(stru
+ 		if (needs_other_cpu(p, cpu))
+ 			continue;
+ 
+-#ifdef CONFIG_SMT_NICE
+-		if (!smt_should_schedule(p, cpu))
++		if (!smt_schedule(p, cpu))
+ 			continue;
+-#endif
+ 
+ 		if (!sched_interactive && (tcpu = task_cpu(p)) != cpu) {
+ 			u64 dl;
+@@ -3426,6 +3427,11 @@ static void reset_rq_task(struct rq *rq,
+ }
+ 
+ #ifdef CONFIG_SMT_NICE
++static void check_no_siblings(int __maybe_unused cpu) {}
++static void wake_no_siblings(int __maybe_unused cpu) {}
++static void (*check_siblings)(int) = &check_no_siblings;
++static void (*wake_siblings)(int) = &wake_no_siblings;
++
+ /* Iterate over smt siblings when we've scheduled a process on cpu and decide
+  * whether they should continue running or be descheduled. */
+ static void check_smt_siblings(int cpu)
+@@ -3473,8 +3479,8 @@ static void wake_smt_siblings(int cpu)
+ 	}
+ }
+ #else
+-static void check_smt_siblings(int __maybe_unused cpu) {}
+-static void wake_smt_siblings(int __maybe_unused cpu) {}
++static void check_siblings(int __maybe_unused cpu) {}
++static void wake_siblings(int __maybe_unused cpu) {}
+ #endif
+ 
+ /*
+@@ -3611,7 +3617,7 @@ static void __sched notrace __schedule(b
+ 					 * again.
+ 					 */
+ 					set_rq_task(rq, prev);
+-					check_smt_siblings(cpu);
++					check_siblings(cpu);
+ 					grq_unlock_irq();
+ 					goto rerun_prev_unlocked;
+ 				} else
+@@ -3651,9 +3657,9 @@ static void __sched notrace __schedule(b
+ 			unstick_task(rq, prev);
+ 		set_rq_task(rq, next);
+ 		if (next != idle)
+-			check_smt_siblings(cpu);
++			check_siblings(cpu);
+ 		else
+-			wake_smt_siblings(cpu);
++			wake_siblings(cpu);
+ 		grq.nr_switches++;
+ 		prev->on_cpu = false;
+ 		next->on_cpu = true;
+@@ -3665,7 +3671,7 @@ static void __sched notrace __schedule(b
+ 		cpu = cpu_of(rq);
+ 		idle = rq->idle;
+ 	} else {
+-		check_smt_siblings(cpu);
++		check_siblings(cpu);
+ 		grq_unlock_irq();
+ 	}
+ 
+@@ -7191,6 +7197,11 @@ void __init sched_init_smp(void)
+ 			rq->siblings_idle = siblings_cpu_idle;
+ #endif
+ 	}
++#ifdef CONFIG_SMT_NICE
++	check_siblings = &check_smt_siblings;
++	wake_siblings = &wake_smt_siblings;
++	smt_schedule = &smt_should_schedule;
++#endif
+ 	grq_unlock_irq();
+ 	mutex_unlock(&sched_domains_mutex);
+ 

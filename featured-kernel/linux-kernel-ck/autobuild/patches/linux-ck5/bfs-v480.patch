@@ -1,0 +1,21 @@
+Bump BFS version to 0.480
+
+-ck
+
+---
+ kernel/sched/bfs.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:57.306742762 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:57.303742780 +1000
+@@ -137,7 +137,7 @@
+ 
+ void print_scheduler_version(void)
+ {
+-	printk(KERN_INFO "BFS CPU scheduler v0.472 by Con Kolivas.\n");
++	printk(KERN_INFO "BFS CPU scheduler v0.480 by Con Kolivas.\n");
+ }
+ 
+ /*

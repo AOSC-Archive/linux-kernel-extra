@@ -1,0 +1,184 @@
+Implement more comprehensive exponentially decaying average load reporting to
+cpufrequency with a time constant of 32ms.
+
+-ck
+
+---
+ kernel/sched/bfs.c       |   71 +++++++++++++++++++++++++++++++++++++++--------
+ kernel/sched/bfs_sched.h |   17 +++--------
+ 2 files changed, 64 insertions(+), 24 deletions(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:57.886739118 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:57.883739136 +1000
+@@ -741,10 +741,41 @@ static bool smt_should_schedule(struct t
+ 	/* Sorry, you lose */
+ 	return false;
+ }
++
++static unsigned long cpu_load_avg(struct rq *rq)
++{
++	return rq->soft_affined * SCHED_CAPACITY_SCALE;
++}
++
++/*
++ * This is the proportion of SCHED_CAPACITY_SCALE (1024) used when each thread
++ * of a CPU with SMT siblings is in use.
++ */
++#define SCHED_SMT_LOAD (890)
++
++/*
++ * Load of a CPU with smt siblings should be considered to be the load from all
++ * the SMT siblings, thus will be >1 if both threads are in use since they are
++ * not full cores.
++ */
++static unsigned long smt_load_avg(struct rq *rq)
++{
++	unsigned long load = rq->soft_affined * SCHED_SMT_LOAD;
++	int cpu;
++
++	for_each_cpu(cpu, thread_cpumask(rq->cpu))
++		load += cpu_rq(cpu)->soft_affined * SCHED_SMT_LOAD;
++	return load;
++}
++
++static unsigned long (*rq_load_avg)(struct rq *rq) = &cpu_load_avg;
+ #else
+ #define smt_schedule(p, this_rq) (true)
++static inline unsigned long rq_load_avg(struct rq *rq)
++{
++	return rq->soft_affined * SCHED_CAPACITY_SCALE;
++}
+ #endif
+-
+ #ifdef CONFIG_SMP
+ /*
+  * The cpu_idle_map stores a bitmap of all the CPUs currently idle to
+@@ -979,6 +1010,27 @@ static int effective_prio(struct task_st
+ }
+ 
+ /*
++ * Update the load average for feeding into cpu frequency governors. Use a rolling
++ * average with ~ time constant of 32ms
++ */
++static void update_load_avg(struct rq *rq)
++{
++	/* rq clock can go backwards so skip update if that happens */
++	if (likely(rq->clock > rq->load_update)) {
++		unsigned long us_interval = (rq->clock - rq->load_update) >> 10;
++		long load;
++
++		load = rq->load_avg - (rq->load_avg * us_interval * 80 / 32768 / 128);
++		if (unlikely(load < 0))
++			load = 0;
++		load += rq->soft_affined * rq_load_avg(rq) * us_interval * 80 / 32768 / 128;
++		rq->load_avg = load;
++		cpufreq_trigger(grq.niffies, rq->load_avg);
++	}
++	rq->load_update = rq->clock;
++}
++
++/*
+  * activate_task - move a task to the runqueue. Enter with grq locked.
+  */
+ static void activate_task(struct task_struct *p, struct rq *rq)
+@@ -1004,7 +1056,7 @@ static void activate_task(struct task_st
+ 	p->on_rq = 1;
+ 	grq.nr_running++;
+ 	inc_qnr();
+-	cpufreq_trigger(grq.niffies, rq->soft_affined);
++	update_load_avg(rq);
+ }
+ 
+ static inline void clear_sticky(struct task_struct *p);
+@@ -1021,20 +1073,19 @@ static inline void deactivate_task(struc
+ 	p->on_rq = 0;
+ 	grq.nr_running--;
+ 	clear_sticky(p);
+-	cpufreq_trigger(grq.niffies, rq->soft_affined);
++	update_load_avg(rq);
+ }
+ 
+ #ifdef CONFIG_SMP
+ void set_task_cpu(struct task_struct *p, unsigned int cpu)
+ {
+-	unsigned int tcpu;
+ #ifdef CONFIG_LOCKDEP
+ 	/*
+ 	 * The caller should hold grq lock.
+ 	 */
+ 	WARN_ON_ONCE(debug_locks && !lockdep_is_held(&grq.lock));
+ #endif
+-	if ((tcpu = task_cpu(p)) == cpu)
++	if (task_cpu(p) == cpu)
+ 		return;
+ 	trace_sched_migrate_task(p, cpu);
+ 	perf_event_task_migrate(p);
+@@ -1046,13 +1097,8 @@ void set_task_cpu(struct task_struct *p,
+ 	 */
+ 	smp_wmb();
+ 	if (p->on_rq) {
+-		/*
+-		 * set_task_cpu can be set on other CPUs so call cpufreq_trigger
+-		 * explicitly telling it what CPU is being updated as the value
+-		 * of soft_affined has changed.
+-		 */
+-		other_cpufreq_trigger(tcpu, grq.niffies, --task_rq(p)->soft_affined);
+-		other_cpufreq_trigger(cpu, grq.niffies, ++cpu_rq(cpu)->soft_affined);
++		task_rq(p)->soft_affined--;
++		cpu_rq(cpu)->soft_affined++;
+ 	}
+ 	task_thread_info(p)->cpu = cpu;
+ }
+@@ -7228,6 +7274,7 @@ void __init sched_init_smp(void)
+ 		check_siblings = &check_smt_siblings;
+ 		wake_siblings = &wake_smt_siblings;
+ 		smt_schedule = &smt_should_schedule;
++		rq_load_avg = &smt_load_avg;
+ 	}
+ #endif
+ 	grq_unlock_irq();
+Index: linux-4.7-ck5/kernel/sched/bfs_sched.h
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs_sched.h	2016-09-23 08:32:57.886739118 +1000
++++ linux-4.7-ck5/kernel/sched/bfs_sched.h	2016-09-23 08:32:57.884739130 +1000
+@@ -24,6 +24,8 @@ struct rq {
+ 	int rq_prio;
+ 	bool rq_running; /* There is a task running */
+ 	int soft_affined; /* Running or queued tasks with this set as their rq */
++	u64 load_update; /* When we last updated load */
++	unsigned long load_avg; /* Rolling load average */
+ #ifdef CONFIG_SMT_NICE
+ 	struct mm_struct *rq_mm;
+ 	int rq_smt_bias; /* Policy/nice level bias across smt siblings */
+@@ -201,26 +203,17 @@ static inline void cpufreq_trigger(u64 t
+ {
+        struct update_util_data *data;
+ 
++       if (util > SCHED_CAPACITY_SCALE)
++	       util = SCHED_CAPACITY_SCALE;
+        data = rcu_dereference_sched(*this_cpu_ptr(&cpufreq_update_util_data));
+        if (data)
+-               data->func(data, time, util, 1);
++               data->func(data, time, util, SCHED_CAPACITY_SCALE);
+ }
+ 
+-static inline void other_cpufreq_trigger(int cpu, u64 time, unsigned long util)
+-{
+-       struct update_util_data *data;
+-
+-       data = rcu_dereference_sched(*per_cpu_ptr(&cpufreq_update_util_data, cpu));
+-       if (data)
+-               data->func(data, time, util, 1);
+-}
+ #else
+ static inline void cpufreq_trigger(u64 time, unsigned long util)
+ {
+ }
+-static inline void other_cpufreq_trigger(int cpu, u64 time, unsigned long util)
+-{
+-}
+ #endif /* CONFIG_CPU_FREQ */
+ 
+ #ifdef arch_scale_freq_capacity

@@ -1,0 +1,163 @@
+The uint8 is not helpful in the nodeStructure since it is not the part that
+leads to cache trashing on iteration and is creating more complex increment
+code in assembly so change it back to int.
+
+Use microsecond data from niffies as the random seed as some architectures do
+not support nanosecond resolution.
+
+Limit the number of levels in skip lists randomLevel according to how many
+entries there are in the list.
+
+-ck
+
+---
+ include/linux/skip_lists.h |    7 ++++---
+ kernel/sched/bfs.c         |    8 +++++++-
+ kernel/skip_lists.c        |   43 ++++++++++++++++++++++++++++++++++++-------
+ 3 files changed, 47 insertions(+), 11 deletions(-)
+
+Index: linux-4.7-ck5/include/linux/skip_lists.h
+===================================================================
+--- linux-4.7-ck5.orig/include/linux/skip_lists.h	2016-09-23 08:32:57.419742051 +1000
++++ linux-4.7-ck5/include/linux/skip_lists.h	2016-09-23 08:32:57.416742070 +1000
+@@ -6,7 +6,7 @@ typedef void *valueType;
+ typedef struct nodeStructure skiplist_node;
+ 
+ struct nodeStructure {
+-	uint8_t level;	/* Levels in this structure */
++	int level;	/* Levels in this structure */
+ 	keyType key;
+ 	valueType value;
+ 	skiplist_node *next[16];
+@@ -14,13 +14,14 @@ struct nodeStructure {
+ };
+ 
+ typedef struct listStructure {
+-	uint8_t level;	/* Maximum level of the list
++	int entries;
++	int level;	/* Maximum level of the list
+ 			(1 more than the number of levels in the list) */
+ 	skiplist_node *header; /* pointer to header */
+ } skiplist;
+ 
+ skiplist_node *skiplist_init(void);
+ skiplist *new_skiplist(skiplist_node *slnode);
+-skiplist_node *skiplist_insert(skiplist_node *slnode, skiplist *l, keyType key, valueType value, u64 randseed);
++skiplist_node *skiplist_insert(skiplist_node *slnode, skiplist *l, keyType key, valueType value, unsigned int randseed);
+ void skiplist_delnode(skiplist_node *slnode, skiplist *l, skiplist_node *node);
+ #endif /* _LINUX_SKIP_LISTS_H */
+Index: linux-4.7-ck5/kernel/skip_lists.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/skip_lists.c	2016-09-23 08:32:57.419742051 +1000
++++ linux-4.7-ck5/kernel/skip_lists.c	2016-09-23 08:32:57.416742070 +1000
+@@ -17,7 +17,7 @@ generated that is more than the current
+ current maximum level plus one is used instead.
+ 
+ Levels start at zero and go up to MaxLevel (which is equal to
+-	(MaxNumberOfLevels-1).
++MaxNumberOfLevels-1).
+ 
+ The routines defined in this file are:
+ 
+@@ -51,7 +51,7 @@ aid of prev<->next pointer manipulation
+ #include <linux/slab.h>
+ #include <linux/skip_lists.h>
+ 
+-#define MaxNumberOfLevels 16 /* Fit within a uint8_t */
++#define MaxNumberOfLevels 16
+ #define MaxLevel (MaxNumberOfLevels - 1)
+ #define newNode kmalloc(sizeof(skiplist_node), GFP_ATOMIC)
+ 
+@@ -74,6 +74,7 @@ skiplist *new_skiplist(skiplist_node *sl
+ 	skiplist *l = kmalloc(sizeof(skiplist), GFP_ATOMIC);
+ 
+ 	BUG_ON(!l);
++	l->entries = 0;
+ 	l->level = 0;
+ 	l->header = slnode;
+ 	return l;
+@@ -93,12 +94,39 @@ void free_skiplist(skiplist_node *slnode
+ 	kfree(l);
+ }
+ 
+-static inline uint8_t randomLevel(u64 randseed)
+-{
+-	return randseed & 0xF;
++/*
++ * Returns a pseudo-random number based on the randseed value by masking out
++ * 0-15. As many levels are not required when only few values are on the list,
++ * we limit the height of the levels according to how many list entries there
++ * are in a cheap manner. The height of the levels may have been higher while
++ * there were more entries queued previously but as this code is used only by
++ * the scheduler, entries are short lived and will be torn down regularly.
++ *
++ * 00-03 entries - 1 level
++ * 04-07 entries - 2 levels
++ * 08-15 entries - 4 levels
++ * 15-31 entries - 7 levels
++ *  32+  entries - max(16) levels
++ */
++static inline unsigned int randomLevel(int entries, unsigned int randseed)
++{
++	unsigned int mask;
++
++	if (entries > 31)
++		mask = 0xF;
++	else if (entries > 15)
++		mask = 0x7;
++	else if (entries > 7)
++		mask = 0x3;
++	else if (entries > 3)
++		mask = 0x1;
++	else
++		return 0;
++
++	return randseed & mask;
+ }
+ 
+-skiplist_node *skiplist_insert(skiplist_node *slnode, skiplist *l, keyType key, valueType value, u64 randseed)
++skiplist_node *skiplist_insert(skiplist_node *slnode, skiplist *l, keyType key, valueType value, unsigned int randseed)
+ {
+ 	skiplist_node *update[MaxNumberOfLevels];
+ 	skiplist_node *p, *q;
+@@ -111,7 +139,7 @@ skiplist_node *skiplist_insert(skiplist_
+ 		update[k] = p;
+ 	} while (--k >= 0);
+ 
+-	k = randomLevel(randseed);
++	k = randomLevel(++l->entries, randseed);
+ 	if (k > l->level) {
+ 		k = ++l->level;
+ 		update[k] = slnode;
+@@ -145,4 +173,5 @@ void skiplist_delnode(skiplist_node *sln
+ 			m--;
+ 		l->level = m;
+ 	}
++	l->entries--;
+ }
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:57.419742051 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:57.417742064 +1000
+@@ -578,6 +578,7 @@ static bool isoprio_suitable(void)
+  */
+ static void enqueue_task(struct task_struct *p, struct rq *rq)
+ {
++	unsigned int randseed;
+ 	u64 sl_id;
+ 
+ 	if (!rt_task(p)) {
+@@ -607,7 +608,12 @@ static void enqueue_task(struct task_str
+ 		if (p->prio == IDLE_PRIO)
+ 			sl_id |= 0xF000000000000000;
+ 	}
+-	p->node = skiplist_insert(grq.node, grq.sl, sl_id, p, grq.niffies);
++	/*
++	 * Some architectures don't have better than microsecond resolution
++	 * so mask out ~microseconds as the random seed for skiplist insertion.
++	 */
++	randseed = (grq.niffies >> 10) & 0xFFFFFFFF;
++	p->node = skiplist_insert(grq.node, grq.sl, sl_id, p, randseed);
+ 	sched_info_queued(rq, p);
+ }
+ 

@@ -1,0 +1,301 @@
+The sticky flag is no longer used for scheduling decisions so remove it.
+
+-ck
+
+---
+ Documentation/scheduler/sched-BFS.txt |   31 ++------
+ include/linux/sched.h                 |    3 
+ kernel/sched/bfs.c                    |  126 ----------------------------------
+ kernel/sched/bfs_sched.h              |    2 
+ 4 files changed, 11 insertions(+), 151 deletions(-)
+
+Index: linux-4.7-ck5/include/linux/sched.h
+===================================================================
+--- linux-4.7-ck5.orig/include/linux/sched.h	2016-09-23 08:32:59.857726738 +1000
++++ linux-4.7-ck5/include/linux/sched.h	2016-09-23 08:32:59.854726757 +1000
+@@ -1484,9 +1484,6 @@ struct task_struct {
+ #ifdef CONFIG_SMT_NICE
+ 	int smt_bias; /* Policy/nice level bias across smt siblings */
+ #endif
+-#ifdef CONFIG_SMP
+-	bool sticky; /* Soft affined flag */
+-#endif
+ #ifdef CONFIG_HOTPLUG_CPU
+ 	bool zerobound; /* Bound to CPU0 for hotplug */
+ #endif
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:59.857726738 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:59.855726751 +1000
+@@ -872,12 +872,6 @@ out:
+ 	return best_cpu;
+ }
+ 
+-static void resched_best_mask(int best_cpu, struct rq *rq, cpumask_t *tmpmask)
+-{
+-	best_cpu = best_mask_cpu(best_cpu, rq, tmpmask);
+-	resched_curr(cpu_rq(best_cpu));
+-}
+-
+ bool cpus_share_cache(int this_cpu, int that_cpu)
+ {
+ 	struct rq *this_rq = cpu_rq(this_cpu);
+@@ -1015,8 +1009,6 @@ static void activate_task(struct task_st
+ 	cpufreq_trigger(grq.niffies, rq->load_avg);
+ }
+ 
+-static inline void clear_sticky(struct task_struct *p);
+-
+ /*
+  * deactivate_task - If it's running, it's not on the grq and we can just
+  * decrement the nr_running. Enter with grq locked.
+@@ -1028,7 +1020,6 @@ static inline void deactivate_task(struc
+ 	rq->soft_affined--;
+ 	p->on_rq = 0;
+ 	grq.nr_running--;
+-	clear_sticky(p);
+ 	update_load_avg(rq);
+ 	cpufreq_trigger(grq.niffies, rq->load_avg);
+ }
+@@ -1074,83 +1065,7 @@ void set_task_cpu(struct task_struct *p,
+ 	}
+ 	task_thread_info(p)->cpu = cpu;
+ }
+-
+-static inline void clear_sticky(struct task_struct *p)
+-{
+-	p->sticky = false;
+-}
+-
+-static inline bool task_sticky(struct task_struct *p)
+-{
+-	return p->sticky;
+-}
+-
+-/* Reschedule the best idle CPU that is not this one. */
+-static void
+-resched_closest_idle(struct rq *rq, int cpu, struct task_struct *p)
+-{
+-	cpumask_t tmpmask;
+-
+-	cpumask_and(&tmpmask, &p->cpus_allowed, &grq.cpu_idle_map);
+-	cpumask_clear_cpu(cpu, &tmpmask);
+-	if (cpumask_empty(&tmpmask))
+-		return;
+-	resched_best_mask(cpu, rq, &tmpmask);
+-}
+-
+-/*
+- * We set the sticky flag on a task that is descheduled involuntarily meaning
+- * it is awaiting further CPU time. If the last sticky task is still sticky
+- * but unlucky enough to not be the next task scheduled, we unstick it and try
+- * to find it an idle CPU. Realtime tasks do not stick to minimise their
+- * latency at all times.
+- */
+-static inline void
+-swap_sticky(struct rq *rq, int cpu, struct task_struct *p)
+-{
+-	if (rq->sticky_task) {
+-		if (rq->sticky_task == p) {
+-			p->sticky = true;
+-			return;
+-		}
+-		if (task_sticky(rq->sticky_task)) {
+-			clear_sticky(rq->sticky_task);
+-			resched_closest_idle(rq, cpu, rq->sticky_task);
+-		}
+-	}
+-	if (!rt_task(p)) {
+-		p->sticky = true;
+-		rq->sticky_task = p;
+-	} else {
+-		resched_closest_idle(rq, cpu, p);
+-		rq->sticky_task = NULL;
+-	}
+-}
+-
+-static inline void unstick_task(struct rq *rq, struct task_struct *p)
+-{
+-	rq->sticky_task = NULL;
+-	clear_sticky(p);
+-}
+-#else
+-static inline void clear_sticky(struct task_struct *p)
+-{
+-}
+-
+-static inline bool task_sticky(struct task_struct *p)
+-{
+-	return false;
+-}
+-
+-static inline void
+-swap_sticky(struct rq *rq, int cpu, struct task_struct *p)
+-{
+-}
+-
+-static inline void unstick_task(struct rq *rq, struct task_struct *p)
+-{
+-}
+-#endif
++#endif /* CONFIG_SMP */
+ 
+ /*
+  * Move a task off the global queue and take it to a cpu for it will
+@@ -1160,7 +1075,6 @@ static inline void take_task(int cpu, st
+ {
+ 	set_task_cpu(p, cpu);
+ 	dequeue_task(p);
+-	clear_sticky(p);
+ 	dec_qnr();
+ }
+ 
+@@ -1410,13 +1324,6 @@ static void try_preempt(struct task_stru
+ 	u64 latest_deadline;
+ 	cpumask_t tmp;
+ 
+-	/*
+-	 * We clear the sticky flag here because for a task to have called
+-	 * try_preempt with the sticky flag enabled means some complicated
+-	 * re-scheduling has occurred and we should ignore the sticky flag.
+-	 */
+-	clear_sticky(p);
+-
+ 	if (suitable_idle_cpus(p) && resched_best_idle(p))
+ 		return;
+ 
+@@ -1779,7 +1686,6 @@ int sched_fork(unsigned long __maybe_unu
+ 		memset(&p->sched_info, 0, sizeof(p->sched_info));
+ #endif
+ 	p->on_cpu = false;
+-	clear_sticky(p);
+ 	init_task_preempt_count(p);
+ 	return 0;
+ }
+@@ -3634,25 +3540,6 @@ static void __sched notrace __schedule(b
+ 		prev->deadline = rq->rq_deadline;
+ 		check_deadline(prev);
+ 		prev->last_ran = rq->clock_task;
+-
+-		/* Task changed affinity off this CPU */
+-		if (likely(!needs_other_cpu(prev, cpu))) {
+-			if (!deactivate) {
+-				if (!queued_notrunning()) {
+-					/*
+-					 * We now know prev is the only thing that is
+-					 * awaiting CPU so we can bypass rechecking for
+-					 * the earliest deadline task and just run it
+-					 * again.
+-					 */
+-					set_rq_task(rq, prev);
+-					check_siblings(rq);
+-					grq_unlock_irq();
+-					goto rerun_prev_unlocked;
+-				} else
+-					swap_sticky(rq, cpu, prev);
+-			}
+-		}
+ 		return_task(prev, rq, deactivate);
+ 	}
+ 
+@@ -3678,12 +3565,6 @@ static void __sched notrace __schedule(b
+ 		 */
+ 		if (prev != idle && !deactivate)
+ 			resched_suitable_idle(prev);
+-		/*
+-		 * Don't stick tasks when a real time task is going to run as
+-		 * they may literally get stuck.
+-		 */
+-		if (rt_task(next))
+-			unstick_task(rq, prev);
+ 		set_rq_task(rq, next);
+ 		if (next != idle)
+ 			check_siblings(rq);
+@@ -3703,9 +3584,6 @@ static void __sched notrace __schedule(b
+ 		check_siblings(rq);
+ 		grq_unlock_irq();
+ 	}
+-
+-rerun_prev_unlocked:
+-	return;
+ }
+ 
+ static inline void sched_submit_work(struct task_struct *tsk)
+@@ -5626,7 +5504,6 @@ static void bind_zero(int src_cpu)
+ 			p->zerobound = true;
+ 			bound++;
+ 		}
+-		clear_sticky(p);
+ 	} while_each_thread(t, p);
+ 
+ 	if (bound) {
+@@ -7340,7 +7217,6 @@ void __init sched_init(void)
+ 			      rq->iowait_pc = rq->idle_pc = 0;
+ 		rq->dither = false;
+ #ifdef CONFIG_SMP
+-		rq->sticky_task = NULL;
+ 		rq->last_niffy = 0;
+ 		rq->sd = NULL;
+ 		rq->rd = NULL;
+Index: linux-4.7-ck5/kernel/sched/bfs_sched.h
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs_sched.h	2016-09-23 08:32:59.857726738 +1000
++++ linux-4.7-ck5/kernel/sched/bfs_sched.h	2016-09-23 08:32:59.855726751 +1000
+@@ -39,8 +39,6 @@ struct rq {
+ #ifdef CONFIG_SMP
+ 	int cpu;		/* cpu of this runqueue */
+ 	bool online;
+-	bool scaling; /* This CPU is managed by a scaling CPU freq governor */
+-	struct task_struct *sticky_task;
+ 
+ 	struct root_domain *rd;
+ 	struct sched_domain *sd;
+Index: linux-4.7-ck5/Documentation/scheduler/sched-BFS.txt
+===================================================================
+--- linux-4.7-ck5.orig/Documentation/scheduler/sched-BFS.txt	2016-09-23 08:32:59.857726738 +1000
++++ linux-4.7-ck5/Documentation/scheduler/sched-BFS.txt	2016-09-23 08:32:59.855726751 +1000
+@@ -191,17 +191,7 @@ when it has been deemed their overhead i
+ The first is the local copy of the running process' data to the CPU it's running
+ on to allow that data to be updated lockless where possible. Then there is
+ deference paid to the last CPU a task was running on, by trying that CPU first
+-when looking for an idle CPU to use the next time it's scheduled. Finally there
+-is the notion of "sticky" tasks that are flagged when they are involuntarily
+-descheduled, meaning they still want further CPU time. This sticky flag is
+-used to bias heavily against those tasks being scheduled on a different CPU
+-unless that CPU would be otherwise idle. When a cpu frequency governor is used
+-that scales with CPU load, such as ondemand, sticky tasks are not scheduled
+-on a different CPU at all, preferring instead to go idle. This means the CPU
+-they were bound to is more likely to increase its speed while the other CPU
+-will go idle, thus speeding up total task execution time and likely decreasing
+-power usage. This is the only scenario where BFS will allow a CPU to go idle
+-in preference to scheduling a task on the earliest available spare CPU.
++when looking for an idle CPU to use the next time it's scheduled.
+ 
+ The real cost of migrating a task from one CPU to another is entirely dependant
+ on the cache footprint of the task, how cache intensive the task is, how long
+@@ -219,16 +209,15 @@ to worst to choose the most suitable idl
+ node locality and hyperthread sibling business. They are chosen in the
+ following preference (if idle):
+ 
+-* Same core, idle or busy cache, idle threads
+-* Other core, same cache, idle or busy cache, idle threads.
+-* Same node, other CPU, idle cache, idle threads.
+-* Same node, other CPU, busy cache, idle threads.
+-* Same core, busy threads.
+-* Other core, same cache, busy threads.
+-* Same node, other CPU, busy threads.
+-* Other node, other CPU, idle cache, idle threads.
+-* Other node, other CPU, busy cache, idle threads.
+-* Other node, other CPU, busy threads.
++ * Same thread, idle or busy cache, idle or busy threads
++ * Other core, same cache, idle or busy cache, idle threads.
++ * Same node, other CPU, idle cache, idle threads.
++ * Same node, other CPU, busy cache, idle threads.
++ * Other core, same cache, busy threads.
++ * Same node, other CPU, busy threads.
++ * Other node, other CPU, idle cache, idle threads.
++ * Other node, other CPU, busy cache, idle threads.
++ * Other node, other CPU, busy threads.
+ 
+ This shows the SMT or "hyperthread" awareness in the design as well which will
+ choose a real idle core first before a logical SMT sibling which already has

@@ -1,0 +1,22 @@
+SMT siblings that are loaded are still worth biasing away from even if they're
+on the same core as the previous run cpu.
+
+-ck
+
+---
+ kernel/sched/bfs.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:58.123737629 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:58.121737641 +1000
+@@ -864,7 +864,7 @@ static int best_mask_cpu(int best_cpu, s
+ #ifdef CONFIG_SCHED_SMT
+ 		if (locality == 1)
+ 			ranking |= CPUIDLE_DIFF_THREAD;
+-		else if (!(tmp_rq->siblings_idle(tmp_rq)))
++		if (!(tmp_rq->siblings_idle(tmp_rq)))
+ 			ranking |= CPUIDLE_THREAD_BUSY;
+ #endif
+ 		if (scaling_rq(tmp_rq))

@@ -1,0 +1,309 @@
+Make cache and smt sibling idle code dependent on setting up of cpu masks at boot.
+Use a cached bitmap of only a CPU's other siblings to speed up functions.
+
+-ck
+
+---
+ kernel/sched/bfs.c       |   91 +++++++++++++++++++++++------------------------
+ kernel/sched/bfs_sched.h |    6 ++-
+ 2 files changed, 50 insertions(+), 47 deletions(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:57.063744288 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:57.061744301 +1000
+@@ -744,13 +744,13 @@ static int best_mask_cpu(int best_cpu, s
+ #ifdef CONFIG_SCHED_MC
+ 		else if (locality == 2)
+ 			ranking |= CPUIDLE_DIFF_CORE;
+-		else if (!(tmp_rq->cache_idle(cpu_tmp)))
++		else if (!(tmp_rq->cache_idle(tmp_rq)))
+ 			ranking |= CPUIDLE_CACHE_BUSY;
+ #endif
+ #ifdef CONFIG_SCHED_SMT
+ 		if (locality == 1)
+ 			ranking |= CPUIDLE_DIFF_THREAD;
+-		else if (!(tmp_rq->siblings_idle(cpu_tmp)))
++		else if (!(tmp_rq->siblings_idle(tmp_rq)))
+ 			ranking |= CPUIDLE_THREAD_BUSY;
+ #endif
+ 		if (scaling_rq(tmp_rq))
+@@ -785,16 +785,13 @@ static const cpumask_t *thread_cpumask(i
+  * none are running, the static priority of the best deadline task running.
+  * The lookups to the other runqueues is done lockless as the occasional wrong
+  * value would be harmless. */
+-static int best_smt_bias(int cpu)
++static int best_smt_bias(struct rq *this_rq)
+ {
+ 	int other_cpu, best_bias = 0;
+ 
+-	for_each_cpu(other_cpu, thread_cpumask(cpu)) {
+-		struct rq *rq;
++	for_each_cpu(other_cpu, &this_rq->thread_mask) {
++		struct rq *rq = cpu_rq(other_cpu);
+ 
+-		if (other_cpu == cpu)
+-			continue;
+-		rq = cpu_rq(other_cpu);
+ 		if (rq_idle(rq))
+ 			continue;
+ 		if (!rq->online)
+@@ -818,16 +815,16 @@ static int task_prio_bias(struct task_st
+ 	return MAX_PRIO - p->static_prio;
+ }
+ 
+-static bool smt_always_schedule(struct task_struct __maybe_unused *p, int __maybe_unused cpu)
++static bool smt_always_schedule(struct task_struct __maybe_unused *p, struct rq __maybe_unused *this_rq)
+ {
+ 	return true;
+ }
+ 
+-static bool (*smt_schedule)(struct task_struct __maybe_unused *p, int __maybe_unused cpu) = &smt_always_schedule;
++static bool (*smt_schedule)(struct task_struct *p, struct rq *this_rq) = &smt_always_schedule;
+ 
+ /* We've already decided p can run on CPU, now test if it shouldn't for SMT
+  * nice reasons. */
+-static bool smt_should_schedule(struct task_struct *p, int cpu)
++static bool smt_should_schedule(struct task_struct *p, struct rq *this_rq)
+ {
+ 	int best_bias, task_bias;
+ 
+@@ -838,7 +835,7 @@ static bool smt_should_schedule(struct t
+ 		return true;
+ 	if (!idleprio_suitable(p))
+ 		return true;
+-	best_bias = best_smt_bias(cpu);
++	best_bias = best_smt_bias(this_rq);
+ 	/* The smt siblings are all idle or running IDLEPRIO */
+ 	if (best_bias < 1)
+ 		return true;
+@@ -854,19 +851,21 @@ static bool smt_should_schedule(struct t
+ 	return false;
+ }
+ #else
+-#define smt_schedule(p, cpu) (true)
++#define smt_schedule(p, this_rq) (true)
+ #endif
+ 
+ static bool resched_best_idle(struct task_struct *p)
+ {
+ 	cpumask_t tmpmask;
++	struct rq *rq;
+ 	int best_cpu;
+ 
+ 	cpumask_and(&tmpmask, &p->cpus_allowed, &grq.cpu_idle_map);
+ 	best_cpu = best_mask_cpu(task_cpu(p), task_rq(p), &tmpmask);
+-	if (!smt_schedule(p, best_cpu))
++	rq = cpu_rq(best_cpu);
++	if (!smt_schedule(p, rq))
+ 		return false;
+-	resched_curr(cpu_rq(best_cpu));
++	resched_curr(rq);
+ 	return true;
+ }
+ 
+@@ -1402,7 +1401,7 @@ static void try_preempt(struct task_stru
+ 	/* See if this task can preempt the task on the current CPU first. */
+ 	pcpu = cpu_of(this_rq);
+ 	if (!sched_interactive && cpumask_test_cpu(pcpu, &tmp)) {
+-		if (smt_schedule(p, pcpu) && can_preempt(p, this_rq->rq_prio, this_rq->rq_deadline)) {
++		if (smt_schedule(p, this_rq) && can_preempt(p, this_rq->rq_prio, this_rq->rq_deadline)) {
+ 			resched_curr(this_rq);
+ 			return;
+ 		}
+@@ -1436,7 +1435,7 @@ static void try_preempt(struct task_stru
+ 
+ 	if (unlikely(!highest_prio_rq))
+ 		return;
+-	if (!smt_schedule(p, highest_cpu))
++	if (!smt_schedule(p, highest_prio_rq))
+ 		return;
+ 	if (can_preempt(p, highest_prio, latest_deadline)) {
+ 		/*
+@@ -3321,7 +3320,7 @@ task_struct *earliest_deadline_task(stru
+ 		if (needs_other_cpu(p, cpu))
+ 			continue;
+ 
+-		if (!smt_schedule(p, cpu))
++		if (!smt_schedule(p, rq))
+ 			continue;
+ 
+ 		if (!sched_interactive && (tcpu = task_cpu(p)) != cpu) {
+@@ -3429,48 +3428,44 @@ static void reset_rq_task(struct rq *rq,
+ }
+ 
+ #ifdef CONFIG_SMT_NICE
+-static void check_no_siblings(int __maybe_unused cpu) {}
+-static void wake_no_siblings(int __maybe_unused cpu) {}
+-static void (*check_siblings)(int) = &check_no_siblings;
+-static void (*wake_siblings)(int) = &wake_no_siblings;
++static void check_no_siblings(struct rq __maybe_unused *this_rq) {}
++static void wake_no_siblings(struct rq __maybe_unused *this_rq) {}
++static void (*check_siblings)(struct rq *this_rq) = &check_no_siblings;
++static void (*wake_siblings)(struct rq *this_rq) = &wake_no_siblings;
+ 
+ /* Iterate over smt siblings when we've scheduled a process on cpu and decide
+  * whether they should continue running or be descheduled. */
+-static void check_smt_siblings(int cpu)
++static void check_smt_siblings(struct rq *this_rq)
+ {
+ 	int other_cpu;
+ 
+-	for_each_cpu(other_cpu, thread_cpumask(cpu)) {
++	for_each_cpu(other_cpu, &this_rq->thread_mask) {
+ 		struct task_struct *p;
+ 		struct rq *rq;
+ 
+-		if (other_cpu == cpu)
+-			continue;
+ 		rq = cpu_rq(other_cpu);
+ 		if (rq_idle(rq))
+ 			continue;
+ 		if (!rq->online)
+ 			continue;
+ 		p = rq->curr;
+-		if (!smt_should_schedule(p, cpu)) {
++		if (!smt_should_schedule(p, this_rq)) {
+ 			set_tsk_need_resched(p);
+ 			smp_send_reschedule(other_cpu);
+ 		}
+ 	}
+ }
+ 
+-static void wake_smt_siblings(int cpu)
++static void wake_smt_siblings(struct rq *this_rq)
+ {
+ 	int other_cpu;
+ 
+ 	if (!queued_notrunning())
+ 		return;
+ 
+-	for_each_cpu(other_cpu, thread_cpumask(cpu)) {
++	for_each_cpu(other_cpu, &this_rq->thread_mask) {
+ 		struct rq *rq;
+ 
+-		if (other_cpu == cpu)
+-			continue;
+ 		rq = cpu_rq(other_cpu);
+ 		if (rq_idle(rq)) {
+ 			struct task_struct *p = rq->curr;
+@@ -3481,8 +3476,8 @@ static void wake_smt_siblings(int cpu)
+ 	}
+ }
+ #else
+-static void check_siblings(int __maybe_unused cpu) {}
+-static void wake_siblings(int __maybe_unused cpu) {}
++static void check_siblings(struct rq __maybe_unused *this_rq) {}
++static void wake_siblings(struct rq __maybe_unused *this_rq) {}
+ #endif
+ 
+ /*
+@@ -3619,7 +3614,7 @@ static void __sched notrace __schedule(b
+ 					 * again.
+ 					 */
+ 					set_rq_task(rq, prev);
+-					check_siblings(cpu);
++					check_siblings(rq);
+ 					grq_unlock_irq();
+ 					goto rerun_prev_unlocked;
+ 				} else
+@@ -3659,9 +3654,9 @@ static void __sched notrace __schedule(b
+ 			unstick_task(rq, prev);
+ 		set_rq_task(rq, next);
+ 		if (next != idle)
+-			check_siblings(cpu);
++			check_siblings(rq);
+ 		else
+-			wake_siblings(cpu);
++			wake_siblings(rq);
+ 		grq.nr_switches++;
+ 		prev->on_cpu = false;
+ 		next->on_cpu = true;
+@@ -3673,7 +3668,7 @@ static void __sched notrace __schedule(b
+ 		cpu = cpu_of(rq);
+ 		idle = rq->idle;
+ 	} else {
+-		check_siblings(cpu);
++		check_siblings(rq);
+ 		grq_unlock_irq();
+ 	}
+ 
+@@ -7087,9 +7082,9 @@ int sched_cpu_dying(unsigned int cpu)
+  * Cheaper version of the below functions in case support for SMT and MC is
+  * compiled in but CPUs have no siblings.
+  */
+-static bool sole_cpu_idle(int cpu)
++static bool sole_cpu_idle(struct rq *rq)
+ {
+-	return rq_idle(cpu_rq(cpu));
++	return rq_idle(rq);
+ }
+ #endif
+ #ifdef CONFIG_SCHED_SMT
+@@ -7098,9 +7093,9 @@ static const cpumask_t *thread_cpumask(i
+ 	return topology_sibling_cpumask(cpu);
+ }
+ /* All this CPU's SMT siblings are idle */
+-static bool siblings_cpu_idle(int cpu)
++static bool siblings_cpu_idle(struct rq *rq)
+ {
+-	return cpumask_subset(thread_cpumask(cpu), &grq.cpu_idle_map);
++	return cpumask_subset(&rq->thread_mask, &grq.cpu_idle_map);
+ }
+ #endif
+ #ifdef CONFIG_SCHED_MC
+@@ -7109,9 +7104,9 @@ static const cpumask_t *core_cpumask(int
+ 	return topology_core_cpumask(cpu);
+ }
+ /* All this CPU's shared cache siblings are idle */
+-static bool cache_cpu_idle(int cpu)
++static bool cache_cpu_idle(struct rq *rq)
+ {
+-	return cpumask_subset(core_cpumask(cpu), &grq.cpu_idle_map);
++	return cpumask_subset(&rq->core_mask, &grq.cpu_idle_map);
+ }
+ #endif
+ 
+@@ -7189,14 +7184,20 @@ void __init sched_init_smp(void)
+ 			if (rq->cpu_locality[other_cpu] > 2)
+ 				rq->cpu_locality[other_cpu] = 2;
+ 		}
+-		if (cpumask_weight(core_cpumask(cpu)) > 1)
++		if (cpumask_weight(core_cpumask(cpu)) > 1) {
++			cpumask_copy(&rq->core_mask, core_cpumask(cpu));
++			cpumask_clear_cpu(cpu, &rq->core_mask);
+ 			rq->cache_idle = cache_cpu_idle;
++		}
+ #endif
+ #ifdef CONFIG_SCHED_SMT
+ 		for_each_cpu(other_cpu, thread_cpumask(cpu))
+ 			rq->cpu_locality[other_cpu] = 1;
+-		if (cpumask_weight(thread_cpumask(cpu)) > 1)
++		if (cpumask_weight(thread_cpumask(cpu)) > 1) {
++			cpumask_copy(&rq->thread_mask, thread_cpumask(cpu));
++			cpumask_clear_cpu(cpu, &rq->thread_mask);
+ 			rq->siblings_idle = siblings_cpu_idle;
++		}
+ #endif
+ 	}
+ #ifdef CONFIG_SMT_NICE
+Index: linux-4.7-ck5/kernel/sched/bfs_sched.h
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs_sched.h	2016-09-23 08:32:57.063744288 +1000
++++ linux-4.7-ck5/kernel/sched/bfs_sched.h	2016-09-23 08:32:57.061744301 +1000
+@@ -44,11 +44,13 @@ struct rq {
+ 	struct sched_domain *sd;
+ 	int *cpu_locality; /* CPU relative cache distance */
+ #ifdef CONFIG_SCHED_SMT
+-	bool (*siblings_idle)(int cpu);
++	cpumask_t thread_mask;
++	bool (*siblings_idle)(struct rq *rq);
+ 	/* See if all smt siblings are idle */
+ #endif /* CONFIG_SCHED_SMT */
+ #ifdef CONFIG_SCHED_MC
+-	bool (*cache_idle)(int cpu);
++	cpumask_t core_mask;
++	bool (*cache_idle)(struct rq *rq);
+ 	/* See if all cache siblings are idle */
+ #endif /* CONFIG_SCHED_MC */
+ 	u64 last_niffy; /* Last time this RQ updated grq.niffies */

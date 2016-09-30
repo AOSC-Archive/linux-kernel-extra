@@ -1,0 +1,268 @@
+Make all skiplist node permanent structures avoiding the need for alloc/free
+on skiplist insertion and deletion.
+
+-ck
+
+---
+ include/linux/init_task.h  |    3 --
+ include/linux/sched.h      |    2 -
+ include/linux/skip_lists.h |   12 ++++++++---
+ kernel/sched/bfs.c         |   20 +++++++++---------
+ kernel/skip_lists.c        |   49 +++++++++++++++++++++------------------------
+ 5 files changed, 44 insertions(+), 42 deletions(-)
+
+Index: linux-4.7-ck5/include/linux/sched.h
+===================================================================
+--- linux-4.7-ck5.orig/include/linux/sched.h	2016-09-23 08:32:59.427729439 +1000
++++ linux-4.7-ck5/include/linux/sched.h	2016-09-23 08:32:59.423729464 +1000
+@@ -1478,7 +1478,7 @@ struct task_struct {
+ #ifdef CONFIG_SCHED_BFS
+ 	int time_slice;
+ 	u64 deadline;
+-	skiplist_node *node; /* Skip list node id */
++	skiplist_node node; /* Skip list node */
+ 	u64 last_ran;
+ 	u64 sched_time; /* sched_clock time spent running */
+ #ifdef CONFIG_SMT_NICE
+Index: linux-4.7-ck5/include/linux/skip_lists.h
+===================================================================
+--- linux-4.7-ck5.orig/include/linux/skip_lists.h	2016-09-23 08:32:59.427729439 +1000
++++ linux-4.7-ck5/include/linux/skip_lists.h	2016-09-23 08:32:59.424729457 +1000
+@@ -20,8 +20,14 @@ typedef struct listStructure {
+ 	skiplist_node *header; /* pointer to header */
+ } skiplist;
+ 
+-skiplist_node *skiplist_init(void);
++void skiplist_init(skiplist_node *slnode);
+ skiplist *new_skiplist(skiplist_node *slnode);
+-skiplist_node *skiplist_insert(skiplist_node *slnode, skiplist *l, keyType key, valueType value, unsigned int randseed);
+-void skiplist_delnode(skiplist_node *slnode, skiplist *l, skiplist_node *node);
++void free_skiplist(skiplist *l);
++void skiplist_node_init(skiplist_node *node);
++void skiplist_insert(skiplist *l, skiplist_node *node, keyType key, valueType value, unsigned int randseed);
++void skiplist_delete(skiplist *l, skiplist_node *node);
++
++static inline bool skiplist_node_empty(skiplist_node *node) {
++	return (!node->next[0]);
++}
+ #endif /* _LINUX_SKIP_LISTS_H */
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:59.427729439 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:59.424729457 +1000
+@@ -196,7 +196,7 @@ struct global_rq {
+ 	int iso_ticks;
+ 	bool iso_refractory;
+ 
+-	skiplist_node *node;
++	skiplist_node node;
+ 	skiplist *sl;
+ };
+ 
+@@ -538,7 +538,7 @@ static inline bool deadline_after(u64 de
+  */
+ static inline bool task_queued(struct task_struct *p)
+ {
+-	return p->node;
++	return !skiplist_node_empty(&p->node);
+ }
+ 
+ /*
+@@ -549,8 +549,7 @@ static inline bool task_queued(struct ta
+  */
+ static void dequeue_task(struct task_struct *p)
+ {
+-	skiplist_delnode(grq.node, grq.sl, p->node);
+-	p->node = NULL;
++	skiplist_delete(grq.sl, &p->node);
+ 	sched_info_dequeued(task_rq(p), p);
+ }
+ 
+@@ -614,7 +613,7 @@ static void enqueue_task(struct task_str
+ 	 * so mask out ~microseconds as the random seed for skiplist insertion.
+ 	 */
+ 	randseed = (grq.niffies >> 10) & 0xFFFFFFFF;
+-	p->node = skiplist_insert(grq.node, grq.sl, sl_id, p, randseed);
++	skiplist_insert(grq.sl, &p->node, sl_id, p, randseed);
+ 	sched_info_queued(rq, p);
+ }
+ 
+@@ -1795,6 +1794,7 @@ int sched_fork(unsigned long __maybe_unu
+ 	p->sched_time =
+ 	p->stime_pc =
+ 	p->utime_pc = 0;
++	skiplist_node_init(&p->node);
+ 
+ 	/*
+ 	 * Revert to default priority/policy on fork if requested.
+@@ -1817,7 +1817,6 @@ int sched_fork(unsigned long __maybe_unu
+ 		p->sched_reset_on_fork = 0;
+ 	}
+ 
+-	p->node = NULL;
+ #ifdef CONFIG_SCHED_INFO
+ 	if (unlikely(sched_info_on()))
+ 		memset(&p->sched_info, 0, sizeof(p->sched_info));
+@@ -3386,10 +3385,10 @@ static inline struct
+ task_struct *earliest_deadline_task(struct rq *rq, int cpu, struct task_struct *idle)
+ {
+ 	struct task_struct *edt = idle;
+-	skiplist_node *node = grq.node;
++	skiplist_node *node = &grq.node;
+ 	u64 earliest_deadline = ~0ULL;
+ 
+-	while ((node = node->next[0]) != grq.node) {
++	while ((node = node->next[0]) != &grq.node) {
+ 		struct task_struct *p = node->value;
+ 		int tcpu;
+ 
+@@ -7361,8 +7360,9 @@ void __init sched_init(void)
+ 	grq.iso_ticks = 0;
+ 	grq.iso_refractory = false;
+ 	grq.noc = 1;
+-	grq.node = skiplist_init();
+-	grq.sl = new_skiplist(grq.node);
++	skiplist_init(&grq.node);
++	grq.sl = new_skiplist(&grq.node);
++	skiplist_node_init(&init_task.node);
+ 
+ #ifdef CONFIG_SMP
+ 	init_defrootdomain();
+Index: linux-4.7-ck5/kernel/skip_lists.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/skip_lists.c	2016-09-23 08:32:59.427729439 +1000
++++ linux-4.7-ck5/kernel/skip_lists.c	2016-09-23 08:32:59.425729451 +1000
+@@ -53,34 +53,28 @@ aid of prev<->next pointer manipulation
+ 
+ #define MaxNumberOfLevels 16
+ #define MaxLevel (MaxNumberOfLevels - 1)
+-#define newNode kmalloc(sizeof(skiplist_node), GFP_ATOMIC)
+ 
+-skiplist_node *skiplist_init(void)
++void skiplist_init(skiplist_node *slnode)
+ {
+-	skiplist_node *slnode = newNode;
+ 	int i;
+ 
+-	BUG_ON(!slnode);
+ 	slnode->key = 0xFFFFFFFFFFFFFFFF;
+ 	slnode->level = 0;
+ 	slnode->value = NULL;
+ 	for (i = 0; i < MaxNumberOfLevels; i++)
+ 		slnode->next[i] = slnode->prev[i] = slnode;
+-	return slnode;
+ }
+ 
+ skiplist *new_skiplist(skiplist_node *slnode)
+ {
+-	skiplist *l = kmalloc(sizeof(skiplist), GFP_ATOMIC);
++	skiplist *l = kzalloc(sizeof(skiplist), GFP_ATOMIC);
+ 
+ 	BUG_ON(!l);
+-	l->entries = 0;
+-	l->level = 0;
+ 	l->header = slnode;
+ 	return l;
+ }
+ 
+-void free_skiplist(skiplist_node *slnode, skiplist *l)
++void free_skiplist(skiplist *l)
+ {
+ 	skiplist_node *p, *q;
+ 
+@@ -88,12 +82,17 @@ void free_skiplist(skiplist_node *slnode
+ 	do {
+ 		q = p->next[0];
+ 		p->next[0]->prev[0] = q->prev[0];
+-		kfree(p);
++		skiplist_node_init(p);
+ 		p = q;
+-	} while (p != slnode);
++	} while (p != l->header);
+ 	kfree(l);
+ }
+ 
++void skiplist_node_init(skiplist_node *node)
++{
++	memset(node, 0, sizeof(skiplist_node));
++}
++
+ /*
+  * Returns a pseudo-random number based on the randseed value by masking out
+  * 0-15. As many levels are not required when only few values are on the list,
+@@ -126,13 +125,13 @@ static inline unsigned int randomLevel(i
+ 	return randseed & mask;
+ }
+ 
+-skiplist_node *skiplist_insert(skiplist_node *slnode, skiplist *l, keyType key, valueType value, unsigned int randseed)
++void skiplist_insert(skiplist *l, skiplist_node *node, keyType key, valueType value, unsigned int randseed)
+ {
+ 	skiplist_node *update[MaxNumberOfLevels];
+ 	skiplist_node *p, *q;
+ 	int k = l->level;
+ 
+-	p = slnode;
++	p = l->header;
+ 	do {
+ 		while (q = p->next[k], q->key <= key)
+ 			p = q;
+@@ -142,24 +141,22 @@ skiplist_node *skiplist_insert(skiplist_
+ 	k = randomLevel(++l->entries, randseed);
+ 	if (k > l->level) {
+ 		k = ++l->level;
+-		update[k] = slnode;
++		update[k] = l->header;
+ 	}
+ 
+-	q = newNode;
+-	q->level = k;
+-	q->key = key;
+-	q->value = value;
++	node->level = k;
++	node->key = key;
++	node->value = value;
+ 	do {
+ 		p = update[k];
+-		q->next[k] = p->next[k];
+-		p->next[k] = q;
+-		q->prev[k] = p;
+-		q->next[k]->prev[k] = q;
++		node->next[k] = p->next[k];
++		p->next[k] = node;
++		node->prev[k] = p;
++		node->next[k]->prev[k] = node;
+ 	} while (--k >= 0);
+-	return q;
+ }
+ 
+-void skiplist_delnode(skiplist_node *slnode, skiplist *l, skiplist_node *node)
++void skiplist_delete(skiplist *l, skiplist_node *node)
+ {
+ 	int k, m = node->level;
+ 
+@@ -167,9 +164,9 @@ void skiplist_delnode(skiplist_node *sln
+ 		node->prev[k]->next[k] = node->next[k];
+ 		node->next[k]->prev[k] = node->prev[k];
+ 	}
+-	kfree(node);
++	skiplist_node_init(node);
+ 	if (m == l->level) {
+-		while (l->header->next[m] == slnode && l->header->prev[m] == slnode && m > 0)
++		while (l->header->next[m] == l->header && l->header->prev[m] == l->header && m > 0)
+ 			m--;
+ 		l->level = m;
+ 	}
+Index: linux-4.7-ck5/include/linux/init_task.h
+===================================================================
+--- linux-4.7-ck5.orig/include/linux/init_task.h	2016-09-23 08:32:59.427729439 +1000
++++ linux-4.7-ck5/include/linux/init_task.h	2016-09-23 08:32:59.425729451 +1000
+@@ -204,8 +204,7 @@ extern struct task_group root_task_group
+ 	.restart_block = {						\
+ 		.fn = do_no_restart_syscall,				\
+ 	},								\
+-	.node		= NULL,						\
+-	.time_slice	= HZ,					\
++	.time_slice	= HZ,						\
+ 	.tasks		= LIST_HEAD_INIT(tsk.tasks),			\
+ 	INIT_PUSHABLE_TASKS(tsk)					\
+ 	.ptraced	= LIST_HEAD_INIT(tsk.ptraced),			\

@@ -1,0 +1,178 @@
+Fix uniprocessor build.
+
+-ck
+
+---
+ kernel/sched/bfs.c |  152 ++++++++++++++++++++++++++---------------------------
+ 1 file changed, 76 insertions(+), 76 deletions(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:57.657740556 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:57.655740569 +1000
+@@ -669,6 +669,82 @@ static inline int queued_notrunning(void
+ 	return grq.qnr;
+ }
+ 
++#ifdef CONFIG_SMT_NICE
++static const cpumask_t *thread_cpumask(int cpu);
++
++/* Find the best real time priority running on any SMT siblings of cpu and if
++ * none are running, the static priority of the best deadline task running.
++ * The lookups to the other runqueues is done lockless as the occasional wrong
++ * value would be harmless. */
++static int best_smt_bias(struct rq *this_rq)
++{
++	int other_cpu, best_bias = 0;
++
++	for_each_cpu(other_cpu, &this_rq->thread_mask) {
++		struct rq *rq = cpu_rq(other_cpu);
++
++		if (rq_idle(rq))
++			continue;
++		if (!rq->online)
++			continue;
++		if (!rq->rq_mm)
++			continue;
++		if (likely(rq->rq_smt_bias > best_bias))
++			best_bias = rq->rq_smt_bias;
++	}
++	return best_bias;
++}
++
++static int task_prio_bias(struct task_struct *p)
++{
++	if (rt_task(p))
++		return 1 << 30;
++	else if (task_running_iso(p))
++		return 1 << 29;
++	else if (task_running_idle(p))
++		return 0;
++	return MAX_PRIO - p->static_prio;
++}
++
++static bool smt_always_schedule(struct task_struct __maybe_unused *p, struct rq __maybe_unused *this_rq)
++{
++	return true;
++}
++
++static bool (*smt_schedule)(struct task_struct *p, struct rq *this_rq) = &smt_always_schedule;
++
++/* We've already decided p can run on CPU, now test if it shouldn't for SMT
++ * nice reasons. */
++static bool smt_should_schedule(struct task_struct *p, struct rq *this_rq)
++{
++	int best_bias, task_bias;
++
++	/* Kernel threads always run */
++	if (unlikely(!p->mm))
++		return true;
++	if (rt_task(p))
++		return true;
++	if (!idleprio_suitable(p))
++		return true;
++	best_bias = best_smt_bias(this_rq);
++	/* The smt siblings are all idle or running IDLEPRIO */
++	if (best_bias < 1)
++		return true;
++	task_bias = task_prio_bias(p);
++	if (task_bias < 1)
++		return false;
++	if (task_bias >= best_bias)
++		return true;
++	/* Dither 25% cpu of normal tasks regardless of nice difference */
++	if (best_bias % 4 == 1)
++		return true;
++	/* Sorry, you lose */
++	return false;
++}
++#else
++#define smt_schedule(p, this_rq) (true)
++#endif
++
+ #ifdef CONFIG_SMP
+ /*
+  * The cpu_idle_map stores a bitmap of all the CPUs currently idle to
+@@ -785,82 +861,6 @@ bool cpus_share_cache(int this_cpu, int
+ 	return (this_rq->cpu_locality[that_cpu] < 3);
+ }
+ 
+-#ifdef CONFIG_SMT_NICE
+-static const cpumask_t *thread_cpumask(int cpu);
+-
+-/* Find the best real time priority running on any SMT siblings of cpu and if
+- * none are running, the static priority of the best deadline task running.
+- * The lookups to the other runqueues is done lockless as the occasional wrong
+- * value would be harmless. */
+-static int best_smt_bias(struct rq *this_rq)
+-{
+-	int other_cpu, best_bias = 0;
+-
+-	for_each_cpu(other_cpu, &this_rq->thread_mask) {
+-		struct rq *rq = cpu_rq(other_cpu);
+-
+-		if (rq_idle(rq))
+-			continue;
+-		if (!rq->online)
+-			continue;
+-		if (!rq->rq_mm)
+-			continue;
+-		if (likely(rq->rq_smt_bias > best_bias))
+-			best_bias = rq->rq_smt_bias;
+-	}
+-	return best_bias;
+-}
+-
+-static int task_prio_bias(struct task_struct *p)
+-{
+-	if (rt_task(p))
+-		return 1 << 30;
+-	else if (task_running_iso(p))
+-		return 1 << 29;
+-	else if (task_running_idle(p))
+-		return 0;
+-	return MAX_PRIO - p->static_prio;
+-}
+-
+-static bool smt_always_schedule(struct task_struct __maybe_unused *p, struct rq __maybe_unused *this_rq)
+-{
+-	return true;
+-}
+-
+-static bool (*smt_schedule)(struct task_struct *p, struct rq *this_rq) = &smt_always_schedule;
+-
+-/* We've already decided p can run on CPU, now test if it shouldn't for SMT
+- * nice reasons. */
+-static bool smt_should_schedule(struct task_struct *p, struct rq *this_rq)
+-{
+-	int best_bias, task_bias;
+-
+-	/* Kernel threads always run */
+-	if (unlikely(!p->mm))
+-		return true;
+-	if (rt_task(p))
+-		return true;
+-	if (!idleprio_suitable(p))
+-		return true;
+-	best_bias = best_smt_bias(this_rq);
+-	/* The smt siblings are all idle or running IDLEPRIO */
+-	if (best_bias < 1)
+-		return true;
+-	task_bias = task_prio_bias(p);
+-	if (task_bias < 1)
+-		return false;
+-	if (task_bias >= best_bias)
+-		return true;
+-	/* Dither 25% cpu of normal tasks regardless of nice difference */
+-	if (best_bias % 4 == 1)
+-		return true;
+-	/* Sorry, you lose */
+-	return false;
+-}
+-#else
+-#define smt_schedule(p, this_rq) (true)
+-#endif
+-
+ static bool resched_best_idle(struct task_struct *p)
+ {
+ 	cpumask_t tmpmask;

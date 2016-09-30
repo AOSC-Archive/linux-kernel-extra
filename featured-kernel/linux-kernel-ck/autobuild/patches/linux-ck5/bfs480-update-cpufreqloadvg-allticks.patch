@@ -1,0 +1,29 @@
+Update cpufreq reported load on every timer tick, not just idle ones.
+
+-ck
+
+---
+ kernel/sched/bfs.c |    7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+Index: linux-4.7-ck5/kernel/sched/bfs.c
+===================================================================
+--- linux-4.7-ck5.orig/kernel/sched/bfs.c	2016-09-23 08:32:58.356736165 +1000
++++ linux-4.7-ck5/kernel/sched/bfs.c	2016-09-23 08:32:58.354736178 +1000
+@@ -3166,13 +3166,12 @@ void scheduler_tick(void)
+ 	/* grq lock not grabbed, so only update rq clock */
+ 	update_rq_clock(rq);
+ 	update_cpu_clock_tick(rq, rq->curr);
++	update_load_avg(rq);
++	cpufreq_trigger(grq.niffies, rq->load_avg);
+ 	if (!rq_idle(rq))
+ 		task_running_tick(rq);
+-	else {
+-		update_load_avg(rq);
+-		cpufreq_trigger(grq.niffies, rq->load_avg);
++	else
+ 		no_iso_tick();
+-	}
+ 	rq->last_tick = rq->clock;
+ 	perf_event_task_tick();
+ }
