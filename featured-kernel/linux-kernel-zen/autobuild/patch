@@ -1,0 +1,17 @@
+# General patches from... places.
+
+for i in autobuild/patches/*.patch; do
+    patch -Np1 -i $i
+done
+
+# FIXME: Intel Skylake issues backported. Remove with 4.8.
+
+for i in autobuild/patches/intel-gen9-skylake/*.patch; do
+    patch -Np1 -i $i
+done
+
+# linux-zen patches
+for i in autobuild/patches/linux-zen/*.patch; do
+    patch -Np1 -i $i
+done
+
