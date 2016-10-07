@@ -4,16 +4,6 @@ for i in autobuild/patches/*.patch; do
     patch -Np1 -i $i
 done
 
-# Patches for Con Kolivas' patches
-for i in `cat autobuild/patches/linux-ck5/series`; do
-    patch -Np1 -i autobuild/patches/linux-ck5/$i
-done
-
-# Patches for BFQ I/O scheduler
-for i in autobuild/patches/linux-bfq-io-scheduler/*.patch; do
-    patch -Np1 -i $i
-done
-
 # FIXME: Intel Skylake issues backported. Remove with 4.8.
 
 for i in autobuild/patches/intel-gen9-skylake/*.patch; do
