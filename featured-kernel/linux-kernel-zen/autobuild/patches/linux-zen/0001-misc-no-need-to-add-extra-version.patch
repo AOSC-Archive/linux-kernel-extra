@@ -1,0 +1,13 @@
+diff --git a/Makefile.orig b/Makefile
+index 42b7c5d..2eea136 100644
+--- a/Makefile.orig
++++ b/Makefile
+@@ -1,7 +1,7 @@
+ VERSION = 4
+ PATCHLEVEL = 7
+ SUBLEVEL = 6
+-EXTRAVERSION = -zen
++EXTRAVERSION =
+ NAME = Hairy Boy Scout
+ 
+ # *DOCUMENTATION*
