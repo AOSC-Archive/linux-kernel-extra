@@ -1,4 +1,4 @@
-KERNEL=4.7.6-aosc-main
+KERNEL=4.7.6-aosc-ck5
 
 if [ -x /usr/bin/grub-mkconfig ]; then
     grub-mkconfig -o /boot/grub/grub.cfg
