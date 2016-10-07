@@ -10,7 +10,16 @@ read our semi-comprehensive guide on how to build packages from an ABBS tree
 Kernel variants
 ---------------
 
-#### march-kernel/\*
+#### featured-kernel/\*
+
+This class of packages provides Linux Kernel with special features that are not
+present in mainline kernel, such as the Con Kolivas' Kernel Patch Set (linux-ck),
+PaX/Grsecurity kernel enhancement functionalities (linux-grsec), and so on.
+
+Generally these kernels are designed to work on all architectures. However,
+there may still be some kernels are platform-specific.
+
+#### machine-kernel/\*
 
 This class of packages provides Linux Kernel with machine-specific
 optimizations, while retaining all the features that a mainline
