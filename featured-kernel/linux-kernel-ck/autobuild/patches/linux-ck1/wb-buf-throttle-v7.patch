@@ -10,19 +10,18 @@
  block/blk-stat.c                    |  221 +++++++++++
  block/blk-stat.h                    |   18 
  block/blk-sysfs.c                   |  151 ++++++++
- block/cfq-iosched.c                 |   13 
+ block/cfq-iosched.c                 |   12 
  drivers/scsi/scsi.c                 |    3 
- fs/block_dev.c                      |    2 
  fs/buffer.c                         |    2 
  fs/f2fs/data.c                      |    2 
  fs/f2fs/node.c                      |    2 
  fs/gfs2/meta_io.c                   |    3 
- fs/mpage.c                          |    9 
- fs/xfs/xfs_aops.c                   |    6 
+ fs/mpage.c                          |    2 
+ fs/xfs/xfs_aops.c                   |    7 
  include/linux/backing-dev-defs.h    |    2 
  include/linux/blk_types.h           |   16 
  include/linux/blkdev.h              |   19 +
- include/linux/fs.h                  |    4 
+ include/linux/fs.h                  |    3 
  include/linux/wbt.h                 |  120 ++++++
  include/linux/writeback.h           |   10 
  include/trace/events/wbt.h          |  153 ++++++++
@@ -31,402 +30,47 @@
  lib/wbt.c                           |  679 ++++++++++++++++++++++++++++++++++++
  mm/backing-dev.c                    |    1 
  mm/page-writeback.c                 |    1 
- 32 files changed, 1565 insertions(+), 21 deletions(-)
+ 31 files changed, 1560 insertions(+), 16 deletions(-)
 
-Index: linux-4.7-ck5/include/linux/blk_types.h
+Index: linux-4.8-ck1/Documentation/block/queue-sysfs.txt
 ===================================================================
---- linux-4.7-ck5.orig/include/linux/blk_types.h	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/include/linux/blk_types.h	2016-09-23 08:35:54.701649331 +1000
-@@ -161,6 +161,7 @@ enum rq_flag_bits {
- 	__REQ_INTEGRITY,	/* I/O includes block integrity payload */
- 	__REQ_FUA,		/* forced unit access */
- 	__REQ_FLUSH,		/* request for cache flush */
-+	__REQ_BG,		/* background activity */
+--- linux-4.8-ck1.orig/Documentation/block/queue-sysfs.txt	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/Documentation/block/queue-sysfs.txt	2016-10-03 13:00:56.022461599 +1100
+@@ -169,5 +169,18 @@ This is the number of bytes the device c
+ command.  A value of '0' means write-same is not supported by this
+ device.
  
- 	/* bio only flags */
- 	__REQ_RAHEAD,		/* read ahead, can fail anytime */
-@@ -208,7 +209,7 @@ enum rq_flag_bits {
- #define REQ_COMMON_MASK \
- 	(REQ_WRITE | REQ_FAILFAST_MASK | REQ_SYNC | REQ_META | REQ_PRIO | \
- 	 REQ_DISCARD | REQ_WRITE_SAME | REQ_NOIDLE | REQ_FLUSH | REQ_FUA | \
--	 REQ_SECURE | REQ_INTEGRITY | REQ_NOMERGE)
-+	 REQ_SECURE | REQ_INTEGRITY | REQ_NOMERGE | REQ_BG)
- #define REQ_CLONE_MASK		REQ_COMMON_MASK
- 
- #define BIO_NO_ADVANCE_ITER_MASK	(REQ_DISCARD|REQ_WRITE_SAME)
-@@ -235,6 +236,7 @@ enum rq_flag_bits {
- #define REQ_COPY_USER		(1ULL << __REQ_COPY_USER)
- #define REQ_FLUSH		(1ULL << __REQ_FLUSH)
- #define REQ_FLUSH_SEQ		(1ULL << __REQ_FLUSH_SEQ)
-+#define REQ_BG			(1ULL << __REQ_BG)
- #define REQ_IO_STAT		(1ULL << __REQ_IO_STAT)
- #define REQ_MIXED_MERGE		(1ULL << __REQ_MIXED_MERGE)
- #define REQ_SECURE		(1ULL << __REQ_SECURE)
-@@ -266,4 +268,16 @@ static inline unsigned int blk_qc_t_to_t
- 	return cookie & ((1u << BLK_QC_T_SHIFT) - 1);
- }
- 
-+#define BLK_RQ_STAT_BATCH	64
++wb_lat_usec (RW)
++----------------
++If the device is registered for writeback throttling, then this file shows
++the target minimum read latency. If this latency is exceeded in a given
++window of time (see wb_window_usec), then the writeback throttling will start
++scaling back writes.
 +
-+struct blk_rq_stat {
-+	s64 mean;
-+	u64 min;
-+	u64 max;
-+	s32 nr_samples;
-+	s32 nr_batch;
-+	u64 batch;
-+	s64 time;
-+};
++wb_window_usec (RW)
++-------------------
++If the device is registered for writeback throttling, then this file shows
++the value of the monitoring window in which we'll look at the target
++latency. See wb_lat_usec.
 +
- #endif /* __LINUX_BLK_TYPES_H */
-Index: linux-4.7-ck5/include/linux/fs.h
+ 
+ Jens Axboe <jens.axboe@oracle.com>, February 2009
+Index: linux-4.8-ck1/block/Kconfig
 ===================================================================
---- linux-4.7-ck5.orig/include/linux/fs.h	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/include/linux/fs.h	2016-09-23 08:35:54.701649331 +1000
-@@ -191,6 +191,9 @@ typedef int (dio_iodone_t)(struct kiocb
-  * WRITE_FLUSH_FUA	Combination of WRITE_FLUSH and FUA. The IO is preceded
-  *			by a cache flush and data is guaranteed to be on
-  *			non-volatile media on completion.
-+ * WRITE_BG		Background write. This is for background activity like
-+ *			the periodic flush and background threshold writeback
-+ *
-  *
-  */
- #define RW_MASK			REQ_WRITE
-@@ -206,6 +209,7 @@ typedef int (dio_iodone_t)(struct kiocb
- #define WRITE_FLUSH		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FLUSH)
- #define WRITE_FUA		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FUA)
- #define WRITE_FLUSH_FUA		(WRITE | REQ_SYNC | REQ_NOIDLE | REQ_FLUSH | REQ_FUA)
-+#define WRITE_BG		(WRITE | REQ_NOIDLE | REQ_BG)
+--- linux-4.8-ck1.orig/block/Kconfig	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/Kconfig	2016-10-03 13:00:56.022461599 +1100
+@@ -4,6 +4,7 @@
+ menuconfig BLOCK
+        bool "Enable the block layer" if EXPERT
+        default y
++       select WBT
+        help
+ 	 Provide block layer support for the kernel.
  
- /*
-  * Attribute flags.  These should be or-ed together to figure out what
-Index: linux-4.7-ck5/fs/block_dev.c
+Index: linux-4.8-ck1/block/Makefile
 ===================================================================
---- linux-4.7-ck5.orig/fs/block_dev.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/fs/block_dev.c	2016-09-23 08:35:54.701649331 +1000
-@@ -445,7 +445,7 @@ int bdev_write_page(struct block_device
- 			struct page *page, struct writeback_control *wbc)
- {
- 	int result;
--	int rw = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : WRITE;
-+	int rw = wbc_to_write_cmd(wbc);
- 	const struct block_device_operations *ops = bdev->bd_disk->fops;
- 
- 	if (!ops->rw_page || bdev_get_integrity(bdev))
-Index: linux-4.7-ck5/fs/buffer.c
-===================================================================
---- linux-4.7-ck5.orig/fs/buffer.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/fs/buffer.c	2016-09-23 08:35:54.702649325 +1000
-@@ -1697,7 +1697,7 @@ static int __block_write_full_page(struc
- 	struct buffer_head *bh, *head;
- 	unsigned int blocksize, bbits;
- 	int nr_underway = 0;
--	int write_op = (wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : WRITE);
-+	int write_op = wbc_to_write_cmd(wbc);
- 
- 	head = create_page_buffers(page, inode,
- 					(1 << BH_Dirty)|(1 << BH_Uptodate));
-Index: linux-4.7-ck5/fs/f2fs/data.c
-===================================================================
---- linux-4.7-ck5.orig/fs/f2fs/data.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/fs/f2fs/data.c	2016-09-23 08:35:54.702649325 +1000
-@@ -1221,7 +1221,7 @@ static int f2fs_write_data_page(struct p
- 	struct f2fs_io_info fio = {
- 		.sbi = sbi,
- 		.type = DATA,
--		.rw = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : WRITE,
-+		.rw = wbc_to_write_cmd(wbc),
- 		.page = page,
- 		.encrypted_page = NULL,
- 	};
-Index: linux-4.7-ck5/fs/f2fs/node.c
-===================================================================
---- linux-4.7-ck5.orig/fs/f2fs/node.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/fs/f2fs/node.c	2016-09-23 08:35:54.703649319 +1000
-@@ -1568,7 +1568,7 @@ static int f2fs_write_node_page(struct p
- 	struct f2fs_io_info fio = {
- 		.sbi = sbi,
- 		.type = NODE,
--		.rw = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : WRITE,
-+		.rw = wbc_to_write_cmd(wbc),
- 		.page = page,
- 		.encrypted_page = NULL,
- 	};
-Index: linux-4.7-ck5/fs/gfs2/meta_io.c
-===================================================================
---- linux-4.7-ck5.orig/fs/gfs2/meta_io.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/fs/gfs2/meta_io.c	2016-09-23 08:35:54.703649319 +1000
-@@ -37,8 +37,7 @@ static int gfs2_aspace_writepage(struct
- {
- 	struct buffer_head *bh, *head;
- 	int nr_underway = 0;
--	int write_op = REQ_META | REQ_PRIO |
--		(wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : WRITE);
-+	int write_op = REQ_META | REQ_PRIO | wbc_to_write_cmd(wbc);
- 
- 	BUG_ON(!PageLocked(page));
- 	BUG_ON(!page_has_buffers(page));
-Index: linux-4.7-ck5/fs/mpage.c
-===================================================================
---- linux-4.7-ck5.orig/fs/mpage.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/fs/mpage.c	2016-09-23 08:35:54.703649319 +1000
-@@ -486,7 +486,6 @@ static int __mpage_writepage(struct page
- 	struct buffer_head map_bh;
- 	loff_t i_size = i_size_read(inode);
- 	int ret = 0;
--	int wr = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : WRITE);
- 
- 	if (page_has_buffers(page)) {
- 		struct buffer_head *head = page_buffers(page);
-@@ -595,7 +594,7 @@ page_is_mapped:
- 	 * This page will go to BIO.  Do we need to send this BIO off first?
- 	 */
- 	if (bio && mpd->last_block_in_bio != blocks[0] - 1)
--		bio = mpage_bio_submit(wr, bio);
-+		bio = mpage_bio_submit(wbc_to_write_cmd(wbc), bio);
- 
- alloc_new:
- 	if (bio == NULL) {
-@@ -622,7 +621,7 @@ alloc_new:
- 	wbc_account_io(wbc, page, PAGE_SIZE);
- 	length = first_unmapped << blkbits;
- 	if (bio_add_page(bio, page, length, 0) < length) {
--		bio = mpage_bio_submit(wr, bio);
-+		bio = mpage_bio_submit(wbc_to_write_cmd(wbc), bio);
- 		goto alloc_new;
- 	}
- 
-@@ -632,7 +631,7 @@ alloc_new:
- 	set_page_writeback(page);
- 	unlock_page(page);
- 	if (boundary || (first_unmapped != blocks_per_page)) {
--		bio = mpage_bio_submit(wr, bio);
-+		bio = mpage_bio_submit(wbc_to_write_cmd(wbc), bio);
- 		if (boundary_block) {
- 			write_boundary_block(boundary_bdev,
- 					boundary_block, 1 << blkbits);
-@@ -644,7 +643,7 @@ alloc_new:
- 
- confused:
- 	if (bio)
--		bio = mpage_bio_submit(wr, bio);
-+		bio = mpage_bio_submit(wbc_to_write_cmd(wbc), bio);
- 
- 	if (mpd->use_writepage) {
- 		ret = mapping->a_ops->writepage(page, wbc);
-Index: linux-4.7-ck5/fs/xfs/xfs_aops.c
-===================================================================
---- linux-4.7-ck5.orig/fs/xfs/xfs_aops.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/fs/xfs/xfs_aops.c	2016-09-23 08:35:54.703649319 +1000
-@@ -451,8 +451,7 @@ xfs_submit_ioend(
- 		return status;
- 	}
- 
--	submit_bio(wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : WRITE,
--		   ioend->io_bio);
-+	submit_bio(wbc_to_write_cmd(wbc), ioend->io_bio);
- 	return 0;
- }
- 
-@@ -510,8 +509,7 @@ xfs_chain_bio(
- 
- 	bio_chain(ioend->io_bio, new);
- 	bio_get(ioend->io_bio);		/* for xfs_destroy_ioend */
--	submit_bio(wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : WRITE,
--		   ioend->io_bio);
-+	submit_bio(wbc_to_write_cmd(wbc), ioend->io_bio);
- 	ioend->io_bio = new;
- }
- 
-Index: linux-4.7-ck5/include/linux/writeback.h
-===================================================================
---- linux-4.7-ck5.orig/include/linux/writeback.h	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/include/linux/writeback.h	2016-09-23 08:35:54.703649319 +1000
-@@ -100,6 +100,16 @@ struct writeback_control {
- #endif
- };
- 
-+static inline int wbc_to_write_cmd(struct writeback_control *wbc)
-+{
-+	if (wbc->sync_mode == WB_SYNC_ALL)
-+		return WRITE_SYNC;
-+	else if (wbc->for_kupdate || wbc->for_background)
-+		return WRITE_BG;
-+
-+	return WRITE;
-+}
-+
- /*
-  * A wb_domain represents a domain that wb's (bdi_writeback's) belong to
-  * and are measured against each other in.  There always is one global
-Index: linux-4.7-ck5/include/linux/backing-dev-defs.h
-===================================================================
---- linux-4.7-ck5.orig/include/linux/backing-dev-defs.h	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/include/linux/backing-dev-defs.h	2016-09-23 08:35:54.703649319 +1000
-@@ -116,6 +116,8 @@ struct bdi_writeback {
- 	struct list_head work_list;
- 	struct delayed_work dwork;	/* work item used for writeback */
- 
-+	unsigned long dirty_sleep;	/* last wait */
-+
- 	struct list_head bdi_node;	/* anchored at bdi->wb_list */
- 
- #ifdef CONFIG_CGROUP_WRITEBACK
-Index: linux-4.7-ck5/mm/backing-dev.c
-===================================================================
---- linux-4.7-ck5.orig/mm/backing-dev.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/mm/backing-dev.c	2016-09-23 08:35:54.703649319 +1000
-@@ -310,6 +310,7 @@ static int wb_init(struct bdi_writeback
- 	spin_lock_init(&wb->work_lock);
- 	INIT_LIST_HEAD(&wb->work_list);
- 	INIT_DELAYED_WORK(&wb->dwork, wb_workfn);
-+	wb->dirty_sleep = jiffies;
- 
- 	wb->congested = wb_congested_get_create(bdi, blkcg_id, gfp);
- 	if (!wb->congested)
-Index: linux-4.7-ck5/mm/page-writeback.c
-===================================================================
---- linux-4.7-ck5.orig/mm/page-writeback.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/mm/page-writeback.c	2016-09-23 08:35:54.704649313 +1000
-@@ -1753,6 +1753,7 @@ pause:
- 					  pause,
- 					  start_time);
- 		__set_current_state(TASK_KILLABLE);
-+		wb->dirty_sleep = now;
- 		io_schedule_timeout(pause);
- 
- 		current->dirty_paused_when = now + pause;
-Index: linux-4.7-ck5/block/blk-settings.c
-===================================================================
---- linux-4.7-ck5.orig/block/blk-settings.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/blk-settings.c	2016-09-23 08:35:54.704649313 +1000
-@@ -832,6 +832,19 @@ void blk_queue_flush_queueable(struct re
- EXPORT_SYMBOL_GPL(blk_queue_flush_queueable);
- 
- /**
-+ * blk_set_queue_depth - tell the block layer about the device queue depth
-+ * @q:		the request queue for the device
-+ * @depth:		queue depth
-+ *
-+ */
-+void blk_set_queue_depth(struct request_queue *q, unsigned int depth)
-+{
-+	q->queue_depth = depth;
-+	wbt_set_queue_depth(q->rq_wb, depth);
-+}
-+EXPORT_SYMBOL(blk_set_queue_depth);
-+
-+/**
-  * blk_queue_write_cache - configure queue's write cache
-  * @q:		the request queue for the device
-  * @wc:		write back cache on or off
-@@ -851,6 +864,8 @@ void blk_queue_write_cache(struct reques
- 	else
- 		queue_flag_clear(QUEUE_FLAG_FUA, q);
- 	spin_unlock_irq(q->queue_lock);
-+
-+	wbt_set_write_cache(q->rq_wb, test_bit(QUEUE_FLAG_WC, &q->queue_flags));
- }
- EXPORT_SYMBOL_GPL(blk_queue_write_cache);
- 
-Index: linux-4.7-ck5/drivers/scsi/scsi.c
-===================================================================
---- linux-4.7-ck5.orig/drivers/scsi/scsi.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/drivers/scsi/scsi.c	2016-09-23 08:35:54.704649313 +1000
-@@ -621,6 +621,9 @@ int scsi_change_queue_depth(struct scsi_
- 		wmb();
- 	}
- 
-+	if (sdev->request_queue)
-+		blk_set_queue_depth(sdev->request_queue, depth);
-+
- 	return sdev->queue_depth;
- }
- EXPORT_SYMBOL(scsi_change_queue_depth);
-Index: linux-4.7-ck5/include/linux/blkdev.h
-===================================================================
---- linux-4.7-ck5.orig/include/linux/blkdev.h	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/include/linux/blkdev.h	2016-09-23 08:35:54.704649313 +1000
-@@ -24,6 +24,7 @@
- #include <linux/rcupdate.h>
- #include <linux/percpu-refcount.h>
- #include <linux/scatterlist.h>
-+#include <linux/wbt.h>
- 
- struct module;
- struct scsi_ioctl_command;
-@@ -37,6 +38,7 @@ struct bsg_job;
- struct blkcg_gq;
- struct blk_flush_queue;
- struct pr_ops;
-+struct rq_wb;
- 
- #define BLKDEV_MIN_RQ	4
- #define BLKDEV_MAX_RQ	128	/* Default maximum */
-@@ -153,6 +155,7 @@ struct request {
- 	struct gendisk *rq_disk;
- 	struct hd_struct *part;
- 	unsigned long start_time;
-+	struct wb_issue_stat wb_stat;
- #ifdef CONFIG_BLK_CGROUP
- 	struct request_list *rl;		/* rl this rq is alloced from */
- 	unsigned long long start_time_ns;
-@@ -290,6 +293,8 @@ struct request_queue {
- 	int			nr_rqs[2];	/* # allocated [a]sync rqs */
- 	int			nr_rqs_elvpriv;	/* # allocated rqs w/ elvpriv */
- 
-+	struct rq_wb		*rq_wb;
-+
- 	/*
- 	 * If blkcg is not used, @q->root_rl serves all requests.  If blkcg
- 	 * is used, root blkg allocates from @q->root_rl and all other
-@@ -315,6 +320,8 @@ struct request_queue {
- 	struct blk_mq_ctx __percpu	*queue_ctx;
- 	unsigned int		nr_queues;
- 
-+	unsigned int		queue_depth;
-+
- 	/* hw dispatch queues */
- 	struct blk_mq_hw_ctx	**queue_hw_ctx;
- 	unsigned int		nr_hw_queues;
-@@ -400,6 +407,9 @@ struct request_queue {
- 
- 	unsigned int		nr_sorted;
- 	unsigned int		in_flight[2];
-+
-+	struct blk_rq_stat	rq_stats[2];
-+
- 	/*
- 	 * Number of active block driver functions for which blk_drain_queue()
- 	 * must wait. Must be incremented around functions that unlock the
-@@ -681,6 +691,14 @@ static inline bool blk_write_same_mergea
- 	return false;
- }
- 
-+static inline unsigned int blk_queue_depth(struct request_queue *q)
-+{
-+	if (q->queue_depth)
-+		return q->queue_depth;
-+
-+	return q->nr_requests;
-+}
-+
- /*
-  * q->prep_rq_fn return values
-  */
-@@ -995,6 +1013,7 @@ extern void blk_limits_io_min(struct que
- extern void blk_queue_io_min(struct request_queue *q, unsigned int min);
- extern void blk_limits_io_opt(struct queue_limits *limits, unsigned int opt);
- extern void blk_queue_io_opt(struct request_queue *q, unsigned int opt);
-+extern void blk_set_queue_depth(struct request_queue *q, unsigned int depth);
- extern void blk_set_default_limits(struct queue_limits *lim);
- extern void blk_set_stacking_limits(struct queue_limits *lim);
- extern int blk_stack_limits(struct queue_limits *t, struct queue_limits *b,
-Index: linux-4.7-ck5/block/Makefile
-===================================================================
---- linux-4.7-ck5.orig/block/Makefile	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/Makefile	2016-09-23 08:35:54.704649313 +1000
+--- linux-4.8-ck1.orig/block/Makefile	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/Makefile	2016-10-03 13:00:56.022461599 +1100
 @@ -5,7 +5,7 @@
  obj-$(CONFIG_BLOCK) := bio.o elevator.o blk-core.o blk-tag.o blk-sysfs.o \
  			blk-flush.o blk-settings.o blk-ioc.o blk-map.o \
@@ -436,10 +80,10 @@ Index: linux-4.7-ck5/block/Makefile
  			blk-mq-sysfs.o blk-mq-cpu.o blk-mq-cpumap.o ioctl.o \
  			genhd.o scsi_ioctl.o partition-generic.o ioprio.o \
  			badblocks.o partitions/
-Index: linux-4.7-ck5/block/blk-core.c
+Index: linux-4.8-ck1/block/blk-core.c
 ===================================================================
---- linux-4.7-ck5.orig/block/blk-core.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/blk-core.c	2016-09-23 08:35:54.705649307 +1000
+--- linux-4.8-ck1.orig/block/blk-core.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/blk-core.c	2016-10-03 13:00:56.022461599 +1100
 @@ -33,6 +33,7 @@
  #include <linux/ratelimit.h>
  #include <linux/pm_runtime.h>
@@ -448,7 +92,7 @@ Index: linux-4.7-ck5/block/blk-core.c
  
  #define CREATE_TRACE_POINTS
  #include <trace/events/block.h>
-@@ -880,6 +881,8 @@ blk_init_allocated_queue(struct request_
+@@ -882,6 +883,8 @@ blk_init_allocated_queue(struct request_
  
  fail:
  	blk_free_flush_queue(q->fq);
@@ -457,7 +101,7 @@ Index: linux-4.7-ck5/block/blk-core.c
  	return NULL;
  }
  EXPORT_SYMBOL(blk_init_allocated_queue);
-@@ -1395,6 +1398,7 @@ void blk_requeue_request(struct request_
+@@ -1346,6 +1349,7 @@ void blk_requeue_request(struct request_
  	blk_delete_timer(rq);
  	blk_clear_rq_complete(rq);
  	trace_block_rq_requeue(q, rq);
@@ -465,7 +109,7 @@ Index: linux-4.7-ck5/block/blk-core.c
  
  	if (rq->cmd_flags & REQ_QUEUED)
  		blk_queue_end_tag(q, rq);
-@@ -1485,6 +1489,8 @@ void __blk_put_request(struct request_qu
+@@ -1436,6 +1440,8 @@ void __blk_put_request(struct request_qu
  	/* this is a bio leak */
  	WARN_ON(req->bio != NULL);
  
@@ -474,26 +118,26 @@ Index: linux-4.7-ck5/block/blk-core.c
  	/*
  	 * Request may not have originated from ll_rw_blk. if not,
  	 * it didn't come out of our reserved rq pools
-@@ -1715,6 +1721,7 @@ static blk_qc_t blk_queue_bio(struct req
- 	int el_ret, rw_flags, where = ELEVATOR_INSERT_SORT;
+@@ -1667,6 +1673,7 @@ static blk_qc_t blk_queue_bio(struct req
+ 	int el_ret, rw_flags = 0, where = ELEVATOR_INSERT_SORT;
  	struct request *req;
  	unsigned int request_count = 0;
 +	unsigned int wb_acct;
  
  	/*
  	 * low level driver can indicate that it wants pages above a
-@@ -1767,6 +1774,8 @@ static blk_qc_t blk_queue_bio(struct req
+@@ -1719,6 +1726,8 @@ static blk_qc_t blk_queue_bio(struct req
  	}
  
  get_rq:
-+	wb_acct = wbt_wait(q->rq_wb, bio->bi_rw, q->queue_lock);
++	wb_acct = wbt_wait(q->rq_wb, bio->bi_opf, q->queue_lock);
 +
  	/*
  	 * This sync check and mask will be re-done in init_request_from_bio(),
  	 * but we need to set it earlier to expose the sync flag to the
-@@ -1782,11 +1791,15 @@ get_rq:
+@@ -1738,11 +1747,15 @@ get_rq:
  	 */
- 	req = get_request(q, rw_flags, bio, GFP_NOIO);
+ 	req = get_request(q, bio_data_dir(bio), rw_flags, bio, GFP_NOIO);
  	if (IS_ERR(req)) {
 +		if (wb_acct & WBT_TRACKED)
 +			__wbt_done(q->rq_wb);
@@ -507,7 +151,7 @@ Index: linux-4.7-ck5/block/blk-core.c
  	/*
  	 * After dropping the lock and possibly sleeping here, our request
  	 * may now be mergeable after it had proven unmergeable (above).
-@@ -2515,6 +2528,8 @@ void blk_start_request(struct request *r
+@@ -2475,6 +2488,8 @@ void blk_start_request(struct request *r
  {
  	blk_dequeue_request(req);
  
@@ -516,7 +160,7 @@ Index: linux-4.7-ck5/block/blk-core.c
  	/*
  	 * We are now handing the request to the hardware, initialize
  	 * resid_len to full count and add the timeout handler.
-@@ -2582,6 +2597,8 @@ bool blk_update_request(struct request *
+@@ -2542,6 +2557,8 @@ bool blk_update_request(struct request *
  
  	trace_block_rq_complete(req->q, req, nr_bytes);
  
@@ -525,7 +169,7 @@ Index: linux-4.7-ck5/block/blk-core.c
  	if (!req->bio)
  		return false;
  
-@@ -2749,9 +2766,10 @@ void blk_finish_request(struct request *
+@@ -2709,9 +2726,10 @@ void blk_finish_request(struct request *
  
  	blk_account_io_done(req);
  
@@ -538,10 +182,10 @@ Index: linux-4.7-ck5/block/blk-core.c
  		if (blk_bidi_rq(req))
  			__blk_put_request(req->next_rq->q, req->next_rq);
  
-Index: linux-4.7-ck5/block/blk-mq-sysfs.c
+Index: linux-4.8-ck1/block/blk-mq-sysfs.c
 ===================================================================
---- linux-4.7-ck5.orig/block/blk-mq-sysfs.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/blk-mq-sysfs.c	2016-09-23 08:35:54.705649307 +1000
+--- linux-4.8-ck1.orig/block/blk-mq-sysfs.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/blk-mq-sysfs.c	2016-10-03 13:00:56.022461599 +1100
 @@ -247,6 +247,47 @@ static ssize_t blk_mq_hw_sysfs_cpus_show
  	return ret;
  }
@@ -610,10 +254,10 @@ Index: linux-4.7-ck5/block/blk-mq-sysfs.c
  	NULL,
  };
  
-Index: linux-4.7-ck5/block/blk-mq.c
+Index: linux-4.8-ck1/block/blk-mq.c
 ===================================================================
---- linux-4.7-ck5.orig/block/blk-mq.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/blk-mq.c	2016-09-23 08:35:54.705649307 +1000
+--- linux-4.8-ck1.orig/block/blk-mq.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/blk-mq.c	2016-10-03 13:00:56.022461599 +1100
 @@ -22,6 +22,7 @@
  #include <linux/sched/sysctl.h>
  #include <linux/delay.h>
@@ -630,7 +274,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  
  static DEFINE_MUTEX(all_q_mutex);
  static LIST_HEAD(all_q_list);
-@@ -274,6 +276,8 @@ static void __blk_mq_free_request(struct
+@@ -330,6 +332,8 @@ static void __blk_mq_free_request(struct
  
  	if (rq->cmd_flags & REQ_MQ_INFLIGHT)
  		atomic_dec(&hctx->nr_active);
@@ -639,7 +283,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  	rq->cmd_flags = 0;
  
  	clear_bit(REQ_ATOM_STARTED, &rq->atomic_flags);
-@@ -306,6 +310,7 @@ inline void __blk_mq_end_request(struct
+@@ -362,6 +366,7 @@ inline void __blk_mq_end_request(struct
  	blk_account_io_done(rq);
  
  	if (rq->end_io) {
@@ -647,7 +291,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  		rq->end_io(rq, error);
  	} else {
  		if (unlikely(blk_bidi_rq(rq)))
-@@ -356,10 +361,19 @@ static void blk_mq_ipi_complete_request(
+@@ -412,10 +417,19 @@ static void blk_mq_ipi_complete_request(
  	put_cpu();
  }
  
@@ -667,7 +311,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  	if (!q->softirq_done_fn)
  		blk_mq_end_request(rq, rq->errors);
  	else
-@@ -403,6 +417,8 @@ void blk_mq_start_request(struct request
+@@ -459,6 +473,8 @@ void blk_mq_start_request(struct request
  	if (unlikely(blk_bidi_rq(rq)))
  		rq->next_rq->resid_len = blk_rq_bytes(rq->next_rq);
  
@@ -676,7 +320,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  	blk_add_timer(rq);
  
  	/*
-@@ -438,6 +454,7 @@ static void __blk_mq_requeue_request(str
+@@ -494,6 +510,7 @@ static void __blk_mq_requeue_request(str
  	struct request_queue *q = rq->q;
  
  	trace_block_rq_requeue(q, rq);
@@ -684,7 +328,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  
  	if (test_and_clear_bit(REQ_ATOM_STARTED, &rq->atomic_flags)) {
  		if (q->dma_drain_size && blk_rq_bytes(rq))
-@@ -1252,6 +1269,7 @@ static blk_qc_t blk_mq_make_request(stru
+@@ -1312,6 +1329,7 @@ static blk_qc_t blk_mq_make_request(stru
  	struct blk_plug *plug;
  	struct request *same_queue_rq = NULL;
  	blk_qc_t cookie;
@@ -692,11 +336,11 @@ Index: linux-4.7-ck5/block/blk-mq.c
  
  	blk_queue_bounce(q, &bio);
  
-@@ -1266,9 +1284,16 @@ static blk_qc_t blk_mq_make_request(stru
+@@ -1326,9 +1344,16 @@ static blk_qc_t blk_mq_make_request(stru
  	    blk_attempt_plug_merge(q, bio, &request_count, &same_queue_rq))
  		return BLK_QC_T_NONE;
  
-+	wb_acct = wbt_wait(q->rq_wb, bio->bi_rw, NULL);
++	wb_acct = wbt_wait(q->rq_wb, bio->bi_opf, NULL);
 +
  	rq = blk_mq_map_request(q, bio, &data);
 -	if (unlikely(!rq))
@@ -710,7 +354,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  
  	cookie = blk_tag_to_qc_t(rq->tag, data.hctx->queue_num);
  
-@@ -1345,6 +1370,7 @@ static blk_qc_t blk_sq_make_request(stru
+@@ -1405,6 +1430,7 @@ static blk_qc_t blk_sq_make_request(stru
  	struct blk_map_ctx data;
  	struct request *rq;
  	blk_qc_t cookie;
@@ -718,11 +362,11 @@ Index: linux-4.7-ck5/block/blk-mq.c
  
  	blk_queue_bounce(q, &bio);
  
-@@ -1361,9 +1387,16 @@ static blk_qc_t blk_sq_make_request(stru
+@@ -1421,9 +1447,16 @@ static blk_qc_t blk_sq_make_request(stru
  	} else
  		request_count = blk_plug_queued_count(q);
  
-+	wb_acct = wbt_wait(q->rq_wb, bio->bi_rw, NULL);
++	wb_acct = wbt_wait(q->rq_wb, bio->bi_opf, NULL);
 +
  	rq = blk_mq_map_request(q, bio, &data);
 -	if (unlikely(!rq))
@@ -736,7 +380,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  
  	cookie = blk_tag_to_qc_t(rq->tag, data.hctx->queue_num);
  
-@@ -1759,6 +1792,8 @@ static void blk_mq_init_cpu_queues(struc
+@@ -1807,6 +1840,8 @@ static void blk_mq_init_cpu_queues(struc
  		spin_lock_init(&__ctx->lock);
  		INIT_LIST_HEAD(&__ctx->rq_list);
  		__ctx->queue = q;
@@ -745,7 +389,7 @@ Index: linux-4.7-ck5/block/blk-mq.c
  
  		/* If the cpu isn't online, the cpu is mapped to first hctx */
  		if (!cpu_online(i))
-@@ -2097,6 +2132,9 @@ void blk_mq_free_queue(struct request_qu
+@@ -2145,6 +2180,9 @@ void blk_mq_free_queue(struct request_qu
  	list_del_init(&q->all_q_node);
  	mutex_unlock(&all_q_mutex);
  
@@ -755,10 +399,10 @@ Index: linux-4.7-ck5/block/blk-mq.c
  	blk_mq_del_queue_tag_set(q);
  
  	blk_mq_exit_hw_queues(q, set, set->nr_hw_queues);
-Index: linux-4.7-ck5/block/blk-mq.h
+Index: linux-4.8-ck1/block/blk-mq.h
 ===================================================================
---- linux-4.7-ck5.orig/block/blk-mq.h	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/blk-mq.h	2016-09-23 08:35:54.705649307 +1000
+--- linux-4.8-ck1.orig/block/blk-mq.h	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/blk-mq.h	2016-10-03 13:00:56.023461588 +1100
 @@ -1,6 +1,8 @@
  #ifndef INT_BLK_MQ_H
  #define INT_BLK_MQ_H
@@ -776,10 +420,43 @@ Index: linux-4.7-ck5/block/blk-mq.h
  
  	struct request_queue	*queue;
  	struct kobject		kobj;
-Index: linux-4.7-ck5/block/blk-stat.c
+Index: linux-4.8-ck1/block/blk-settings.c
+===================================================================
+--- linux-4.8-ck1.orig/block/blk-settings.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/blk-settings.c	2016-10-03 13:00:56.023461588 +1100
+@@ -832,6 +832,19 @@ void blk_queue_flush_queueable(struct re
+ EXPORT_SYMBOL_GPL(blk_queue_flush_queueable);
+ 
+ /**
++ * blk_set_queue_depth - tell the block layer about the device queue depth
++ * @q:		the request queue for the device
++ * @depth:		queue depth
++ *
++ */
++void blk_set_queue_depth(struct request_queue *q, unsigned int depth)
++{
++	q->queue_depth = depth;
++	wbt_set_queue_depth(q->rq_wb, depth);
++}
++EXPORT_SYMBOL(blk_set_queue_depth);
++
++/**
+  * blk_queue_write_cache - configure queue's write cache
+  * @q:		the request queue for the device
+  * @wc:		write back cache on or off
+@@ -851,6 +864,8 @@ void blk_queue_write_cache(struct reques
+ 	else
+ 		queue_flag_clear(QUEUE_FLAG_FUA, q);
+ 	spin_unlock_irq(q->queue_lock);
++
++	wbt_set_write_cache(q->rq_wb, test_bit(QUEUE_FLAG_WC, &q->queue_flags));
+ }
+ EXPORT_SYMBOL_GPL(blk_queue_write_cache);
+ 
+Index: linux-4.8-ck1/block/blk-stat.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-4.7-ck5/block/blk-stat.c	2016-09-23 08:35:54.705649307 +1000
++++ linux-4.8-ck1/block/blk-stat.c	2016-10-03 13:00:56.023461588 +1100
 @@ -0,0 +1,221 @@
 +/*
 + * Block stat tracking code
@@ -1002,10 +679,10 @@ Index: linux-4.7-ck5/block/blk-stat.c
 +		blk_stat_init(&q->rq_stats[1]);
 +	}
 +}
-Index: linux-4.7-ck5/block/blk-stat.h
+Index: linux-4.8-ck1/block/blk-stat.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-4.7-ck5/block/blk-stat.h	2016-09-23 08:35:54.705649307 +1000
++++ linux-4.8-ck1/block/blk-stat.h	2016-10-03 13:00:56.023461588 +1100
 @@ -0,0 +1,18 @@
 +#ifndef BLK_STAT_H
 +#define BLK_STAT_H
@@ -1025,10 +702,10 @@ Index: linux-4.7-ck5/block/blk-stat.h
 +bool blk_stat_is_current(struct blk_rq_stat *);
 +
 +#endif
-Index: linux-4.7-ck5/block/blk-sysfs.c
+Index: linux-4.8-ck1/block/blk-sysfs.c
 ===================================================================
---- linux-4.7-ck5.orig/block/blk-sysfs.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/blk-sysfs.c	2016-09-23 08:35:54.706649301 +1000
+--- linux-4.8-ck1.orig/block/blk-sysfs.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/blk-sysfs.c	2016-10-03 13:00:56.023461588 +1100
 @@ -10,6 +10,7 @@
  #include <linux/blktrace_api.h>
  #include <linux/blk-mq.h>
@@ -1116,8 +793,8 @@ Index: linux-4.7-ck5/block/blk-sysfs.c
  static ssize_t queue_wc_show(struct request_queue *q, char *page)
  {
  	if (test_bit(QUEUE_FLAG_WC, &q->queue_flags))
-@@ -379,6 +445,26 @@ static ssize_t queue_wc_store(struct req
- 	return count;
+@@ -384,6 +450,26 @@ static ssize_t queue_dax_show(struct req
+ 	return queue_var_show(blk_queue_dax(q), page);
  }
  
 +static ssize_t print_stat(char *page, struct blk_rq_stat *stat, const char *pre)
@@ -1143,8 +820,8 @@ Index: linux-4.7-ck5/block/blk-sysfs.c
  static struct queue_sysfs_entry queue_requests_entry = {
  	.attr = {.name = "nr_requests", .mode = S_IRUGO | S_IWUSR },
  	.show = queue_requests_show,
-@@ -516,6 +602,23 @@ static struct queue_sysfs_entry queue_wc
- 	.store = queue_wc_store,
+@@ -526,6 +612,23 @@ static struct queue_sysfs_entry queue_da
+ 	.show = queue_dax_show,
  };
  
 +static struct queue_sysfs_entry queue_stats_entry = {
@@ -1167,17 +844,17 @@ Index: linux-4.7-ck5/block/blk-sysfs.c
  static struct attribute *default_attrs[] = {
  	&queue_requests_entry.attr,
  	&queue_ra_entry.attr,
-@@ -542,6 +645,9 @@ static struct attribute *default_attrs[]
- 	&queue_random_entry.attr,
+@@ -553,6 +656,9 @@ static struct attribute *default_attrs[]
  	&queue_poll_entry.attr,
  	&queue_wc_entry.attr,
+ 	&queue_dax_entry.attr,
 +	&queue_stats_entry.attr,
 +	&queue_wb_lat_entry.attr,
 +	&queue_wb_win_entry.attr,
  	NULL,
  };
  
-@@ -656,6 +762,49 @@ struct kobj_type blk_queue_ktype = {
+@@ -667,6 +773,49 @@ struct kobj_type blk_queue_ktype = {
  	.release	= blk_release_queue,
  };
  
@@ -1227,7 +904,7 @@ Index: linux-4.7-ck5/block/blk-sysfs.c
  int blk_register_queue(struct gendisk *disk)
  {
  	int ret;
-@@ -695,6 +844,8 @@ int blk_register_queue(struct gendisk *d
+@@ -706,6 +855,8 @@ int blk_register_queue(struct gendisk *d
  	if (q->mq_ops)
  		blk_mq_register_disk(disk);
  
@@ -1236,10 +913,297 @@ Index: linux-4.7-ck5/block/blk-sysfs.c
  	if (!q->request_fn)
  		return 0;
  
-Index: linux-4.7-ck5/include/linux/wbt.h
+Index: linux-4.8-ck1/block/cfq-iosched.c
+===================================================================
+--- linux-4.8-ck1.orig/block/cfq-iosched.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/block/cfq-iosched.c	2016-10-03 13:00:56.023461588 +1100
+@@ -3777,6 +3777,18 @@ static void check_blkcg_changed(struct c
+ 		return;
+ 
+ 	/*
++	 * If we have a non-root cgroup, we can depend on that to
++	 * do proper throttling of writes. Turn off wbt for that
++	 * case.
++	 */
++	if (bio_blkcg(bio) != &blkcg_root) {
++		struct request_queue *q = cfqd->queue;
++
++		if (q->rq_wb)
++			wbt_disable(q->rq_wb);
++	}
++
++	/*
+ 	 * Drop reference to queues.  New queues will be assigned in new
+ 	 * group upon arrival of fresh requests.
+ 	 */
+Index: linux-4.8-ck1/drivers/scsi/scsi.c
+===================================================================
+--- linux-4.8-ck1.orig/drivers/scsi/scsi.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/drivers/scsi/scsi.c	2016-10-03 13:00:56.024461578 +1100
+@@ -621,6 +621,9 @@ int scsi_change_queue_depth(struct scsi_
+ 		wmb();
+ 	}
+ 
++	if (sdev->request_queue)
++		blk_set_queue_depth(sdev->request_queue, depth);
++
+ 	return sdev->queue_depth;
+ }
+ EXPORT_SYMBOL(scsi_change_queue_depth);
+Index: linux-4.8-ck1/fs/buffer.c
+===================================================================
+--- linux-4.8-ck1.orig/fs/buffer.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/fs/buffer.c	2016-10-03 13:00:56.024461578 +1100
+@@ -1698,7 +1698,7 @@ int __block_write_full_page(struct inode
+ 	struct buffer_head *bh, *head;
+ 	unsigned int blocksize, bbits;
+ 	int nr_underway = 0;
+-	int write_flags = (wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : 0);
++	int write_flags = wbc_to_write_flags(wbc);
+ 
+ 	head = create_page_buffers(page, inode,
+ 					(1 << BH_Dirty)|(1 << BH_Uptodate));
+Index: linux-4.8-ck1/fs/f2fs/data.c
+===================================================================
+--- linux-4.8-ck1.orig/fs/f2fs/data.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/fs/f2fs/data.c	2016-10-03 13:00:56.024461578 +1100
+@@ -1240,7 +1240,7 @@ static int f2fs_write_data_page(struct p
+ 		.sbi = sbi,
+ 		.type = DATA,
+ 		.op = REQ_OP_WRITE,
+-		.op_flags = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : 0,
++		.op_flags = wbc_to_write_flags(wbc),
+ 		.page = page,
+ 		.encrypted_page = NULL,
+ 	};
+Index: linux-4.8-ck1/fs/f2fs/node.c
+===================================================================
+--- linux-4.8-ck1.orig/fs/f2fs/node.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/fs/f2fs/node.c	2016-10-03 13:00:56.024461578 +1100
+@@ -1561,7 +1561,7 @@ static int f2fs_write_node_page(struct p
+ 		.sbi = sbi,
+ 		.type = NODE,
+ 		.op = REQ_OP_WRITE,
+-		.op_flags = (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : 0,
++		.op_flags = wbc_to_write_flags(wbc),
+ 		.page = page,
+ 		.encrypted_page = NULL,
+ 	};
+Index: linux-4.8-ck1/fs/gfs2/meta_io.c
+===================================================================
+--- linux-4.8-ck1.orig/fs/gfs2/meta_io.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/fs/gfs2/meta_io.c	2016-10-03 13:00:56.024461578 +1100
+@@ -37,8 +37,7 @@ static int gfs2_aspace_writepage(struct
+ {
+ 	struct buffer_head *bh, *head;
+ 	int nr_underway = 0;
+-	int write_flags = REQ_META | REQ_PRIO |
+-		(wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : 0);
++	int write_flags = REQ_META | REQ_PRIO | wbc_to_write_flags(wbc);
+ 
+ 	BUG_ON(!PageLocked(page));
+ 	BUG_ON(!page_has_buffers(page));
+Index: linux-4.8-ck1/fs/mpage.c
+===================================================================
+--- linux-4.8-ck1.orig/fs/mpage.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/fs/mpage.c	2016-10-03 13:00:56.025461568 +1100
+@@ -489,7 +489,7 @@ static int __mpage_writepage(struct page
+ 	struct buffer_head map_bh;
+ 	loff_t i_size = i_size_read(inode);
+ 	int ret = 0;
+-	int op_flags = (wbc->sync_mode == WB_SYNC_ALL ?  WRITE_SYNC : 0);
++	int op_flags = wbc_to_write_flags(wbc);
+ 
+ 	if (page_has_buffers(page)) {
+ 		struct buffer_head *head = page_buffers(page);
+Index: linux-4.8-ck1/fs/xfs/xfs_aops.c
+===================================================================
+--- linux-4.8-ck1.orig/fs/xfs/xfs_aops.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/fs/xfs/xfs_aops.c	2016-10-03 13:00:56.025461568 +1100
+@@ -447,8 +447,8 @@ xfs_submit_ioend(
+ 
+ 	ioend->io_bio->bi_private = ioend;
+ 	ioend->io_bio->bi_end_io = xfs_end_bio;
+-	bio_set_op_attrs(ioend->io_bio, REQ_OP_WRITE,
+-			 (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : 0);
++	bio_set_op_attrs(ioend->io_bio, REQ_OP_WRITE, wbc_to_write_flags(wbc));
++
+ 	/*
+ 	 * If we are failing the IO now, just mark the ioend with an
+ 	 * error and finish it. This will run IO completion immediately
+@@ -519,8 +519,7 @@ xfs_chain_bio(
+ 
+ 	bio_chain(ioend->io_bio, new);
+ 	bio_get(ioend->io_bio);		/* for xfs_destroy_ioend */
+-	bio_set_op_attrs(ioend->io_bio, REQ_OP_WRITE,
+-			  (wbc->sync_mode == WB_SYNC_ALL) ? WRITE_SYNC : 0);
++	bio_set_op_attrs(ioend->io_bio, REQ_OP_WRITE, wbc_to_write_flags(wbc));
+ 	submit_bio(ioend->io_bio);
+ 	ioend->io_bio = new;
+ }
+Index: linux-4.8-ck1/include/linux/backing-dev-defs.h
+===================================================================
+--- linux-4.8-ck1.orig/include/linux/backing-dev-defs.h	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/include/linux/backing-dev-defs.h	2016-10-03 13:00:56.025461568 +1100
+@@ -116,6 +116,8 @@ struct bdi_writeback {
+ 	struct list_head work_list;
+ 	struct delayed_work dwork;	/* work item used for writeback */
+ 
++	unsigned long dirty_sleep;	/* last wait */
++
+ 	struct list_head bdi_node;	/* anchored at bdi->wb_list */
+ 
+ #ifdef CONFIG_CGROUP_WRITEBACK
+Index: linux-4.8-ck1/include/linux/blk_types.h
+===================================================================
+--- linux-4.8-ck1.orig/include/linux/blk_types.h	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/include/linux/blk_types.h	2016-10-03 13:00:56.025461568 +1100
+@@ -155,6 +155,7 @@ enum rq_flag_bits {
+ 	__REQ_INTEGRITY,	/* I/O includes block integrity payload */
+ 	__REQ_FUA,		/* forced unit access */
+ 	__REQ_PREFLUSH,		/* request for cache flush */
++	__REQ_BG,		/* background activity */
+ 
+ 	/* bio only flags */
+ 	__REQ_RAHEAD,		/* read ahead, can fail anytime */
+@@ -198,7 +199,7 @@ enum rq_flag_bits {
+ 	(REQ_FAILFAST_DEV | REQ_FAILFAST_TRANSPORT | REQ_FAILFAST_DRIVER)
+ #define REQ_COMMON_MASK \
+ 	(REQ_FAILFAST_MASK | REQ_SYNC | REQ_META | REQ_PRIO | REQ_NOIDLE | \
+-	 REQ_PREFLUSH | REQ_FUA | REQ_INTEGRITY | REQ_NOMERGE)
++	 REQ_PREFLUSH | REQ_FUA | REQ_INTEGRITY | REQ_NOMERGE | REQ_BG)
+ #define REQ_CLONE_MASK		REQ_COMMON_MASK
+ 
+ /* This mask is used for both bio and request merge checking */
+@@ -223,6 +224,7 @@ enum rq_flag_bits {
+ #define REQ_COPY_USER		(1ULL << __REQ_COPY_USER)
+ #define REQ_PREFLUSH		(1ULL << __REQ_PREFLUSH)
+ #define REQ_FLUSH_SEQ		(1ULL << __REQ_FLUSH_SEQ)
++#define REQ_BG			(1ULL << __REQ_BG)
+ #define REQ_IO_STAT		(1ULL << __REQ_IO_STAT)
+ #define REQ_MIXED_MERGE		(1ULL << __REQ_MIXED_MERGE)
+ #define REQ_PM			(1ULL << __REQ_PM)
+@@ -264,4 +266,16 @@ static inline unsigned int blk_qc_t_to_t
+ 	return cookie & ((1u << BLK_QC_T_SHIFT) - 1);
+ }
+ 
++#define BLK_RQ_STAT_BATCH	64
++
++struct blk_rq_stat {
++	s64 mean;
++	u64 min;
++	u64 max;
++	s32 nr_samples;
++	s32 nr_batch;
++	u64 batch;
++	s64 time;
++};
++
+ #endif /* __LINUX_BLK_TYPES_H */
+Index: linux-4.8-ck1/include/linux/blkdev.h
+===================================================================
+--- linux-4.8-ck1.orig/include/linux/blkdev.h	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/include/linux/blkdev.h	2016-10-03 13:00:56.025461568 +1100
+@@ -24,6 +24,7 @@
+ #include <linux/rcupdate.h>
+ #include <linux/percpu-refcount.h>
+ #include <linux/scatterlist.h>
++#include <linux/wbt.h>
+ 
+ struct module;
+ struct scsi_ioctl_command;
+@@ -37,6 +38,7 @@ struct bsg_job;
+ struct blkcg_gq;
+ struct blk_flush_queue;
+ struct pr_ops;
++struct rq_wb;
+ 
+ #define BLKDEV_MIN_RQ	4
+ #define BLKDEV_MAX_RQ	128	/* Default maximum */
+@@ -151,6 +153,7 @@ struct request {
+ 	struct gendisk *rq_disk;
+ 	struct hd_struct *part;
+ 	unsigned long start_time;
++	struct wb_issue_stat wb_stat;
+ #ifdef CONFIG_BLK_CGROUP
+ 	struct request_list *rl;		/* rl this rq is alloced from */
+ 	unsigned long long start_time_ns;
+@@ -302,6 +305,8 @@ struct request_queue {
+ 	int			nr_rqs[2];	/* # allocated [a]sync rqs */
+ 	int			nr_rqs_elvpriv;	/* # allocated rqs w/ elvpriv */
+ 
++	struct rq_wb		*rq_wb;
++
+ 	/*
+ 	 * If blkcg is not used, @q->root_rl serves all requests.  If blkcg
+ 	 * is used, root blkg allocates from @q->root_rl and all other
+@@ -327,6 +332,8 @@ struct request_queue {
+ 	struct blk_mq_ctx __percpu	*queue_ctx;
+ 	unsigned int		nr_queues;
+ 
++	unsigned int		queue_depth;
++
+ 	/* hw dispatch queues */
+ 	struct blk_mq_hw_ctx	**queue_hw_ctx;
+ 	unsigned int		nr_hw_queues;
+@@ -412,6 +419,9 @@ struct request_queue {
+ 
+ 	unsigned int		nr_sorted;
+ 	unsigned int		in_flight[2];
++
++	struct blk_rq_stat	rq_stats[2];
++
+ 	/*
+ 	 * Number of active block driver functions for which blk_drain_queue()
+ 	 * must wait. Must be incremented around functions that unlock the
+@@ -683,6 +693,14 @@ static inline bool blk_write_same_mergea
+ 	return false;
+ }
+ 
++static inline unsigned int blk_queue_depth(struct request_queue *q)
++{
++	if (q->queue_depth)
++		return q->queue_depth;
++
++	return q->nr_requests;
++}
++
+ /*
+  * q->prep_rq_fn return values
+  */
+@@ -999,6 +1017,7 @@ extern void blk_limits_io_min(struct que
+ extern void blk_queue_io_min(struct request_queue *q, unsigned int min);
+ extern void blk_limits_io_opt(struct queue_limits *limits, unsigned int opt);
+ extern void blk_queue_io_opt(struct request_queue *q, unsigned int opt);
++extern void blk_set_queue_depth(struct request_queue *q, unsigned int depth);
+ extern void blk_set_default_limits(struct queue_limits *lim);
+ extern void blk_set_stacking_limits(struct queue_limits *lim);
+ extern int blk_stack_limits(struct queue_limits *t, struct queue_limits *b,
+Index: linux-4.8-ck1/include/linux/fs.h
+===================================================================
+--- linux-4.8-ck1.orig/include/linux/fs.h	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/include/linux/fs.h	2016-10-03 13:00:56.025461568 +1100
+@@ -189,6 +189,8 @@ typedef int (dio_iodone_t)(struct kiocb
+  * WRITE_FLUSH_FUA	Combination of WRITE_FLUSH and FUA. The IO is preceded
+  *			by a cache flush and data is guaranteed to be on
+  *			non-volatile media on completion.
++ * WRITE_BG		Background write. This is for background activity like
++ *			the periodic flush and background threshold writeback
+  *
+  */
+ #define RW_MASK			REQ_OP_WRITE
+@@ -202,6 +204,7 @@ typedef int (dio_iodone_t)(struct kiocb
+ #define WRITE_FLUSH		(REQ_SYNC | REQ_NOIDLE | REQ_PREFLUSH)
+ #define WRITE_FUA		(REQ_SYNC | REQ_NOIDLE | REQ_FUA)
+ #define WRITE_FLUSH_FUA		(REQ_SYNC | REQ_NOIDLE | REQ_PREFLUSH | REQ_FUA)
++#define WRITE_BG		(REQ_NOIDLE | REQ_BG)
+ 
+ /*
+  * Attribute flags.  These should be or-ed together to figure out what
+Index: linux-4.8-ck1/include/linux/wbt.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-4.7-ck5/include/linux/wbt.h	2016-09-23 08:35:54.706649301 +1000
++++ linux-4.8-ck1/include/linux/wbt.h	2016-10-03 13:00:56.026461558 +1100
 @@ -0,0 +1,120 @@
 +#ifndef WB_THROTTLE_H
 +#define WB_THROTTLE_H
@@ -1361,10 +1325,31 @@ Index: linux-4.7-ck5/include/linux/wbt.h
 +void wbt_set_write_cache(struct rq_wb *, bool);
 +
 +#endif
-Index: linux-4.7-ck5/include/trace/events/wbt.h
+Index: linux-4.8-ck1/include/linux/writeback.h
+===================================================================
+--- linux-4.8-ck1.orig/include/linux/writeback.h	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/include/linux/writeback.h	2016-10-03 13:00:56.026461558 +1100
+@@ -100,6 +100,16 @@ struct writeback_control {
+ #endif
+ };
+ 
++static inline int wbc_to_write_flags(struct writeback_control *wbc)
++{
++	if (wbc->sync_mode == WB_SYNC_ALL)
++		return WRITE_SYNC;
++	else if (wbc->for_kupdate || wbc->for_background)
++		return WRITE_BG;
++
++	return 0;
++}
++
+ /*
+  * A wb_domain represents a domain that wb's (bdi_writeback's) belong to
+  * and are measured against each other in.  There always is one global
+Index: linux-4.8-ck1/include/trace/events/wbt.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-4.7-ck5/include/trace/events/wbt.h	2016-09-23 08:35:54.706649301 +1000
++++ linux-4.8-ck1/include/trace/events/wbt.h	2016-10-03 13:00:56.026461558 +1100
 @@ -0,0 +1,153 @@
 +#undef TRACE_SYSTEM
 +#define TRACE_SYSTEM wbt
@@ -1519,10 +1504,10 @@ Index: linux-4.7-ck5/include/trace/events/wbt.h
 +
 +/* This part must be outside protection */
 +#include <trace/define_trace.h>
-Index: linux-4.7-ck5/lib/Kconfig
+Index: linux-4.8-ck1/lib/Kconfig
 ===================================================================
---- linux-4.7-ck5.orig/lib/Kconfig	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/lib/Kconfig	2016-09-23 08:35:54.706649301 +1000
+--- linux-4.8-ck1.orig/lib/Kconfig	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/lib/Kconfig	2016-10-03 13:00:56.026461558 +1100
 @@ -550,4 +550,7 @@ config STACKDEPOT
  	bool
  	select STACKTRACE
@@ -1531,11 +1516,11 @@ Index: linux-4.7-ck5/lib/Kconfig
 +	bool
 +
  endmenu
-Index: linux-4.7-ck5/lib/Makefile
+Index: linux-4.8-ck1/lib/Makefile
 ===================================================================
---- linux-4.7-ck5.orig/lib/Makefile	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/lib/Makefile	2016-09-23 08:35:54.706649301 +1000
-@@ -183,6 +183,7 @@ obj-$(CONFIG_SG_SPLIT) += sg_split.o
+--- linux-4.8-ck1.orig/lib/Makefile	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/lib/Makefile	2016-10-03 13:00:56.026461558 +1100
+@@ -177,6 +177,7 @@ obj-$(CONFIG_SG_SPLIT) += sg_split.o
  obj-$(CONFIG_SG_POOL) += sg_pool.o
  obj-$(CONFIG_STMP_DEVICE) += stmp_device.o
  obj-$(CONFIG_IRQ_POLL) += irq_poll.o
@@ -1543,13 +1528,13 @@ Index: linux-4.7-ck5/lib/Makefile
  
  obj-$(CONFIG_STACKDEPOT) += stackdepot.o
  KASAN_SANITIZE_stackdepot.o := n
-Index: linux-4.7-ck5/lib/wbt.c
+Index: linux-4.8-ck1/lib/wbt.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ linux-4.7-ck5/lib/wbt.c	2016-09-23 08:35:54.706649301 +1000
++++ linux-4.8-ck1/lib/wbt.c	2016-10-03 13:00:56.026461558 +1100
 @@ -0,0 +1,679 @@
 +/*
-+ * buffered writeback throttling. loosely based on CoDel. We can't drop
++ * buffered writeback throttling. losely based on CoDel. We can't drop
 + * packets for IO scheduling, so the logic is something like this:
 + *
 + * - Monitor latencies in a defined window of time.
@@ -2086,10 +2071,12 @@ Index: linux-4.7-ck5/lib/wbt.c
 +
 +static inline bool wbt_should_throttle(struct rq_wb *rwb, unsigned int rw)
 +{
++	const int op = rw >> BIO_OP_SHIFT;
++
 +	/*
 +	 * If not a WRITE (or a discard), do nothing
 +	 */
-+	if (!(rw & (REQ_WRITE | REQ_DISCARD)))
++	if (!(op == REQ_OP_WRITE || op == REQ_OP_DISCARD))
 +		return false;
 +
 +	/*
@@ -2114,7 +2101,7 @@ Index: linux-4.7-ck5/lib/wbt.c
 +	if (!rwb_enabled(rwb))
 +		return 0;
 +
-+	if (!(rw & (REQ_WRITE | REQ_DISCARD)))
++	if ((rw >> BIO_OP_SHIFT) == REQ_OP_READ)
 +		ret = WBT_READ;
 +
 +	if (!wbt_should_throttle(rwb, rw)) {
@@ -2186,11 +2173,9 @@ Index: linux-4.7-ck5/lib/wbt.c
 +
 +void wbt_disable(struct rq_wb *rwb)
 +{
-+	if (rwb) {
-+		del_timer_sync(&rwb->window_timer);
-+		rwb->win_nsec = rwb->min_lat_nsec = 0;
-+		wbt_update_limits(rwb);
-+	}
++	del_timer_sync(&rwb->window_timer);
++	rwb->win_nsec = rwb->min_lat_nsec = 0;
++	wbt_update_limits(rwb);
 +}
 +EXPORT_SYMBOL_GPL(wbt_disable);
 +
@@ -2227,72 +2212,27 @@ Index: linux-4.7-ck5/lib/wbt.c
 +		kfree(rwb);
 +	}
 +}
-Index: linux-4.7-ck5/Documentation/block/queue-sysfs.txt
+Index: linux-4.8-ck1/mm/backing-dev.c
 ===================================================================
---- linux-4.7-ck5.orig/Documentation/block/queue-sysfs.txt	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/Documentation/block/queue-sysfs.txt	2016-09-23 08:35:54.706649301 +1000
-@@ -151,5 +151,18 @@ device state. This means that it might n
- setting from "write back" to "write through", since that will also
- eliminate cache flushes issued by the kernel.
+--- linux-4.8-ck1.orig/mm/backing-dev.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/mm/backing-dev.c	2016-10-03 13:00:56.026461558 +1100
+@@ -310,6 +310,7 @@ static int wb_init(struct bdi_writeback
+ 	spin_lock_init(&wb->work_lock);
+ 	INIT_LIST_HEAD(&wb->work_list);
+ 	INIT_DELAYED_WORK(&wb->dwork, wb_workfn);
++	wb->dirty_sleep = jiffies;
  
-+wb_lat_usec (RW)
-+----------------
-+If the device is registered for writeback throttling, then this file shows
-+the target minimum read latency. If this latency is exceeded in a given
-+window of time (see wb_window_usec), then the writeback throttling will start
-+scaling back writes.
-+
-+wb_window_usec (RW)
-+-------------------
-+If the device is registered for writeback throttling, then this file shows
-+the value of the monitoring window in which we'll look at the target
-+latency. See wb_lat_usec.
-+
- 
- Jens Axboe <jens.axboe@oracle.com>, February 2009
-Index: linux-4.7-ck5/block/Kconfig
+ 	wb->congested = wb_congested_get_create(bdi, blkcg_id, gfp);
+ 	if (!wb->congested)
+Index: linux-4.8-ck1/mm/page-writeback.c
 ===================================================================
---- linux-4.7-ck5.orig/block/Kconfig	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/Kconfig	2016-09-23 08:35:54.707649295 +1000
-@@ -4,6 +4,7 @@
- menuconfig BLOCK
-        bool "Enable the block layer" if EXPERT
-        default y
-+       select WBT
-        help
- 	 Provide block layer support for the kernel.
+--- linux-4.8-ck1.orig/mm/page-writeback.c	2016-10-03 13:00:56.029461527 +1100
++++ linux-4.8-ck1/mm/page-writeback.c	2016-10-03 13:00:56.027461547 +1100
+@@ -1778,6 +1778,7 @@ pause:
+ 					  pause,
+ 					  start_time);
+ 		__set_current_state(TASK_KILLABLE);
++		wb->dirty_sleep = now;
+ 		io_schedule_timeout(pause);
  
-Index: linux-4.7-ck5/block/cfq-iosched.c
-===================================================================
---- linux-4.7-ck5.orig/block/cfq-iosched.c	2016-09-23 08:35:54.709649282 +1000
-+++ linux-4.7-ck5/block/cfq-iosched.c	2016-09-23 08:35:54.707649295 +1000
-@@ -3738,9 +3738,11 @@ static void check_blkcg_changed(struct c
- 	struct cfq_data *cfqd = cic_to_cfqd(cic);
- 	struct cfq_queue *cfqq;
- 	uint64_t serial_nr;
-+	bool nonroot_cg;
- 
- 	rcu_read_lock();
- 	serial_nr = bio_blkcg(bio)->css.serial_nr;
-+	nonroot_cg = bio_blkcg(bio) != &blkcg_root;
- 	rcu_read_unlock();
- 
- 	/*
-@@ -3751,6 +3753,17 @@ static void check_blkcg_changed(struct c
- 		return;
- 
- 	/*
-+	 * If we have a non-root cgroup, we can depend on that to
-+	 * do proper throttling of writes. Turn off wbt for that
-+	 * case.
-+	 */
-+	if (nonroot_cg) {
-+		struct request_queue *q = cfqd->queue;
-+
-+		wbt_disable(q->rq_wb);
-+	}
-+
-+	/*
- 	 * Drop reference to queues.  New queues will be assigned in new
- 	 * group upon arrival of fresh requests.
- 	 */
+ 		current->dirty_paused_when = now + pause;
