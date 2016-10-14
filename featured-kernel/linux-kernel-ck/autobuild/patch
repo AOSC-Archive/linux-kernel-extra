@@ -5,8 +5,8 @@ for i in autobuild/patches/*.patch; do
 done
 
 # Patches for Con Kolivas' patches
-for i in `cat autobuild/patches/linux-ck5/series`; do
-    patch -Np1 -i autobuild/patches/linux-ck5/$i
+for i in `cat autobuild/patches/linux-ck1/series`; do
+    patch -Np1 -i autobuild/patches/linux-ck1/$i
 done
 
 git clone -b aufs${PKGVER:0:3} --depth 1 https://github.com/sfjro/aufs${PKGVER%%.*}-standalone
