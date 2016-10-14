@@ -1,11 +1,11 @@
-PKGNAME=linux-kernel-zen-4.7.6
+PKGNAME=linux-kernel-zen-4.8.1
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
 if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
     BUILDDEP+=" grub"
 fi
-PKGDES="Linux Kernel version 4.7.6 with ZEN patchset"
+PKGDES="Linux Kernel version 4.8.1 with ZEN patchset"
 
 ABSTRIP=no
 ABELFDEP=no

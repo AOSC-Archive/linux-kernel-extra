@@ -2,7 +2,7 @@ OLDARCH=$ARCH
 unset ARCH
 cp -v autobuild/$OLDARCH/config "$SRCDIR"/.config
 
-LOCALNAME=-aosc-zen
+LOCALNAME=-aosc-ck5
 version=$PKGVER
 
 make
@@ -12,7 +12,7 @@ mkdir -p "$PKGDIR"/usr
 mv "$PKGDIR"/lib "$PKGDIR"/usr/lib
 
 mkdir -p "$PKGDIR"/boot 
-cp vmlinux "$PKGDIR"/boot/vmlinux-aosc-zen-$version
+cp vmlinux "$PKGDIR"/boot/vmlinux-aosc-ck5-$version
 export ARCH=$OLDARCH
 rm -rf "$PKGDIR"/usr/lib/firmware
 
@@ -28,14 +28,14 @@ SRCARCH=x86
 (cd $srctree; find . -name Makefile\* -o -name Kconfig\* -o -name \*.pl > "$objtree/debian/hdrsrcfiles")
 (cd $srctree; find arch/$SRCARCH/include include scripts -type f >> "$objtree/debian/hdrsrcfiles")
 (cd $objtree; find arch/$SRCARCH/include .config Module.symvers include scripts -type f >> "$objtree/debian/hdrobjfiles")
-destdir=$kernel_headers_dir/usr/src/linux-headers-zen-$version
+destdir=$kernel_headers_dir/usr/src/linux-headers-ck5-$version
 mkdir -p "$destdir"
 (cd $srctree; tar -c -f - -T "$objtree/debian/hdrsrcfiles") | (cd $destdir; tar -xf -)
 (cd $objtree; tar -c -f - -T "$objtree/debian/hdrobjfiles") | (cd $destdir; tar -xf -)
 rm -f "$objtree/debian/hdrsrcfiles" "$objtree/debian/hdrobjfiles"
 export ARCH=$OLDARCH
-rm -fr "$PKGDIR"/usr/src/linux-headers-zen-${version}/"$PKGDIR"
+rm -fr "$PKGDIR"/usr/src/linux-headers-ck5-${version}/"$PKGDIR"
 
 rm -rf "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/{build,source}
-ln -sfv /usr/src/linux-headers-zen-$version "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/build
-ln -sfv /usr/src/linux-headers-zen-$version "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/source
+ln -sfv /usr/src/linux-headers-ck5-$version "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/build
+ln -sfv /usr/src/linux-headers-ck5-$version "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/source
