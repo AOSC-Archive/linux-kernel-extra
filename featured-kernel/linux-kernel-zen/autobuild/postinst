@@ -1,4 +1,4 @@
-KERNEL=4.8.1-aosc-zen
+KERNEL=4.8.2-aosc-zen
 
 if [ -x /usr/bin/grub-mkconfig ]; then
     grub-mkconfig -o /boot/grub/grub.cfg
