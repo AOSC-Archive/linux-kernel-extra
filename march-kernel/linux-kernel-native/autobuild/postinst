@@ -1,4 +1,4 @@
-KERNEL=4.7.2-native
+KERNEL=4.8.2-native
 
 if [ -x /usr/bin/grub-mkconfig ]; then
     grub-mkconfig -o /boot/grub/grub.cfg
