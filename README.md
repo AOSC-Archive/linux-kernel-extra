@@ -10,12 +10,6 @@ read our semi-comprehensive guide on how to build packages from an ABBS tree
 Kernel variants
 ---------------
 
-#### march-kernel/linux-kernel-native
-
-This class of packages provides Linux Kernel with native optimizations **specific
-to the build machine** (-march=native flag). Which should result in a considerable
-boost in performance at the price of losing any sort of portability.
-
 #### featured-kernel/\*
 
 This class of packages provides Linux Kernel with special features that are not
@@ -34,5 +28,11 @@ provides - `linux-kernel-broadwell` for instance, is a Kernel configuration with
 standard features, but specifically optimized for Intel Broadwell processors
 during build-time. Which should provide a significant boost in performance on
 machines with the respective processor family.
+
+#### march-kernel/linux-kernel-native
+
+This class of packages provides Linux Kernel with native optimizations **specific
+to the build machine** (-march=native flag). Which should result in a considerable
+boost in performance at the price of losing any sort of portability.
 
 (More to come in the future)
