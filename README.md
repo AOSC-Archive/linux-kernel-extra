@@ -10,6 +10,12 @@ read our semi-comprehensive guide on how to build packages from an ABBS tree
 Kernel variants
 ---------------
 
+#### march-kernel/linux-kernel-native
+
+This class of packages provides Linux Kernel with native optimizations **specific
+to the build machine** (-march=native flag). Which should result in a considerable
+boost in performance at the price of losing any sort of portability.
+
 #### featured-kernel/\*
 
 This class of packages provides Linux Kernel with special features that are not
