@@ -5,7 +5,7 @@ index 7c5381b..081fae4 100644
 @@ -1,7 +1,7 @@
  VERSION = 4
  PATCHLEVEL = 8
- SUBLEVEL = 2
+ SUBLEVEL = 4
 -EXTRAVERSION = -zen
 +EXTRAVERSION =
  NAME = Online Space Amplifier
