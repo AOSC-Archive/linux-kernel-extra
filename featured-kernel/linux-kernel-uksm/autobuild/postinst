@@ -1,6 +1,6 @@
-KERNEL=4.8.2-aosc-uksm
+KERNEL=4.8.4-aosc-uksm
 
-if uname -a | grep 'ppc' > /dev/null; then
+if uname -a | grep 'ppc ' > /dev/null; then
 	for i in uni smp; do
 		if [ -x /usr/bin/depmod ]; then
 			depmod ${KERNEL}-${i}
@@ -28,10 +28,11 @@ else
 	fi
 
 	if [[ $(uname -m) = x86_64 ]]; then
-		if [ -x /usr/bin/grub-mkconfig ]; then
+		if [[ -x /usr/bin/grub-mkconfig && $(stat -c %i /) == 2 && \
+                      ! $(grep 'machine' /proc/1/cgroup) && ! $(grep 'docker' /proc/1/cgroup) ]]; then
 			grub-mkconfig -o /boot/grub/grub.cfg
 		else
-			echo "GRUB is not installed, skipping regeneration of GRUB menu."
+			echo "GRUB is not installed or in container/chroot, skipping regeneration of GRUB menu."
 		fi
 	fi
 fi

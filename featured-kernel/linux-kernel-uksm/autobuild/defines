@@ -1,11 +1,11 @@
-PKGNAME=linux-kernel-uksm-4.8.2
+PKGNAME=linux-kernel-uksm-4.8.4
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
 if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
     BUILDDEP+=" grub"
 fi
-PKGDES="Linux Kernel version 4.8.2 with UKSM"
+PKGDES="Linux Kernel version 4.8.4 with UKSM"
 
 ABSTRIP=no
 ABELFDEP=no
