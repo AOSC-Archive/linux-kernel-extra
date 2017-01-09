@@ -38,7 +38,7 @@ for i in uni smp; do
 	rm -f "$objtree/debian/hdrsrcfiles" "$objtree/debian/hdrobjfiles"
 	export ARCH=$OLDARCH
 	
-	rm -rf "$PKGDIR"/usr/src/linux-headers-uksm-${version}-${i}/"$PKGDIR"
+	rm -rf "$PKGDIR"/usr/src/linux-headers-uksm${version}-${i}/"$PKGDIR"
 	rm -rf "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/{build,source}
 done
 

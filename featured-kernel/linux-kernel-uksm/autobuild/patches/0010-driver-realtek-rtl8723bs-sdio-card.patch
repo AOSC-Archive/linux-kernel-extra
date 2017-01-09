@@ -1,29 +1,201 @@
-diff -Naur a/drivers/staging/Kconfig b/drivers/staging/Kconfig
---- a/drivers/staging/Kconfig	2016-10-07 08:03:33.000000000 -0500
-+++ b/drivers/staging/Kconfig	2016-10-13 14:20:55.744782469 -0500
-@@ -42,6 +42,8 @@
+diff -Naur linux-4.9/drivers/staging/Kconfig linux-4.9.8723bs/drivers/staging/Kconfig
+--- linux-4.9/drivers/staging/Kconfig	2016-12-11 13:17:54.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/Kconfig	2016-12-11 19:46:26.363811006 -0600
+@@ -40,6 +40,8 @@
  
- source "drivers/staging/rtl8723au/Kconfig"
+ source "drivers/staging/rtl8188eu/Kconfig"
  
 +source "drivers/staging/rtl8723bs/Kconfig"
 +
  source "drivers/staging/rts5208/Kconfig"
  
  source "drivers/staging/octeon/Kconfig"
-diff -Naur a/drivers/staging/Makefile b/drivers/staging/Makefile
---- a/drivers/staging/Makefile	2016-10-07 08:03:33.000000000 -0500
-+++ b/drivers/staging/Makefile	2016-10-13 14:20:55.744782469 -0500
-@@ -10,6 +10,7 @@
- obj-$(CONFIG_R8712U)		+= rtl8712/
- obj-$(CONFIG_R8188EU)		+= rtl8188eu/
- obj-$(CONFIG_R8723AU)		+= rtl8723au/
+diff -Naur linux-4.9/drivers/staging/Kconfig.orig linux-4.9.8723bs/drivers/staging/Kconfig.orig
+--- linux-4.9/drivers/staging/Kconfig.orig	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/Kconfig.orig	2016-12-11 13:17:54.000000000 -0600
+@@ -0,0 +1,109 @@
++menuconfig STAGING
++	bool "Staging drivers"
++	default n
++	---help---
++	  This option allows you to select a number of drivers that are
++	  not of the "normal" Linux kernel quality level.  These drivers
++	  are placed here in order to get a wider audience to make use of
++	  them.  Please note that these drivers are under heavy
++	  development, may or may not work, and may contain userspace
++	  interfaces that most likely will be changed in the near
++	  future.
++
++	  Using any of these drivers will taint your kernel which might
++	  affect support options from both the community, and various
++	  commercial support organizations.
++
++	  If you wish to work on these drivers, to help improve them, or
++	  to report problems you have with them, please see the
++	  driver_name.README file in the drivers/staging/ directory to
++	  see what needs to be worked on, and who to contact.
++
++	  If in doubt, say N here.
++
++
++if STAGING
++
++source "drivers/staging/slicoss/Kconfig"
++
++source "drivers/staging/wlan-ng/Kconfig"
++
++source "drivers/staging/comedi/Kconfig"
++
++source "drivers/staging/olpc_dcon/Kconfig"
++
++source "drivers/staging/rtl8192u/Kconfig"
++
++source "drivers/staging/rtl8192e/Kconfig"
++
++source "drivers/staging/rtl8712/Kconfig"
++
++source "drivers/staging/rtl8188eu/Kconfig"
++
++source "drivers/staging/rts5208/Kconfig"
++
++source "drivers/staging/octeon/Kconfig"
++
++source "drivers/staging/octeon-usb/Kconfig"
++
++source "drivers/staging/vt6655/Kconfig"
++
++source "drivers/staging/vt6656/Kconfig"
++
++source "drivers/staging/iio/Kconfig"
++
++source "drivers/staging/sm750fb/Kconfig"
++
++source "drivers/staging/xgifb/Kconfig"
++
++source "drivers/staging/emxx_udc/Kconfig"
++
++source "drivers/staging/speakup/Kconfig"
++
++source "drivers/staging/nvec/Kconfig"
++
++source "drivers/staging/media/Kconfig"
++
++source "drivers/staging/android/Kconfig"
++
++source "drivers/staging/board/Kconfig"
++
++source "drivers/staging/gdm724x/Kconfig"
++
++source "drivers/staging/fwserial/Kconfig"
++
++source "drivers/staging/goldfish/Kconfig"
++
++source "drivers/staging/netlogic/Kconfig"
++
++source "drivers/staging/mt29f_spinand/Kconfig"
++
++source "drivers/staging/lustre/Kconfig"
++
++source "drivers/staging/dgnc/Kconfig"
++
++source "drivers/staging/gs_fpgaboot/Kconfig"
++
++source "drivers/staging/skein/Kconfig"
++
++source "drivers/staging/unisys/Kconfig"
++
++source "drivers/staging/clocking-wizard/Kconfig"
++
++source "drivers/staging/fbtft/Kconfig"
++
++source "drivers/staging/fsl-mc/Kconfig"
++
++source "drivers/staging/wilc1000/Kconfig"
++
++source "drivers/staging/most/Kconfig"
++
++source "drivers/staging/i4l/Kconfig"
++
++source "drivers/staging/ks7010/Kconfig"
++
++source "drivers/staging/greybus/Kconfig"
++
++source "drivers/staging/vc04_services/Kconfig"
++
++endif # STAGING
+diff -Naur linux-4.9/drivers/staging/Makefile linux-4.9.8723bs/drivers/staging/Makefile
+--- linux-4.9/drivers/staging/Makefile	2016-12-11 13:17:54.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/Makefile	2016-12-11 19:46:59.437264535 -0600
+@@ -42,3 +42,4 @@
+ obj-$(CONFIG_KS7010)		+= ks7010/
+ obj-$(CONFIG_GREYBUS)		+= greybus/
+ obj-$(CONFIG_BCM2708_VCHIQ)	+= vc04_services/
 +obj-$(CONFIG_RTL8723BS)		+= rtl8723bs/
- obj-$(CONFIG_RTS5208)		+= rts5208/
- obj-$(CONFIG_NETLOGIC_XLR_NET)	+= netlogic/
- obj-$(CONFIG_OCTEON_ETHERNET)	+= octeon/
-diff -Naur a/drivers/staging/rtl8723bs/convert_firmware.c b/drivers/staging/rtl8723bs/convert_firmware.c
---- a/drivers/staging/rtl8723bs/convert_firmware.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/convert_firmware.c	2016-10-13 14:21:42.918270398 -0500
+diff -Naur linux-4.9/drivers/staging/Makefile.orig linux-4.9.8723bs/drivers/staging/Makefile.orig
+--- linux-4.9/drivers/staging/Makefile.orig	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/Makefile.orig	2016-12-11 19:46:26.363811006 -0600
+@@ -0,0 +1,44 @@
++# Makefile for staging directory
++
++obj-y				+= media/
++obj-$(CONFIG_SLICOSS)		+= slicoss/
++obj-$(CONFIG_PRISM2_USB)	+= wlan-ng/
++obj-$(CONFIG_COMEDI)		+= comedi/
++obj-$(CONFIG_FB_OLPC_DCON)	+= olpc_dcon/
++obj-$(CONFIG_RTL8192U)		+= rtl8192u/
++obj-$(CONFIG_RTL8192E)		+= rtl8192e/
++obj-$(CONFIG_R8712U)		+= rtl8712/
++obj-$(CONFIG_R8188EU)		+= rtl8188eu/
++obj-$(CONFIG_RTS5208)		+= rts5208/
++obj-$(CONFIG_NETLOGIC_XLR_NET)	+= netlogic/
++obj-$(CONFIG_OCTEON_ETHERNET)	+= octeon/
++obj-$(CONFIG_OCTEON_USB)	+= octeon-usb/
++obj-$(CONFIG_VT6655)		+= vt6655/
++obj-$(CONFIG_VT6656)		+= vt6656/
++obj-$(CONFIG_VME_BUS)		+= vme/
++obj-$(CONFIG_IIO)		+= iio/
++obj-$(CONFIG_FB_SM750)		+= sm750fb/
++obj-$(CONFIG_FB_XGI)		+= xgifb/
++obj-$(CONFIG_USB_EMXX)		+= emxx_udc/
++obj-$(CONFIG_SPEAKUP)		+= speakup/
++obj-$(CONFIG_MFD_NVEC)		+= nvec/
++obj-$(CONFIG_ANDROID)		+= android/
++obj-$(CONFIG_STAGING_BOARD)	+= board/
++obj-$(CONFIG_LTE_GDM724X)	+= gdm724x/
++obj-$(CONFIG_FIREWIRE_SERIAL)	+= fwserial/
++obj-$(CONFIG_GOLDFISH)		+= goldfish/
++obj-$(CONFIG_LNET)		+= lustre/
++obj-$(CONFIG_DGNC)			+= dgnc/
++obj-$(CONFIG_MTD_SPINAND_MT29F)	+= mt29f_spinand/
++obj-$(CONFIG_GS_FPGABOOT)	+= gs_fpgaboot/
++obj-$(CONFIG_CRYPTO_SKEIN)	+= skein/
++obj-$(CONFIG_UNISYSSPAR)	+= unisys/
++obj-$(CONFIG_COMMON_CLK_XLNX_CLKWZRD)	+= clocking-wizard/
++obj-$(CONFIG_FB_TFT)		+= fbtft/
++obj-$(CONFIG_FSL_MC_BUS)	+= fsl-mc/
++obj-$(CONFIG_WILC1000)		+= wilc1000/
++obj-$(CONFIG_MOST)		+= most/
++obj-$(CONFIG_ISDN_I4L)		+= i4l/
++obj-$(CONFIG_KS7010)		+= ks7010/
++obj-$(CONFIG_GREYBUS)		+= greybus/
++obj-$(CONFIG_BCM2708_VCHIQ)	+= vc04_services/
+diff -Naur linux-4.9/drivers/staging/Makefile.rej linux-4.9.8723bs/drivers/staging/Makefile.rej
+--- linux-4.9/drivers/staging/Makefile.rej	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/Makefile.rej	2016-12-11 19:46:26.363811006 -0600
+@@ -0,0 +1,10 @@
++--- drivers/staging/Makefile	2016-10-07 08:03:33.000000000 -0500
+++++ drivers/staging/Makefile	2016-10-13 14:20:55.744782469 -0500
++@@ -10,6 +10,7 @@
++ obj-$(CONFIG_R8712U)		+= rtl8712/
++ obj-$(CONFIG_R8188EU)		+= rtl8188eu/
++ obj-$(CONFIG_R8723AU)		+= rtl8723au/
+++obj-$(CONFIG_RTL8723BS)		+= rtl8723bs/
++ obj-$(CONFIG_RTS5208)		+= rts5208/
++ obj-$(CONFIG_NETLOGIC_XLR_NET)	+= netlogic/
++ obj-$(CONFIG_OCTEON_ETHERNET)	+= octeon/
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/convert_firmware.c linux-4.9.8723bs/drivers/staging/rtl8723bs/convert_firmware.c
+--- linux-4.9/drivers/staging/rtl8723bs/convert_firmware.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/convert_firmware.c	2016-12-11 19:46:26.363811006 -0600
 @@ -0,0 +1,68 @@
 +/* Program to convert header into a binary file
 + * Coded by Larry Finger
@@ -93,9 +265,9 @@ diff -Naur a/drivers/staging/rtl8723bs/convert_firmware.c b/drivers/staging/rtl8
 +}
 +
 +
-diff -Naur a/drivers/staging/rtl8723bs/convert_firmware.h b/drivers/staging/rtl8723bs/convert_firmware.h
---- a/drivers/staging/rtl8723bs/convert_firmware.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/convert_firmware.h	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/convert_firmware.h linux-4.9.8723bs/drivers/staging/rtl8723bs/convert_firmware.h
+--- linux-4.9/drivers/staging/rtl8723bs/convert_firmware.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/convert_firmware.h	2016-12-11 19:46:26.367144353 -0600
 @@ -0,0 +1,5566 @@
 +/******************************************************************************
 +*
@@ -5663,9 +5835,9 @@ diff -Naur a/drivers/staging/rtl8723bs/convert_firmware.h b/drivers/staging/rtl8
 +};
 +#define ArrayLength_MP_8723B_FW_WoWLAN  26398
 +
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_ap.c b/drivers/staging/rtl8723bs/core/rtw_ap.c
---- a/drivers/staging/rtl8723bs/core/rtw_ap.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_ap.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_ap.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_ap.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_ap.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_ap.c	2016-12-11 19:46:26.367144353 -0600
 @@ -0,0 +1,2684 @@
 +/******************************************************************************
 + *
@@ -8351,9 +8523,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_ap.c b/drivers/staging/rtl8723bs
 +
 +	rtw_btcoex_MediaStatusNotify(padapter, 0); /* disconnect */
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_btcoex.c b/drivers/staging/rtl8723bs/core/rtw_btcoex.c
---- a/drivers/staging/rtl8723bs/core/rtw_btcoex.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_btcoex.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_btcoex.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_btcoex.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_btcoex.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_btcoex.c	2016-12-11 19:46:26.367144353 -0600
 @@ -0,0 +1,243 @@
 +/******************************************************************************
 + *
@@ -8598,9 +8770,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_btcoex.c b/drivers/staging/rtl87
 +		pwrpriv->bpower_saving = false;
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_cmd.c b/drivers/staging/rtl8723bs/core/rtw_cmd.c
---- a/drivers/staging/rtl8723bs/core/rtw_cmd.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_cmd.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_cmd.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_cmd.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_cmd.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_cmd.c	2016-12-11 19:46:26.367144353 -0600
 @@ -0,0 +1,2244 @@
 +/******************************************************************************
 + *
@@ -10846,9 +11018,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_cmd.c b/drivers/staging/rtl8723b
 +exit:
 +	rtw_free_cmd_obj(pcmd);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_debug.c b/drivers/staging/rtl8723bs/core/rtw_debug.c
---- a/drivers/staging/rtl8723bs/core/rtw_debug.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_debug.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_debug.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_debug.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_debug.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_debug.c	2016-12-11 19:46:26.370477697 -0600
 @@ -0,0 +1,1453 @@
 +/******************************************************************************
 + *
@@ -12303,9 +12475,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_debug.c b/drivers/staging/rtl872
 +}
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_eeprom.c b/drivers/staging/rtl8723bs/core/rtw_eeprom.c
---- a/drivers/staging/rtl8723bs/core/rtw_eeprom.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_eeprom.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_eeprom.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_eeprom.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_eeprom.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_eeprom.c	2016-12-11 19:46:26.370477697 -0600
 @@ -0,0 +1,369 @@
 +/******************************************************************************
 + *
@@ -12676,9 +12848,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_eeprom.c b/drivers/staging/rtl87
 +
 +_func_exit_;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_efuse.c b/drivers/staging/rtl8723bs/core/rtw_efuse.c
---- a/drivers/staging/rtl8723bs/core/rtw_efuse.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_efuse.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_efuse.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_efuse.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_efuse.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_efuse.c	2016-12-11 19:46:26.370477697 -0600
 @@ -0,0 +1,635 @@
 +/******************************************************************************
 + *
@@ -13315,9 +13487,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_efuse.c b/drivers/staging/rtl872
 +		efuse_ShadowRead4Byte(padapter, Offset, (u32 *)Value);
 +
 +}	/* EFUSE_ShadowRead*/
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_ieee80211.c b/drivers/staging/rtl8723bs/core/rtw_ieee80211.c
---- a/drivers/staging/rtl8723bs/core/rtw_ieee80211.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_ieee80211.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_ieee80211.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_ieee80211.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_ieee80211.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_ieee80211.c	2016-12-11 19:46:26.370477697 -0600
 @@ -0,0 +1,1433 @@
 +/******************************************************************************
 + *
@@ -14752,9 +14924,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_ieee80211.c b/drivers/staging/rt
 +	action = (action >= ACT_PUBLIC_MAX) ? ACT_PUBLIC_MAX : action;
 +	return _action_public_str[action];
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_io.c b/drivers/staging/rtl8723bs/core/rtw_io.c
---- a/drivers/staging/rtl8723bs/core/rtw_io.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_io.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_io.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_io.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_io.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_io.c	2016-12-11 19:46:26.370477697 -0600
 @@ -0,0 +1,203 @@
 +/******************************************************************************
 + *
@@ -14959,9 +15131,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_io.c b/drivers/staging/rtl8723bs
 +{
 +	atomic_set(&dvobj->continual_io_error, 0);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c b/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c
---- a/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c	2016-10-13 14:21:42.921603742 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c	2016-12-11 19:46:26.370477697 -0600
 @@ -0,0 +1,696 @@
 +/******************************************************************************
 + *
@@ -15659,9 +15831,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_ioctl_set.c b/drivers/staging/rt
 +
 +	return max_rate;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_mlme.c b/drivers/staging/rtl8723bs/core/rtw_mlme.c
---- a/drivers/staging/rtl8723bs/core/rtw_mlme.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_mlme.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_mlme.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_mlme.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_mlme.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_mlme.c	2016-12-11 19:46:26.370477697 -0600
 @@ -0,0 +1,3155 @@
 +/******************************************************************************
 + *
@@ -18818,9 +18990,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_mlme.c b/drivers/staging/rtl8723
 +	}
 +	return false;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c b/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c
---- a/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c	2016-12-11 19:46:26.373811043 -0600
 @@ -0,0 +1,6940 @@
 +/******************************************************************************
 + *
@@ -25762,9 +25934,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_mlme_ext.c b/drivers/staging/rtl
 +
 +	return H2C_SUCCESS;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_odm.c b/drivers/staging/rtl8723bs/core/rtw_odm.c
---- a/drivers/staging/rtl8723bs/core/rtw_odm.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_odm.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_odm.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_odm.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_odm.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_odm.c	2016-12-11 19:46:26.373811043 -0600
 @@ -0,0 +1,195 @@
 +/******************************************************************************
 + *
@@ -25961,9 +26133,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_odm.c b/drivers/staging/rtl8723b
 +	DBG_871X_SEL_NL(sel, "RxRate = %s, RSSI_A = %d(%%), RSSI_B = %d(%%)\n",
 +	HDATA_RATE(odm->RxRate), odm->RSSI_A, odm->RSSI_B);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c b/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c
---- a/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c	2016-12-11 19:46:26.373811043 -0600
 @@ -0,0 +1,1421 @@
 +/******************************************************************************
 + *
@@ -27386,9 +27558,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_pwrctrl.c b/drivers/staging/rtl8
 +
 +	return deny;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_recv.c b/drivers/staging/rtl8723bs/core/rtw_recv.c
---- a/drivers/staging/rtl8723bs/core/rtw_recv.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_recv.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_recv.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_recv.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_recv.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_recv.c	2016-12-11 19:46:26.373811043 -0600
 @@ -0,0 +1,2693 @@
 +/******************************************************************************
 + *
@@ -30083,9 +30255,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_recv.c b/drivers/staging/rtl8723
 +	rtw_set_signal_stat_timer(recvpriv);
 +
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_rf.c b/drivers/staging/rtl8723bs/core/rtw_rf.c
---- a/drivers/staging/rtl8723bs/core/rtw_rf.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_rf.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_rf.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_rf.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_rf.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_rf.c	2016-12-11 19:46:26.373811043 -0600
 @@ -0,0 +1,64 @@
 +/******************************************************************************
 + *
@@ -30151,9 +30323,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_rf.c b/drivers/staging/rtl8723bs
 +
 +	return freq;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_security.c b/drivers/staging/rtl8723bs/core/rtw_security.c
---- a/drivers/staging/rtl8723bs/core/rtw_security.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_security.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_security.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_security.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_security.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_security.c	2016-12-11 19:46:26.377144389 -0600
 @@ -0,0 +1,2448 @@
 +/******************************************************************************
 + *
@@ -32603,9 +32775,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_security.c b/drivers/staging/rtl
 +
 +	return status;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c b/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c
---- a/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c	2016-12-11 19:46:26.377144389 -0600
 @@ -0,0 +1,641 @@
 +/******************************************************************************
 + *
@@ -33248,9 +33420,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_sta_mgt.c b/drivers/staging/rtl8
 +
 +	return res;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_wlan_util.c b/drivers/staging/rtl8723bs/core/rtw_wlan_util.c
---- a/drivers/staging/rtl8723bs/core/rtw_wlan_util.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_wlan_util.c	2016-10-13 14:21:42.924937086 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_wlan_util.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_wlan_util.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_wlan_util.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_wlan_util.c	2016-12-11 19:46:26.377144389 -0600
 @@ -0,0 +1,2328 @@
 +/******************************************************************************
 + *
@@ -35580,9 +35752,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_wlan_util.c b/drivers/staging/rt
 +#define CIPHER_WPA_EAP "WPA-EAP IEEE8021X"
 +
 +#endif /* CONFIG_PNO_SUPPORT */
-diff -Naur a/drivers/staging/rtl8723bs/core/rtw_xmit.c b/drivers/staging/rtl8723bs/core/rtw_xmit.c
---- a/drivers/staging/rtl8723bs/core/rtw_xmit.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/core/rtw_xmit.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/core/rtw_xmit.c linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_xmit.c
+--- linux-4.9/drivers/staging/rtl8723bs/core/rtw_xmit.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/core/rtw_xmit.c	2016-12-11 19:46:26.377144389 -0600
 @@ -0,0 +1,3100 @@
 +/******************************************************************************
 + *
@@ -38684,9 +38856,9 @@ diff -Naur a/drivers/staging/rtl8723bs/core/rtw_xmit.c b/drivers/staging/rtl8723
 +		DBG_871X("%s ack_tx not set\n", __func__);
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c b/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c
---- a/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c	2016-12-11 19:46:26.377144389 -0600
 @@ -0,0 +1,138 @@
 +/******************************************************************************
 + *
@@ -38826,9 +38998,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/Hal8723BPwrSeq.c b/drivers/staging/rt
 +	RTL8723B_TRANS_SWLPS_TO_ACT
 +	RTL8723B_TRANS_END
 +};
-diff -Naur a/drivers/staging/rtl8723bs/hal/Hal8723BReg.h b/drivers/staging/rtl8723bs/hal/Hal8723BReg.h
---- a/drivers/staging/rtl8723bs/hal/Hal8723BReg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/Hal8723BReg.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/Hal8723BReg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/Hal8723BReg.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/Hal8723BReg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/Hal8723BReg.h	2016-12-11 19:46:26.377144389 -0600
 @@ -0,0 +1,442 @@
 +/*****************************************************************************
 + *Copyright(c) 2009,  RealTEK Technology Inc. All Right Reserved.
@@ -39272,9 +39444,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/Hal8723BReg.h b/drivers/staging/rtl87
 +#define	RCR_TCPOFLD_EN			BIT25	/*  Enable TCP checksum offload */
 +
 +#endif /*  #ifndef __INC_HAL8723BREG_H */
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c b/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c
---- a/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c	2016-12-11 19:46:26.380477734 -0600
 @@ -0,0 +1,3779 @@
 +/******************************************************************************
 + *
@@ -43055,9 +43227,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.c b/drivers/staging/r
 +
 +	pCoexSta->specialPktPeriodCnt++;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h b/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h
---- a/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h	2016-12-11 19:46:26.380477734 -0600
 @@ -0,0 +1,193 @@
 +/******************************************************************************
 + *
@@ -43252,9 +43424,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b1Ant.h b/drivers/staging/r
 +void EXhalbtc8723b1ant_PnpNotify(PBTC_COEXIST pBtCoexist, u8 pnpState);
 +void EXhalbtc8723b1ant_Periodical(PBTC_COEXIST pBtCoexist);
 +void EXhalbtc8723b1ant_DisplayCoexInfo(PBTC_COEXIST pBtCoexist);
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c b/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c
---- a/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c	2016-12-11 19:46:26.380477734 -0600
 @@ -0,0 +1,3729 @@
 +/******************************************************************************
 + *
@@ -46985,9 +47157,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.c b/drivers/staging/r
 +	)
 +		halbtc8723b2ant_RunCoexistMechanism(pBtCoexist);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h b/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h
---- a/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h	2016-12-11 19:46:26.380477734 -0600
 @@ -0,0 +1,155 @@
 +/******************************************************************************
 + *
@@ -47144,9 +47316,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtc8723b2Ant.h b/drivers/staging/r
 +void EXhalbtc8723b2ant_PnpNotify(PBTC_COEXIST pBtCoexist, u8 pnpState);
 +void EXhalbtc8723b2ant_Periodical(PBTC_COEXIST pBtCoexist);
 +void EXhalbtc8723b2ant_DisplayCoexInfo(PBTC_COEXIST pBtCoexist);
-diff -Naur a/drivers/staging/rtl8723bs/hal/hal_btcoex.c b/drivers/staging/rtl8723bs/hal/hal_btcoex.c
---- a/drivers/staging/rtl8723bs/hal/hal_btcoex.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/hal_btcoex.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/hal_btcoex.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_btcoex.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/hal_btcoex.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_btcoex.c	2016-12-11 19:46:26.380477734 -0600
 @@ -0,0 +1,1720 @@
 +/******************************************************************************
 + *
@@ -48868,9 +49040,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/hal_btcoex.c b/drivers/staging/rtl872
 +
 +	return count;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h b/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h
---- a/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h	2016-12-11 19:46:26.380477734 -0600
 @@ -0,0 +1,565 @@
 +/******************************************************************************
 + *
@@ -49437,9 +49609,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalBtcOutSrc.h b/drivers/staging/rtl8
 +void EXhalbtcoutsrc_DisplayBtCoexInfo(PBTC_COEXIST pBtCoexist);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/hal_com.c b/drivers/staging/rtl8723bs/hal/hal_com.c
---- a/drivers/staging/rtl8723bs/hal/hal_com.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/hal_com.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/hal_com.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_com.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/hal_com.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_com.c	2016-12-11 19:46:26.380477734 -0600
 @@ -0,0 +1,1753 @@
 +/******************************************************************************
 + *
@@ -51194,9 +51366,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/hal_com.c b/drivers/staging/rtl8723bs
 +	} else
 +		DBG_871X("Using the default RF gain.\n");
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c b/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c
---- a/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,3288 @@
 +/******************************************************************************
 + *
@@ -54486,9 +54658,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/hal_com_phycfg.c b/drivers/staging/rt
 +}
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c
---- a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,643 @@
 +/******************************************************************************
 +*
@@ -55133,9 +55305,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.c b/drivers/staging/
 +		odm_ConfigBB_PHY_REG_PG_8723B(pDM_Odm, v1, v2, v3, v4, v5, v6);
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h
---- a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,48 @@
 +/******************************************************************************
 +*
@@ -55185,9 +55357,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_BB.h b/drivers/staging/
 +u32 ODM_GetVersion_MP_8723B_PHY_REG_PG(void);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c
---- a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,302 @@
 +/******************************************************************************
 +*
@@ -55491,9 +55663,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.c b/drivers/staging
 +		}
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h
---- a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,28 @@
 +/******************************************************************************
 +*
@@ -55523,9 +55695,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_MAC.h b/drivers/staging
 +	PDM_ODM_T  pDM_Odm
 +);
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c
---- a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,799 @@
 +/******************************************************************************
 +*
@@ -56326,9 +56498,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.c b/drivers/staging/
 +		);
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h
---- a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,49 @@
 +/******************************************************************************
 +*
@@ -56379,9 +56551,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalHWImg8723B_RF.h b/drivers/staging/
 +u32 ODM_GetVersion_MP_8723B_TXPWR_LMT(void);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/hal_intf.c b/drivers/staging/rtl8723bs/hal/hal_intf.c
---- a/drivers/staging/rtl8723bs/hal/hal_intf.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/hal_intf.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/hal_intf.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_intf.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/hal_intf.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_intf.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,474 @@
 +/******************************************************************************
 + *
@@ -56857,9 +57029,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/hal_intf.c b/drivers/staging/rtl8723b
 +
 +	return ret;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/hal_phy.c b/drivers/staging/rtl8723bs/hal/hal_phy.c
---- a/drivers/staging/rtl8723bs/hal/hal_phy.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/hal_phy.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/hal_phy.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_phy.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/hal_phy.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_phy.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,224 @@
 +/******************************************************************************
 + *
@@ -57085,9 +57257,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/hal_phy.c b/drivers/staging/rtl8723bs
 +	}
 +
 +}	/* PHY_RFShadowRead */
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c b/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c
---- a/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,2091 @@
 +/******************************************************************************
 + *
@@ -59180,9 +59352,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.c b/drivers/staging/rt
 +	ProgressingTime = jiffies_to_msecs(jiffies - StartTime);
 +	ODM_RT_TRACE(pDM_Odm, ODM_COMP_CALIBRATION, ODM_DBG_LOUD,  ("LCK ProgressingTime = %d\n", ProgressingTime));
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h b/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h
---- a/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,83 @@
 +/******************************************************************************
 + *
@@ -59267,9 +59439,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf_8723B.h b/drivers/staging/rt
 +);
 +
 +#endif /*  #ifndef __HAL_PHY_RF_8188E_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf.c b/drivers/staging/rtl8723bs/hal/HalPhyRf.c
---- a/drivers/staging/rtl8723bs/hal/HalPhyRf.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalPhyRf.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf.c	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,662 @@
 +/******************************************************************************
 + *
@@ -59933,9 +60105,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf.c b/drivers/staging/rtl8723b
 +	return 0;
 +
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf.h b/drivers/staging/rtl8723bs/hal/HalPhyRf.h
---- a/drivers/staging/rtl8723bs/hal/HalPhyRf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalPhyRf.h	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalPhyRf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPhyRf.h	2016-12-11 19:46:26.383811079 -0600
 @@ -0,0 +1,63 @@
 +/******************************************************************************
 + *
@@ -60000,9 +60172,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalPhyRf.h b/drivers/staging/rtl8723b
 +
 +
 +#endif	/*  #ifndef __HAL_PHY_RF_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c b/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c
---- a/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c	2016-10-13 14:21:42.928270431 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,205 @@
 +/******************************************************************************
 + *
@@ -60209,9 +60381,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/HalPwrSeqCmd.c b/drivers/staging/rtl8
 +
 +	return true;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/hal_sdio.c b/drivers/staging/rtl8723bs/hal/hal_sdio.c
---- a/drivers/staging/rtl8723bs/hal/hal_sdio.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/hal_sdio.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/hal_sdio.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_sdio.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/hal_sdio.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/hal_sdio.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,115 @@
 +/******************************************************************************
 + *
@@ -60328,9 +60500,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/hal_sdio.c b/drivers/staging/rtl8723b
 +
 +	return max_len;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/Mp_Precomp.h b/drivers/staging/rtl8723bs/hal/Mp_Precomp.h
---- a/drivers/staging/rtl8723bs/hal/Mp_Precomp.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/Mp_Precomp.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/Mp_Precomp.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/Mp_Precomp.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/Mp_Precomp.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/Mp_Precomp.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,33 @@
 +/******************************************************************************
 + *
@@ -60365,9 +60537,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/Mp_Precomp.h b/drivers/staging/rtl872
 +#include "HalBtc8723b2Ant.h"
 +
 +#endif /*  __MP_PRECOMP_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_AntDiv.c b/drivers/staging/rtl8723bs/hal/odm_AntDiv.c
---- a/drivers/staging/rtl8723bs/hal/odm_AntDiv.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_AntDiv.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_AntDiv.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_AntDiv.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_AntDiv.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_AntDiv.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,70 @@
 +/******************************************************************************
 + *
@@ -60439,9 +60611,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_AntDiv.c b/drivers/staging/rtl872
 +		pDM_FatTable->AuxAnt_Cnt[i] = 0;
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_AntDiv.h b/drivers/staging/rtl8723bs/hal/odm_AntDiv.h
---- a/drivers/staging/rtl8723bs/hal/odm_AntDiv.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_AntDiv.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_AntDiv.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_AntDiv.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_AntDiv.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_AntDiv.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,38 @@
 +/******************************************************************************
 + *
@@ -60481,9 +60653,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_AntDiv.h b/drivers/staging/rtl872
 +#define RELEASE_ANTDIV_TIMMER 2
 +
 +#endif /* ifndef	__ODMANTDIV_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm.c b/drivers/staging/rtl8723bs/hal/odm.c
---- a/drivers/staging/rtl8723bs/hal/odm.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,1446 @@
 +/******************************************************************************
 + *
@@ -61931,9 +62103,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm.c b/drivers/staging/rtl8723bs/hal
 +	pDM_SWAT_Table->CurAntenna = MAIN_ANT;
 +	pDM_SWAT_Table->SWAS_NoLink_State = 0;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c b/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c
---- a/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,338 @@
 +/******************************************************************************
 + *
@@ -62273,9 +62445,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_CfoTracking.c b/drivers/staging/r
 +			pCfoTrack->packetCount++;
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h b/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h
---- a/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,47 @@
 +/******************************************************************************
 + *
@@ -62324,9 +62496,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_CfoTracking.h b/drivers/staging/r
 +void ODM_ParsingCFO(void *pDM_VOID, void *pPktinfo_VOID, s8 *pcfotail);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_debug.c b/drivers/staging/rtl8723bs/hal/odm_debug.c
---- a/drivers/staging/rtl8723bs/hal/odm_debug.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_debug.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_debug.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_debug.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_debug.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_debug.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,52 @@
 +/******************************************************************************
 + *
@@ -62380,9 +62552,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_debug.c b/drivers/staging/rtl8723
 +/* 		ODM_COMP_PSD					| */
 +0;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_debug.h b/drivers/staging/rtl8723bs/hal/odm_debug.h
---- a/drivers/staging/rtl8723bs/hal/odm_debug.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_debug.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_debug.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_debug.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_debug.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_debug.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,165 @@
 +/******************************************************************************
 + *
@@ -62549,9 +62721,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_debug.h b/drivers/staging/rtl8723
 +void ODM_InitDebugSetting(PDM_ODM_T pDM_Odm);
 +
 +#endif	/*  __ODM_DBG_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DIG.c b/drivers/staging/rtl8723bs/hal/odm_DIG.c
---- a/drivers/staging/rtl8723bs/hal/odm_DIG.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_DIG.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_DIG.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DIG.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_DIG.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DIG.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,1221 @@
 +/******************************************************************************
 + *
@@ -63774,9 +63946,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DIG.c b/drivers/staging/rtl8723bs
 +	pDM_DigTable->PreCCK_CCAThres = pDM_DigTable->CurCCK_CCAThres;
 +	pDM_DigTable->CurCCK_CCAThres = CurCCK_CCAThres;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DIG.h b/drivers/staging/rtl8723bs/hal/odm_DIG.h
---- a/drivers/staging/rtl8723bs/hal/odm_DIG.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_DIG.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_DIG.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DIG.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_DIG.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DIG.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,195 @@
 +/******************************************************************************
 + *
@@ -63973,9 +64145,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DIG.h b/drivers/staging/rtl8723bs
 +void ODM_Write_CCK_CCA_Thres(void *pDM_VOID, u8 CurCCK_CCAThres);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c b/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c
---- a/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,89 @@
 +/******************************************************************************
 + *
@@ -64066,9 +64238,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.c b/drivers/
 +		pDM_PSTable->PreRFState = pDM_PSTable->CurRFState;
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h b/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h
---- a/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,39 @@
 +/******************************************************************************
 + *
@@ -64109,9 +64281,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicBBPowerSaving.h b/drivers/
 +void odm_DynamicBBPowerSavingInit(void *pDM_VOID);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c b/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c
---- a/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,30 @@
 +/******************************************************************************
 + *
@@ -64143,9 +64315,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.c b/drivers/stagin
 +	pdmpriv->LastDTPLvl = TxHighPwrLevel_Normal;
 +	pdmpriv->DynamicTxHighPowerLvl = TxHighPwrLevel_Normal;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h b/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h
---- a/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,37 @@
 +/******************************************************************************
 + *
@@ -64184,9 +64356,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_DynamicTxPower.h b/drivers/stagin
 +void odm_DynamicTxPowerInit(void *pDM_VOID);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c b/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c
---- a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,186 @@
 +/******************************************************************************
 + *
@@ -64374,9 +64546,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.c b/drivers/stagin
 +		}
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h b/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h
---- a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,31 @@
 +/******************************************************************************
 + *
@@ -64409,9 +64581,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_EdcaTurboCheck.h b/drivers/stagin
 +void odm_EdcaTurboCheckCE(void *pDM_VOID);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm.h b/drivers/staging/rtl8723bs/hal/odm.h
---- a/drivers/staging/rtl8723bs/hal/odm.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,1465 @@
 +/******************************************************************************
 + *
@@ -65878,9 +66050,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm.h b/drivers/staging/rtl8723bs/hal
 +void ODM_DynamicARFBSelect(PDM_ODM_T pDM_Odm, u8 rate, bool Collision_State);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_HWConfig.c b/drivers/staging/rtl8723bs/hal/odm_HWConfig.c
---- a/drivers/staging/rtl8723bs/hal/odm_HWConfig.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_HWConfig.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_HWConfig.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_HWConfig.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_HWConfig.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_HWConfig.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,535 @@
 +/******************************************************************************
 + *
@@ -66417,9 +66589,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_HWConfig.c b/drivers/staging/rtl8
 +
 +	return result;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_HWConfig.h b/drivers/staging/rtl8723bs/hal/odm_HWConfig.h
---- a/drivers/staging/rtl8723bs/hal/odm_HWConfig.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_HWConfig.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_HWConfig.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_HWConfig.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_HWConfig.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_HWConfig.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,162 @@
 +/******************************************************************************
 + *
@@ -66583,9 +66755,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_HWConfig.h b/drivers/staging/rtl8
 +s32 odm_SignalScaleMapping(PDM_ODM_T pDM_Odm, s32 CurrSig);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_interface.h b/drivers/staging/rtl8723bs/hal/odm_interface.h
---- a/drivers/staging/rtl8723bs/hal/odm_interface.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_interface.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_interface.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_interface.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_interface.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_interface.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,59 @@
 +/******************************************************************************
 + *
@@ -66646,9 +66818,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_interface.h b/drivers/staging/rtl
 +
 +
 +#endif	/*  __ODM_INTERFACE_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c b/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c
---- a/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,175 @@
 +/******************************************************************************
 + *
@@ -66825,9 +66997,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.c b/drivers/staging/
 +{
 +	return odm_InbandNoise_Monitor_NSeries(pDM_VOID, bPauseDIG, IGIValue, max_time);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h b/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h
---- a/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,47 @@
 +/******************************************************************************
 + *
@@ -66876,9 +67048,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_NoiseMonitor.h b/drivers/staging/
 +);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_PathDiv.c b/drivers/staging/rtl8723bs/hal/odm_PathDiv.c
---- a/drivers/staging/rtl8723bs/hal/odm_PathDiv.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_PathDiv.c	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_PathDiv.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_PathDiv.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_PathDiv.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_PathDiv.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,42 @@
 +/******************************************************************************
 + *
@@ -66922,9 +67094,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_PathDiv.c b/drivers/staging/rtl87
 +			("Return: Not Support PathDiv\n")
 +		);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_PathDiv.h b/drivers/staging/rtl8723bs/hal/odm_PathDiv.h
---- a/drivers/staging/rtl8723bs/hal/odm_PathDiv.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_PathDiv.h	2016-10-13 14:21:42.931603774 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_PathDiv.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_PathDiv.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_PathDiv.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_PathDiv.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,29 @@
 +/******************************************************************************
 + *
@@ -66955,9 +67127,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_PathDiv.h b/drivers/staging/rtl87
 +	);
 +
 + #endif		 /* ifndef  __ODMPATHDIV_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_precomp.h b/drivers/staging/rtl8723bs/hal/odm_precomp.h
---- a/drivers/staging/rtl8723bs/hal/odm_precomp.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_precomp.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_precomp.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_precomp.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_precomp.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_precomp.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,60 @@
 +/******************************************************************************
 + *
@@ -67019,9 +67191,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_precomp.h b/drivers/staging/rtl87
 +#include "odm_RegConfig8723B.h"
 +
 +#endif	/*  __ODM_PRECOMP_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c b/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c
---- a/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,257 @@
 +/******************************************************************************
 + *
@@ -67280,9 +67452,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.c b/drivers/stagin
 +		PowerLimit
 +	);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h b/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h
---- a/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h	2016-12-11 19:46:26.387144425 -0600
 @@ -0,0 +1,65 @@
 +/******************************************************************************
 + *
@@ -67349,9 +67521,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RegConfig8723B.h b/drivers/stagin
 +);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h b/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h
---- a/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,172 @@
 +/******************************************************************************
 + *
@@ -67525,9 +67697,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RegDefine11N.h b/drivers/staging/
 +#define	ODM_BIT_BB_ATC_11N				BIT11
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_reg.h b/drivers/staging/rtl8723bs/hal/odm_reg.h
---- a/drivers/staging/rtl8723bs/hal/odm_reg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_reg.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_reg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_reg.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_reg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_reg.h	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,103 @@
 +/******************************************************************************
 + *
@@ -67632,9 +67804,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_reg.h b/drivers/staging/rtl8723bs
 +#define	BIT_FA_RESET				BIT0
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c b/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c
---- a/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,45 @@
 +/******************************************************************************
 + *
@@ -67681,9 +67853,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RTL8723B.c b/drivers/staging/rtl8
 +	}
 +	return rx_pwr_all;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h b/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h
---- a/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,22 @@
 +/******************************************************************************
 + *
@@ -67707,9 +67879,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_RTL8723B.h b/drivers/staging/rtl8
 +s8 odm_CCKRSSI_8723B(u8 LNA_idx, u8 VGA_idx);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/odm_types.h b/drivers/staging/rtl8723bs/hal/odm_types.h
---- a/drivers/staging/rtl8723bs/hal/odm_types.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/odm_types.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/odm_types.h linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_types.h
+--- linux-4.9/drivers/staging/rtl8723bs/hal/odm_types.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/odm_types.h	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,102 @@
 +/******************************************************************************
 + *
@@ -67813,9 +67985,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/odm_types.h b/drivers/staging/rtl8723
 +#define COND_ENDIF 3
 +
 +#endif /*  __ODM_TYPES_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c b/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,2358 @@
 +/******************************************************************************
 + *
@@ -70175,9 +70347,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_cmd.c b/drivers/staging/rtl8
 +	val8 &= ~BIT(0); /*  ~ENSWBCN */
 +	rtw_write8(padapter, REG_CR+1, val8);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c b/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,300 @@
 +/******************************************************************************
 + *
@@ -70479,9 +70651,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_dm.c b/drivers/staging/rtl87
 +	memset(pdmpriv, 0, sizeof(struct dm_priv));
 +	Init_ODM_ComInfo_8723b(Adapter);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c b/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,4546 @@
 +/******************************************************************************
 + *
@@ -75029,9 +75201,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_hal_init.c b/drivers/staging
 +		queue_delayed_work(adapter->priv_checkbt_wq, &(adapter->checkbt_work), 0);
 +}
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c b/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,1060 @@
 +/******************************************************************************
 + *
@@ -76093,9 +76265,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_phycfg.c b/drivers/staging/r
 +
 +	/* DBG_871X("<==%s()\n", __func__); */
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c b/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,230 @@
 +/******************************************************************************
 + *
@@ -76327,9 +76499,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_rf6052.c b/drivers/staging/r
 +}
 +
 +/* End of HalRf6052.c */
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c b/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,86 @@
 +/******************************************************************************
 + *
@@ -76417,9 +76589,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723b_rxdesc.c b/drivers/staging/r
 +	#endif
 +
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c b/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c	2016-12-11 19:46:26.390477770 -0600
 @@ -0,0 +1,490 @@
 +/******************************************************************************
 + *
@@ -76911,9 +77083,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723bs_recv.c b/drivers/staging/rt
 +		precvpriv->pallocated_recv_buf = NULL;
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c b/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c
---- a/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,686 @@
 +/******************************************************************************
 + *
@@ -77601,9 +77773,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/rtl8723bs_xmit.c b/drivers/staging/rt
 +		rtw_free_xmitbuf(pxmitpriv, pxmitbuf);
 +	}
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/sdio_halinit.c b/drivers/staging/rtl8723bs/hal/sdio_halinit.c
---- a/drivers/staging/rtl8723bs/hal/sdio_halinit.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/sdio_halinit.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/sdio_halinit.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/sdio_halinit.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/sdio_halinit.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/sdio_halinit.c	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,1928 @@
 +/******************************************************************************
 + *
@@ -79533,9 +79705,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/sdio_halinit.c b/drivers/staging/rtl8
 +	pHalFunc->hal_checke_bt_hang = &rtl8723bs_hal_check_bt_hang;
 +#endif
 +}
-diff -Naur a/drivers/staging/rtl8723bs/hal/sdio_ops.c b/drivers/staging/rtl8723bs/hal/sdio_ops.c
---- a/drivers/staging/rtl8723bs/hal/sdio_ops.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/hal/sdio_ops.c	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/hal/sdio_ops.c linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/sdio_ops.c
+--- linux-4.9/drivers/staging/rtl8723bs/hal/sdio_ops.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/hal/sdio_ops.c	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,1296 @@
 +/******************************************************************************
 + *
@@ -80833,9 +81005,9 @@ diff -Naur a/drivers/staging/rtl8723bs/hal/sdio_ops.c b/drivers/staging/rtl8723b
 +	return res;
 +}
 +#endif /* CONFIG_WOWLAN */
-diff -Naur a/drivers/staging/rtl8723bs/include/autoconf.h b/drivers/staging/rtl8723bs/include/autoconf.h
---- a/drivers/staging/rtl8723bs/include/autoconf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/autoconf.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/autoconf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/autoconf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/autoconf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/autoconf.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,71 @@
 +/******************************************************************************
 + *
@@ -80908,9 +81080,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/autoconf.h b/drivers/staging/rtl8
 +
 +/* define DBG_XMIT_BUF */
 +/* define DBG_XMIT_BUF_EXT */
-diff -Naur a/drivers/staging/rtl8723bs/include/basic_types.h b/drivers/staging/rtl8723bs/include/basic_types.h
---- a/drivers/staging/rtl8723bs/include/basic_types.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/basic_types.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/basic_types.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/basic_types.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/basic_types.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/basic_types.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,209 @@
 +/******************************************************************************
 + *
@@ -81121,9 +81293,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/basic_types.h b/drivers/staging/r
 +#define TEST_FLAGS(__Flag, __testFlags)		(((__Flag) & (__testFlags)) == (__testFlags))
 +
 +#endif /* __BASIC_TYPES_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/cmd_osdep.h b/drivers/staging/rtl8723bs/include/cmd_osdep.h
---- a/drivers/staging/rtl8723bs/include/cmd_osdep.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/cmd_osdep.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/cmd_osdep.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/cmd_osdep.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/cmd_osdep.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/cmd_osdep.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,26 @@
 +/******************************************************************************
 + *
@@ -81151,9 +81323,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/cmd_osdep.h b/drivers/staging/rtl
 +extern struct	cmd_obj	*_rtw_dequeue_cmd(struct __queue *queue);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/drv_conf.h b/drivers/staging/rtl8723bs/include/drv_conf.h
---- a/drivers/staging/rtl8723bs/include/drv_conf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/drv_conf.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/drv_conf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/drv_conf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/drv_conf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/drv_conf.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,37 @@
 +/******************************************************************************
 + *
@@ -81192,9 +81364,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/drv_conf.h b/drivers/staging/rtl8
 +//#include <rtl871x_byteorder.h>
 +
 +#endif // __DRV_CONF_H__
-diff -Naur a/drivers/staging/rtl8723bs/include/drv_types.h b/drivers/staging/rtl8723bs/include/drv_types.h
---- a/drivers/staging/rtl8723bs/include/drv_types.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/drv_types.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/drv_types.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/drv_types.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/drv_types.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/drv_types.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,720 @@
 +/******************************************************************************
 + *
@@ -81916,9 +82088,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/drv_types.h b/drivers/staging/rtl
 +extern u8 g_fwdl_chksum_fail;
 +
 +#endif /* __DRV_TYPES_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/drv_types_sdio.h b/drivers/staging/rtl8723bs/include/drv_types_sdio.h
---- a/drivers/staging/rtl8723bs/include/drv_types_sdio.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/drv_types_sdio.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/drv_types_sdio.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/drv_types_sdio.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/drv_types_sdio.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/drv_types_sdio.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,39 @@
 +/******************************************************************************
 + *
@@ -81959,9 +82131,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/drv_types_sdio.h b/drivers/stagin
 +} SDIO_DATA, *PSDIO_DATA;
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/ethernet.h b/drivers/staging/rtl8723bs/include/ethernet.h
---- a/drivers/staging/rtl8723bs/include/ethernet.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/ethernet.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/ethernet.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/ethernet.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/ethernet.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/ethernet.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,22 @@
 +/******************************************************************************
 + *
@@ -81985,9 +82157,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/ethernet.h b/drivers/staging/rtl8
 +#define LLC_HEADER_SIZE		6		/*  LLC Header Length */
 +
 +#endif /*  #ifndef __INC_ETHERNET_H */
-diff -Naur a/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h b/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h
---- a/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,1126 @@
 +/******************************************************************************
 + *
@@ -83115,9 +83287,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/Hal8192CPhyReg.h b/drivers/stagin
 +
 +
 +#endif	/* __INC_HAL8192SPHYREG_H */
-diff -Naur a/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h b/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h
---- a/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,128 @@
 +/******************************************************************************
 + *
@@ -83247,9 +83419,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/Hal8723BPhyCfg.h b/drivers/stagin
 +/*--------------------------Exported Function prototype End---------------------*/
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h b/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h
---- a/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h	2016-10-13 14:21:42.934937119 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,77 @@
 +/******************************************************************************
 + *
@@ -83328,9 +83500,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/Hal8723BPhyReg.h b/drivers/stagin
 +#define rPm_Rx3_AntB					0xbf8
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h b/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h
---- a/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,232 @@
 +#ifndef REALTEK_POWER_SEQUENCE_8723B
 +#define REALTEK_POWER_SEQUENCE_8723B
@@ -83564,9 +83736,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/Hal8723BPwrSeq.h b/drivers/stagin
 +extern WLAN_PWR_CFG rtl8723B_enter_swlps_flow[RTL8723B_TRANS_ACT_TO_SWLPS_STEPS+RTL8723B_TRANS_END_STEPS];
 +extern WLAN_PWR_CFG rtl8723B_leave_swlps_flow[RTL8723B_TRANS_SWLPS_TO_ACT_STEPS+RTL8723B_TRANS_END_STEPS];
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_btcoex.h b/drivers/staging/rtl8723bs/include/hal_btcoex.h
---- a/drivers/staging/rtl8723bs/include/hal_btcoex.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_btcoex.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_btcoex.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_btcoex.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_btcoex.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_btcoex.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,68 @@
 +/******************************************************************************
 + *
@@ -83636,9 +83808,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_btcoex.h b/drivers/staging/rt
 +u32 hal_btcoex_GetDBG(struct adapter *, u8 *pStrBuf, u32 bufSize);
 +
 +#endif /*  !__HAL_BTCOEX_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_com.h b/drivers/staging/rtl8723bs/include/hal_com.h
---- a/drivers/staging/rtl8723bs/include/hal_com.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_com.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_com.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_com.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,309 @@
 +/******************************************************************************
 + *
@@ -83949,9 +84121,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_com.h b/drivers/staging/rtl87
 +#endif
 +
 +#endif /* __HAL_COMMON_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_com_h2c.h b/drivers/staging/rtl8723bs/include/hal_com_h2c.h
---- a/drivers/staging/rtl8723bs/include/hal_com_h2c.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_com_h2c.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_com_h2c.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com_h2c.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_com_h2c.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com_h2c.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,293 @@
 +/******************************************************************************
 + *
@@ -84246,9 +84418,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_com_h2c.h b/drivers/staging/r
 +void rtw_get_sec_iv(struct adapter *padapter, u8*pcur_dot11txpn, u8 *StaAddr);
 +void rtw_set_sec_pn(struct adapter *padapter);
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_com_phycfg.h b/drivers/staging/rtl8723bs/include/hal_com_phycfg.h
---- a/drivers/staging/rtl8723bs/include/hal_com_phycfg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_com_phycfg.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_com_phycfg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com_phycfg.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_com_phycfg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com_phycfg.h	2016-12-11 19:46:26.393811116 -0600
 @@ -0,0 +1,275 @@
 +/******************************************************************************
 + *
@@ -84525,9 +84697,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_com_phycfg.h b/drivers/stagin
 +#endif /* CONFIG_LOAD_PHY_PARA_FROM_FILE */
 +
 +#endif /* __HAL_COMMON_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_com_reg.h b/drivers/staging/rtl8723bs/include/hal_com_reg.h
---- a/drivers/staging/rtl8723bs/include/hal_com_reg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_com_reg.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_com_reg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com_reg.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_com_reg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_com_reg.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,1725 @@
 +/******************************************************************************
 + *
@@ -86254,9 +86426,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_com_reg.h b/drivers/staging/r
 +#define	HAL_8188E_HW_GPIO_WPS_BIT	BIT7
 +
 +#endif /* __HAL_COMMON_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_data.h b/drivers/staging/rtl8723bs/include/hal_data.h
---- a/drivers/staging/rtl8723bs/include/hal_data.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_data.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_data.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_data.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_data.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_data.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,485 @@
 +/******************************************************************************
 + *
@@ -86743,9 +86915,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_data.h b/drivers/staging/rtl8
 +#define GET_RF_TYPE(__padapter)		(GET_HAL_DATA(__padapter)->rf_type)
 +
 +#endif /* __HAL_DATA_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_intf.h b/drivers/staging/rtl8723bs/include/hal_intf.h
---- a/drivers/staging/rtl8723bs/include/hal_intf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_intf.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_intf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_intf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_intf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_intf.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,410 @@
 +/******************************************************************************
 + *
@@ -87157,9 +87329,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_intf.h b/drivers/staging/rtl8
 +s32 rtw_hal_fill_h2c_cmd(struct adapter *, u8 ElementID, u32 CmdLen, u8 *pCmdBuffer);
 +
 +#endif /* __HAL_INTF_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_pg.h b/drivers/staging/rtl8723bs/include/hal_pg.h
---- a/drivers/staging/rtl8723bs/include/hal_pg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_pg.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_pg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_pg.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_pg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_pg.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,81 @@
 +/******************************************************************************
 + *
@@ -87242,9 +87414,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_pg.h b/drivers/staging/rtl872
 +};
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_phy.h b/drivers/staging/rtl8723bs/include/hal_phy.h
---- a/drivers/staging/rtl8723bs/include/hal_phy.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_phy.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_phy.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_phy.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_phy.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_phy.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,183 @@
 +/******************************************************************************
 + *
@@ -87429,9 +87601,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_phy.h b/drivers/staging/rtl87
 +/*--------------------------Exported Function prototype---------------------*/
 +
 +#endif /* __HAL_COMMON_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_phy_reg.h b/drivers/staging/rtl8723bs/include/hal_phy_reg.h
---- a/drivers/staging/rtl8723bs/include/hal_phy_reg.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_phy_reg.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_phy_reg.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_phy_reg.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_phy_reg.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_phy_reg.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,25 @@
 +/******************************************************************************
 + *
@@ -87458,9 +87630,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_phy_reg.h b/drivers/staging/r
 +/* endif */
 +
 +#endif /* __HAL_PHY_REG_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h b/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h
---- a/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,132 @@
 +/******************************************************************************
 + *
@@ -87594,9 +87766,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/HalPwrSeqCmd.h b/drivers/staging/
 +	WLAN_PWR_CFG	PwrCfgCmd[]);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/hal_sdio.h b/drivers/staging/rtl8723bs/include/hal_sdio.h
---- a/drivers/staging/rtl8723bs/include/hal_sdio.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/hal_sdio.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/hal_sdio.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_sdio.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/hal_sdio.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/hal_sdio.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,26 @@
 +/******************************************************************************
 + *
@@ -87624,9 +87796,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/hal_sdio.h b/drivers/staging/rtl8
 +u32 rtw_hal_get_sdio_tx_max_length(struct adapter *padapter, u8 queue_idx);
 +
 +#endif /* __RTW_LED_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/HalVerDef.h b/drivers/staging/rtl8723bs/include/HalVerDef.h
---- a/drivers/staging/rtl8723bs/include/HalVerDef.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/HalVerDef.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/HalVerDef.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/HalVerDef.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/HalVerDef.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/HalVerDef.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,127 @@
 +/******************************************************************************
 + *
@@ -87755,9 +87927,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/HalVerDef.h b/drivers/staging/rtl
 +#define IS_2T2R(version)					((GET_CVID_RF_TYPE(version) == RF_TYPE_2T2R)? true : false)
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/ieee80211.h b/drivers/staging/rtl8723bs/include/ieee80211.h
---- a/drivers/staging/rtl8723bs/include/ieee80211.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/ieee80211.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/ieee80211.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/ieee80211.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/ieee80211.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/ieee80211.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,1345 @@
 +/******************************************************************************
 + *
@@ -89104,9 +89276,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/ieee80211.h b/drivers/staging/rtl
 +const char *action_public_str(u8 action);
 +
 +#endif /* IEEE80211_H */
-diff -Naur a/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h b/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h
---- a/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,132 @@
 +/******************************************************************************
 + *
@@ -89240,9 +89412,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/ioctl_cfg80211.h b/drivers/stagin
 +#define rtw_cfg80211_remain_on_channel_expired(adapter, cookie, chan, chan_type, gfp) cfg80211_remain_on_channel_expired((adapter)->rtw_wdev, cookie, chan, gfp)
 +
 +#endif /* __IOCTL_CFG80211_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/mlme_osdep.h b/drivers/staging/rtl8723bs/include/mlme_osdep.h
---- a/drivers/staging/rtl8723bs/include/mlme_osdep.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/mlme_osdep.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/mlme_osdep.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/mlme_osdep.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/mlme_osdep.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/mlme_osdep.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,27 @@
 +/******************************************************************************
 + *
@@ -89271,9 +89443,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/mlme_osdep.h b/drivers/staging/rt
 +void rtw_reset_securitypriv(struct adapter *adapter);
 +
 +#endif	/* _MLME_OSDEP_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/osdep_intf.h b/drivers/staging/rtl8723bs/include/osdep_intf.h
---- a/drivers/staging/rtl8723bs/include/osdep_intf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/osdep_intf.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/osdep_intf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/osdep_intf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/osdep_intf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/osdep_intf.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,88 @@
 +/******************************************************************************
 + *
@@ -89363,9 +89535,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/osdep_intf.h b/drivers/staging/rt
 +int rtw_resume_common(struct adapter *padapter);
 +
 +#endif	/* _OSDEP_INTF_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/osdep_service.h b/drivers/staging/rtl8723bs/include/osdep_service.h
---- a/drivers/staging/rtl8723bs/include/osdep_service.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/osdep_service.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/osdep_service.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/osdep_service.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/osdep_service.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/osdep_service.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,281 @@
 +/******************************************************************************
 + *
@@ -89648,9 +89820,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/osdep_service.h b/drivers/staging
 +#define rtw_sprintf(buf, size, format, arg...)	snprintf(buf, size, format, ##arg)
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/osdep_service_linux.h b/drivers/staging/rtl8723bs/include/osdep_service_linux.h
---- a/drivers/staging/rtl8723bs/include/osdep_service_linux.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/osdep_service_linux.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/osdep_service_linux.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/osdep_service_linux.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/osdep_service_linux.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/osdep_service_linux.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,178 @@
 +/******************************************************************************
 + *
@@ -89830,9 +90002,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/osdep_service_linux.h b/drivers/s
 +extern struct net_device * rtw_alloc_etherdev(int sizeof_priv);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/recv_osdep.h b/drivers/staging/rtl8723bs/include/recv_osdep.h
---- a/drivers/staging/rtl8723bs/include/recv_osdep.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/recv_osdep.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/recv_osdep.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/recv_osdep.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/recv_osdep.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/recv_osdep.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,48 @@
 +/******************************************************************************
 + *
@@ -89882,9 +90054,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/recv_osdep.h b/drivers/staging/rt
 +
 +
 +#endif /*  */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8192c_recv.h b/drivers/staging/rtl8723bs/include/rtl8192c_recv.h
---- a/drivers/staging/rtl8723bs/include/rtl8192c_recv.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8192c_recv.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8192c_recv.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8192c_recv.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8192c_recv.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8192c_recv.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,50 @@
 +/******************************************************************************
 + *
@@ -89936,9 +90108,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8192c_recv.h b/drivers/staging
 +void rtl8192c_query_rx_desc_status(union recv_frame *precvframe, struct recv_stat *pdesc);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8192c_rf.h b/drivers/staging/rtl8723bs/include/rtl8192c_rf.h
---- a/drivers/staging/rtl8723bs/include/rtl8192c_rf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8192c_rf.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8192c_rf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8192c_rf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8192c_rf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8192c_rf.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,39 @@
 +/******************************************************************************
 + *
@@ -89979,9 +90151,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8192c_rf.h b/drivers/staging/r
 +
 +
 +#endif/* End of HalRf.h */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h b/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h
---- a/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,199 @@
 +/******************************************************************************
 + *
@@ -90182,9 +90354,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_cmd.h b/drivers/staging/
 +
 +#define FillH2CCmd FillH2CCmd8723B
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_dm.h b/drivers/staging/rtl8723bs/include/rtl8723b_dm.h
---- a/drivers/staging/rtl8723bs/include/rtl8723b_dm.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8723b_dm.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_dm.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_dm.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_dm.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_dm.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,41 @@
 +/******************************************************************************
 + *
@@ -90227,9 +90399,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_dm.h b/drivers/staging/r
 +
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_hal.h b/drivers/staging/rtl8723bs/include/rtl8723b_hal.h
---- a/drivers/staging/rtl8723bs/include/rtl8723b_hal.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8723b_hal.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_hal.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_hal.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_hal.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_hal.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,279 @@
 +/******************************************************************************
 + *
@@ -90510,9 +90682,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_hal.h b/drivers/staging/
 +void Hal_ReadRFGainOffset(struct adapter *padapter, u8 *hwinfo, bool AutoLoadFail);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_recv.h b/drivers/staging/rtl8723bs/include/rtl8723b_recv.h
---- a/drivers/staging/rtl8723bs/include/rtl8723b_recv.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8723b_recv.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_recv.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_recv.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_recv.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_recv.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,144 @@
 +/******************************************************************************
 + *
@@ -90658,9 +90830,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_recv.h b/drivers/staging
 +void rtl8723b_process_phy_info(struct adapter *padapter, void *prframe);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_rf.h b/drivers/staging/rtl8723bs/include/rtl8723b_rf.h
---- a/drivers/staging/rtl8723bs/include/rtl8723b_rf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8723b_rf.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_rf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_rf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_rf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_rf.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,26 @@
 +/******************************************************************************
 + *
@@ -90688,9 +90860,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_rf.h b/drivers/staging/r
 +	enum CHANNEL_WIDTH		Bandwidth);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_spec.h b/drivers/staging/rtl8723bs/include/rtl8723b_spec.h
---- a/drivers/staging/rtl8723bs/include/rtl8723b_spec.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8723b_spec.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_spec.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_spec.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_spec.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_spec.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,262 @@
 +/******************************************************************************
 + *
@@ -90954,9 +91126,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_spec.h b/drivers/staging
 +#define	IMR_RXFOVW_8723B					BIT8			/*  Receive FIFO Overflow */
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h b/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h
---- a/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,458 @@
 +/******************************************************************************
 + *
@@ -91416,9 +91588,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtl8723b_xmit.h b/drivers/staging
 +u8 SCMapping_8723B(struct adapter * Adapter, struct pkt_attrib	*pattrib);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ap.h b/drivers/staging/rtl8723bs/include/rtw_ap.h
---- a/drivers/staging/rtl8723bs/include/rtw_ap.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_ap.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_ap.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ap.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_ap.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ap.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,47 @@
 +/******************************************************************************
 + *
@@ -91467,9 +91639,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ap.h b/drivers/staging/rtl872
 +
 +#endif
 +void update_bmc_sta(struct adapter *padapter);
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_beamforming.h b/drivers/staging/rtl8723bs/include/rtw_beamforming.h
---- a/drivers/staging/rtl8723bs/include/rtw_beamforming.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_beamforming.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_beamforming.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_beamforming.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_beamforming.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_beamforming.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,135 @@
 +/******************************************************************************
 + *
@@ -91606,9 +91778,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_beamforming.h b/drivers/stagi
 +u8 beamforming_wk_cmd(struct adapter *padapter, s32 type, u8 *pbuf, s32 size, u8 enqueue);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_br_ext.h b/drivers/staging/rtl8723bs/include/rtw_br_ext.h
---- a/drivers/staging/rtl8723bs/include/rtw_br_ext.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_br_ext.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_br_ext.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_br_ext.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_br_ext.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_br_ext.h	2016-12-11 19:46:26.397144462 -0600
 @@ -0,0 +1,63 @@
 +/******************************************************************************
 + *
@@ -91673,9 +91845,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_br_ext.h b/drivers/staging/rt
 +void nat25_db_cleanup(struct adapter *priv);
 +
 +#endif /*  _RTW_BR_EXT_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_btcoex.h b/drivers/staging/rtl8723bs/include/rtw_btcoex.h
---- a/drivers/staging/rtl8723bs/include/rtw_btcoex.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_btcoex.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_btcoex.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_btcoex.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_btcoex.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_btcoex.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,64 @@
 +/******************************************************************************
 + *
@@ -91741,9 +91913,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_btcoex.h b/drivers/staging/rt
 +void rtw_btcoex_LPS_Leave(struct adapter *);
 +
 +#endif /*  __RTW_BTCOEX_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_byteorder.h b/drivers/staging/rtl8723bs/include/rtw_byteorder.h
---- a/drivers/staging/rtl8723bs/include/rtw_byteorder.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_byteorder.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_byteorder.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_byteorder.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_byteorder.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_byteorder.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,24 @@
 +/******************************************************************************
 + *
@@ -91769,9 +91941,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_byteorder.h b/drivers/staging
 +#endif
 +
 +#endif /* _RTL871X_BYTEORDER_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_cmd.h b/drivers/staging/rtl8723bs/include/rtw_cmd.h
---- a/drivers/staging/rtl8723bs/include/rtw_cmd.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_cmd.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_cmd.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_cmd.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_cmd.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_cmd.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,980 @@
 +/******************************************************************************
 + *
@@ -92753,9 +92925,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_cmd.h b/drivers/staging/rtl87
 +#define _SetRFReg_CMD_		_Write_RFREG_CMD_
 +
 +#endif /*  _CMD_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_debug.h b/drivers/staging/rtl8723bs/include/rtw_debug.h
---- a/drivers/staging/rtl8723bs/include/rtw_debug.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_debug.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_debug.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_debug.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_debug.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_debug.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,355 @@
 +/******************************************************************************
 + *
@@ -93112,9 +93284,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_debug.h b/drivers/staging/rtl
 +#endif /* CONFIG_PROC_DEBUG */
 +
 +#endif	/* __RTW_DEBUG_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_eeprom.h b/drivers/staging/rtl8723bs/include/rtw_eeprom.h
---- a/drivers/staging/rtl8723bs/include/rtw_eeprom.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_eeprom.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_eeprom.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_eeprom.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_eeprom.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_eeprom.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,128 @@
 +/******************************************************************************
 + *
@@ -93244,9 +93416,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_eeprom.h b/drivers/staging/rt
 +};
 +
 +#endif  /* __RTL871X_EEPROM_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_efuse.h b/drivers/staging/rtl8723bs/include/rtw_efuse.h
---- a/drivers/staging/rtl8723bs/include/rtw_efuse.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_efuse.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_efuse.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_efuse.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_efuse.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_efuse.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,132 @@
 +/******************************************************************************
 + *
@@ -93380,9 +93552,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_efuse.h b/drivers/staging/rtl
 +u32 Rtw_Hal_readPGDataFromConfigFile(struct adapter *padapter);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_event.h b/drivers/staging/rtl8723bs/include/rtw_event.h
---- a/drivers/staging/rtl8723bs/include/rtw_event.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_event.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_event.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_event.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_event.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_event.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,117 @@
 +/******************************************************************************
 + *
@@ -93501,9 +93673,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_event.h b/drivers/staging/rtl
 +
 +
 +#endif /*  _WLANEVENT_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ht.h b/drivers/staging/rtl8723bs/include/rtw_ht.h
---- a/drivers/staging/rtl8723bs/include/rtw_ht.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_ht.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_ht.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ht.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_ht.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ht.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,118 @@
 +/******************************************************************************
 + *
@@ -93623,9 +93795,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ht.h b/drivers/staging/rtl872
 +#define GET_HT_CAP_TXBF_EXPLICIT_COMP_FEEDBACK_CAP(_pEleStart)			LE_BITS_TO_4BYTE((_pEleStart)+21, 15, 2)
 +
 +#endif	/* _RTL871X_HT_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ioctl.h b/drivers/staging/rtl8723bs/include/rtw_ioctl.h
---- a/drivers/staging/rtl8723bs/include/rtw_ioctl.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_ioctl.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_ioctl.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ioctl.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_ioctl.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ioctl.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,80 @@
 +/******************************************************************************
 + *
@@ -93707,9 +93879,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ioctl.h b/drivers/staging/rtl
 +extern struct iw_handler_def  rtw_handlers_def;
 +
 +#endif /*  #ifndef __INC_CEINFO_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h b/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h
---- a/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,41 @@
 +/******************************************************************************
 + *
@@ -93752,9 +93924,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_ioctl_set.h b/drivers/staging
 +u16 rtw_get_cur_max_rate(struct adapter *adapter);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_io.h b/drivers/staging/rtl8723bs/include/rtw_io.h
---- a/drivers/staging/rtl8723bs/include/rtw_io.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_io.h	2016-10-13 14:21:42.938270463 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_io.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_io.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_io.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_io.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,373 @@
 +/******************************************************************************
 + *
@@ -94129,9 +94301,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_io.h b/drivers/staging/rtl872
 +		rtw_read32(_a, _b)
 +
 +#endif	/* _RTL8711_IO_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h b/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h
---- a/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,888 @@
 +/******************************************************************************
 + *
@@ -95021,9 +95193,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_mlme_ext.h b/drivers/staging/
 +#endif/* _RTL8192C_CMD_C_ */
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_mlme.h b/drivers/staging/rtl8723bs/include/rtw_mlme.h
---- a/drivers/staging/rtl8723bs/include/rtw_mlme.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_mlme.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_mlme.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_mlme.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_mlme.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_mlme.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,695 @@
 +/******************************************************************************
 + *
@@ -95720,9 +95892,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_mlme.h b/drivers/staging/rtl8
 +void rtw_sta_media_status_rpt(struct adapter *adapter, struct sta_info *psta, u32 mstatus);
 +
 +#endif /* __RTL871X_MLME_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_mp.h b/drivers/staging/rtl8723bs/include/rtw_mp.h
---- a/drivers/staging/rtl8723bs/include/rtw_mp.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_mp.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_mp.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_mp.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_mp.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_mp.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,512 @@
 +/******************************************************************************
 + *
@@ -96236,9 +96408,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_mp.h b/drivers/staging/rtl872
 +u8 MptToMgntRate(u32 MptRateIdx);
 +
 +#endif /* _RTW_MP_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_odm.h b/drivers/staging/rtl8723bs/include/rtw_odm.h
---- a/drivers/staging/rtl8723bs/include/rtw_odm.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_odm.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_odm.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_odm.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_odm.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_odm.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,36 @@
 +/******************************************************************************
 + *
@@ -96276,9 +96448,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_odm.h b/drivers/staging/rtl87
 +	s8 IGI_Base, bool ForceEDCCA, u8 AdapEn_RSSI, u8 IGI_LowerBound);
 +void rtw_odm_get_perpkt_rssi(void *sel, struct adapter *adapter);
 +#endif /*  __RTW_ODM_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h b/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h
---- a/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,375 @@
 +/******************************************************************************
 + *
@@ -96655,9 +96827,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_pwrctrl.h b/drivers/staging/r
 +u32 rtw_ps_deny_get(struct adapter *padapter);
 +
 +#endif  /* __RTL871X_PWRCTRL_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_qos.h b/drivers/staging/rtl8723bs/include/rtw_qos.h
---- a/drivers/staging/rtl8723bs/include/rtw_qos.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_qos.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_qos.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_qos.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_qos.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_qos.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,27 @@
 +/******************************************************************************
 + *
@@ -96686,9 +96858,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_qos.h b/drivers/staging/rtl87
 +
 +
 +#endif	/* _RTL871X_QOS_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_recv.h b/drivers/staging/rtl8723bs/include/rtw_recv.h
---- a/drivers/staging/rtl8723bs/include/rtw_recv.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_recv.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_recv.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_recv.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_recv.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_recv.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,553 @@
 +/******************************************************************************
 + *
@@ -97243,9 +97415,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_recv.h b/drivers/staging/rtl8
 +extern void  mgt_dispatcher(struct adapter *padapter, union recv_frame *precv_frame);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_rf.h b/drivers/staging/rtl8723bs/include/rtw_rf.h
---- a/drivers/staging/rtl8723bs/include/rtw_rf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_rf.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_rf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_rf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_rf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_rf.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,159 @@
 +/******************************************************************************
 + *
@@ -97406,9 +97578,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_rf.h b/drivers/staging/rtl872
 +u32 rtw_ch2freq(u32 ch);
 +
 +#endif /* _RTL8711_RF_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_security.h b/drivers/staging/rtl8723bs/include/rtw_security.h
---- a/drivers/staging/rtl8723bs/include/rtw_security.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_security.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_security.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_security.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_security.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_security.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,440 @@
 +/******************************************************************************
 + *
@@ -97850,15 +98022,15 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_security.h b/drivers/staging/
 +u8 rtw_handle_tkip_countermeasure(struct adapter * adapter, const char *caller);
 +
 +#endif	/* __RTL871X_SECURITY_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_version.h b/drivers/staging/rtl8723bs/include/rtw_version.h
---- a/drivers/staging/rtl8723bs/include/rtw_version.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_version.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_version.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_version.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_version.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_version.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,2 @@
 +#define DRIVERVERSION	"v4.3.5.5_12290.20140916_BTCOEX20140507-4E40"
 +#define BTCOEXVERSION	"BTCOEX20140507-4E40"
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h b/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h
---- a/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,35 @@
 +/******************************************************************************
 + *
@@ -97895,9 +98067,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_wifi_regd.h b/drivers/staging
 +
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/rtw_xmit.h b/drivers/staging/rtl8723bs/include/rtw_xmit.h
---- a/drivers/staging/rtl8723bs/include/rtw_xmit.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/rtw_xmit.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/rtw_xmit.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_xmit.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/rtw_xmit.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/rtw_xmit.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,528 @@
 +/******************************************************************************
 + *
@@ -98427,9 +98599,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/rtw_xmit.h b/drivers/staging/rtl8
 +#include <xmit_osdep.h>
 +
 +#endif	/* _RTL871X_XMIT_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/sdio_hal.h b/drivers/staging/rtl8723bs/include/sdio_hal.h
---- a/drivers/staging/rtl8723bs/include/sdio_hal.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/sdio_hal.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/sdio_hal.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_hal.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/sdio_hal.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_hal.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,28 @@
 +/******************************************************************************
 + *
@@ -98459,9 +98631,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/sdio_hal.h b/drivers/staging/rtl8
 +void rtl8723bs_set_hal_ops(struct adapter *padapter);
 +
 +#endif /* __SDIO_HAL_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/sdio_ops.h b/drivers/staging/rtl8723bs/include/sdio_ops.h
---- a/drivers/staging/rtl8723bs/include/sdio_ops.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/sdio_ops.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/sdio_ops.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_ops.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/sdio_ops.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_ops.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,49 @@
 +/******************************************************************************
 + *
@@ -98512,9 +98684,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/sdio_ops.h b/drivers/staging/rtl8
 +#endif /* CONFIG_WOWLAN */
 +
 +#endif /*  !__SDIO_OPS_H__ */
-diff -Naur a/drivers/staging/rtl8723bs/include/sdio_ops_linux.h b/drivers/staging/rtl8723bs/include/sdio_ops_linux.h
---- a/drivers/staging/rtl8723bs/include/sdio_ops_linux.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/sdio_ops_linux.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/sdio_ops_linux.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_ops_linux.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/sdio_ops_linux.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_ops_linux.h	2016-12-11 19:46:26.400477807 -0600
 @@ -0,0 +1,40 @@
 +/******************************************************************************
 + *
@@ -98556,9 +98728,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/sdio_ops_linux.h b/drivers/stagin
 +
 +void rtw_sdio_set_irq_thd(struct dvobj_priv *dvobj, void *thd_hdl);
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/sdio_osintf.h b/drivers/staging/rtl8723bs/include/sdio_osintf.h
---- a/drivers/staging/rtl8723bs/include/sdio_osintf.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/sdio_osintf.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/sdio_osintf.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_osintf.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/sdio_osintf.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sdio_osintf.h	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,24 @@
 +/******************************************************************************
 + *
@@ -98584,9 +98756,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/sdio_osintf.h b/drivers/staging/r
 +void sd_c2h_hdl(struct adapter *padapter);
 +
 +#endif
-diff -Naur a/drivers/staging/rtl8723bs/include/sta_info.h b/drivers/staging/rtl8723bs/include/sta_info.h
---- a/drivers/staging/rtl8723bs/include/sta_info.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/sta_info.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/sta_info.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sta_info.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/sta_info.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/sta_info.h	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,392 @@
 +/******************************************************************************
 + *
@@ -98980,9 +99152,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/sta_info.h b/drivers/staging/rtl8
 +extern u8 rtw_access_ctrl(struct adapter *padapter, u8 *mac_addr);
 +
 +#endif /* _STA_INFO_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/wifi.h b/drivers/staging/rtl8723bs/include/wifi.h
---- a/drivers/staging/rtl8723bs/include/wifi.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/wifi.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/wifi.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/wifi.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/wifi.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/wifi.h	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,1158 @@
 +/******************************************************************************
 + *
@@ -100142,9 +100314,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/wifi.h b/drivers/staging/rtl8723b
 +};
 +
 +#endif /*  _WIFI_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/wlan_bssdef.h b/drivers/staging/rtl8723bs/include/wlan_bssdef.h
---- a/drivers/staging/rtl8723bs/include/wlan_bssdef.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/wlan_bssdef.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/wlan_bssdef.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/wlan_bssdef.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/wlan_bssdef.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/wlan_bssdef.h	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,278 @@
 +/******************************************************************************
 + *
@@ -100424,9 +100596,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/wlan_bssdef.h b/drivers/staging/r
 +#define NUM_PMKID_CACHE NUM_PRE_AUTH_KEY
 +
 +#endif /* ifndef WLAN_BSSDEF_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/include/xmit_osdep.h b/drivers/staging/rtl8723bs/include/xmit_osdep.h
---- a/drivers/staging/rtl8723bs/include/xmit_osdep.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/include/xmit_osdep.h	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/include/xmit_osdep.h linux-4.9.8723bs/drivers/staging/rtl8723bs/include/xmit_osdep.h
+--- linux-4.9/drivers/staging/rtl8723bs/include/xmit_osdep.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/include/xmit_osdep.h	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,54 @@
 +/******************************************************************************
 + *
@@ -100482,9 +100654,9 @@ diff -Naur a/drivers/staging/rtl8723bs/include/xmit_osdep.h b/drivers/staging/rt
 +extern void rtw_os_xmit_complete(struct adapter *padapter, struct xmit_frame *pxframe);
 +
 +#endif /* __XMIT_OSDEP_H_ */
-diff -Naur a/drivers/staging/rtl8723bs/Kconfig b/drivers/staging/rtl8723bs/Kconfig
---- a/drivers/staging/rtl8723bs/Kconfig	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/Kconfig	2016-10-13 14:21:42.918270398 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/Kconfig linux-4.9.8723bs/drivers/staging/rtl8723bs/Kconfig
+--- linux-4.9/drivers/staging/rtl8723bs/Kconfig	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/Kconfig	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,11 @@
 +config RTL8723BS
 +	tristate "Realtek 8723B SDIO or SPI WiFi"
@@ -100497,9 +100669,9 @@ diff -Naur a/drivers/staging/rtl8723bs/Kconfig b/drivers/staging/rtl8723bs/Kconf
 +	default n
 +	---help---
 +	  Use memory preallocated in platform
-diff -Naur a/drivers/staging/rtl8723bs/Makefile b/drivers/staging/rtl8723bs/Makefile
---- a/drivers/staging/rtl8723bs/Makefile	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/Makefile	2016-10-13 14:21:42.918270398 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/Makefile linux-4.9.8723bs/drivers/staging/rtl8723bs/Makefile
+--- linux-4.9/drivers/staging/rtl8723bs/Makefile	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/Makefile	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,251 @@
 +EXTRA_CFLAGS += $(USER_EXTRA_CFLAGS)
 +EXTRA_CFLAGS += -O1
@@ -100752,9 +100924,9 @@ diff -Naur a/drivers/staging/rtl8723bs/Makefile b/drivers/staging/rtl8723bs/Make
 +		platform/*.mod.c platform/*.mod platform/*.o platform/.*.cmd platform/*.ko \
 +		Module.symvers Module.markers modules.order *.mod.c *.mod *.o .*.cmd *.ko *~ .tmp_versions \
 +		cppcheck.log
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c b/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c
---- a/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c	2016-10-13 14:21:42.941603807 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c	2016-12-11 19:46:26.403811152 -0600
 @@ -0,0 +1,3608 @@
 +/******************************************************************************
 + *
@@ -104364,9 +104536,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c b/drivers/staging
 +
 +	wiphy_unregister(wdev->wiphy);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c b/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c
---- a/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,5820 @@
 +/******************************************************************************
 + *
@@ -110188,9 +110360,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/ioctl_linux.c b/drivers/staging/rt
 +
 +	return ret;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/mlme_linux.c b/drivers/staging/rtl8723bs/os_dep/mlme_linux.c
---- a/drivers/staging/rtl8723bs/os_dep/mlme_linux.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/mlme_linux.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/mlme_linux.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/mlme_linux.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/mlme_linux.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/mlme_linux.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,206 @@
 +/******************************************************************************
 + *
@@ -110398,9 +110570,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/mlme_linux.c b/drivers/staging/rtl
 +	_init_timer(&pmlmeext->link_timer, padapter->pnetdev, link_timer_hdl, padapter);
 +	_init_timer(&pmlmeext->sa_query_timer, padapter->pnetdev, sa_query_timer_hdl, padapter);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/osdep_service.c b/drivers/staging/rtl8723bs/os_dep/osdep_service.c
---- a/drivers/staging/rtl8723bs/os_dep/osdep_service.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/osdep_service.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/osdep_service.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/osdep_service.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/osdep_service.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/osdep_service.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,481 @@
 +/******************************************************************************
 + *
@@ -110883,9 +111055,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/osdep_service.c b/drivers/staging/
 +
 +	return cbuf;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/os_intfs.c b/drivers/staging/rtl8723bs/os_dep/os_intfs.c
---- a/drivers/staging/rtl8723bs/os_dep/os_intfs.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/os_intfs.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/os_intfs.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/os_intfs.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/os_intfs.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/os_intfs.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,1916 @@
 +/******************************************************************************
 + *
@@ -112803,9 +112975,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/os_intfs.c b/drivers/staging/rtl87
 +
 +	return ret;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/recv_linux.c b/drivers/staging/rtl8723bs/os_dep/recv_linux.c
---- a/drivers/staging/rtl8723bs/os_dep/recv_linux.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/recv_linux.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/recv_linux.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/recv_linux.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/recv_linux.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/recv_linux.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,366 @@
 +/******************************************************************************
 + *
@@ -113173,9 +113345,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/recv_linux.c b/drivers/staging/rtl
 +	_init_timer(&(preorder_ctrl->reordering_ctrl_timer), padapter->pnetdev, rtw_reordering_ctrl_timeout_handler, preorder_ctrl);
 +
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/rtw_proc.c b/drivers/staging/rtl8723bs/os_dep/rtw_proc.c
---- a/drivers/staging/rtl8723bs/os_dep/rtw_proc.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/rtw_proc.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/rtw_proc.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/rtw_proc.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/rtw_proc.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/rtw_proc.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,786 @@
 +/******************************************************************************
 + *
@@ -113963,9 +114135,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/rtw_proc.c b/drivers/staging/rtl87
 +}
 +
 +#endif /* CONFIG_PROC_DEBUG */
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/rtw_proc.h b/drivers/staging/rtl8723bs/os_dep/rtw_proc.h
---- a/drivers/staging/rtl8723bs/os_dep/rtw_proc.h	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/rtw_proc.h	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/rtw_proc.h linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/rtw_proc.h
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/rtw_proc.h	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/rtw_proc.h	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,45 @@
 +/******************************************************************************
 + *
@@ -114012,9 +114184,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/rtw_proc.h b/drivers/staging/rtl87
 +#endif //!CONFIG_PROC_DEBUG
 +
 +#endif //__RTW_PROC_H__
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/sdio_intf.c b/drivers/staging/rtl8723bs/os_dep/sdio_intf.c
---- a/drivers/staging/rtl8723bs/os_dep/sdio_intf.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/sdio_intf.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/sdio_intf.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/sdio_intf.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/sdio_intf.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/sdio_intf.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,727 @@
 +/******************************************************************************
 + *
@@ -114743,9 +114915,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/sdio_intf.c b/drivers/staging/rtl8
 +
 +module_init(rtw_drv_entry);
 +module_exit(rtw_drv_halt);
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c b/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c
---- a/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,599 @@
 +/******************************************************************************
 + *
@@ -115346,9 +115518,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/sdio_ops_linux.c b/drivers/staging
 +		sdio_release_host(func);
 +	return err;
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/wifi_regd.c b/drivers/staging/rtl8723bs/os_dep/wifi_regd.c
---- a/drivers/staging/rtl8723bs/os_dep/wifi_regd.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/wifi_regd.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/wifi_regd.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/wifi_regd.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/wifi_regd.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/wifi_regd.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,164 @@
 +/******************************************************************************
 + *
@@ -115514,9 +115686,9 @@ diff -Naur a/drivers/staging/rtl8723bs/os_dep/wifi_regd.c b/drivers/staging/rtl8
 +
 +	_rtw_reg_notifier_apply(wiphy, request, reg);
 +}
-diff -Naur a/drivers/staging/rtl8723bs/os_dep/xmit_linux.c b/drivers/staging/rtl8723bs/os_dep/xmit_linux.c
---- a/drivers/staging/rtl8723bs/os_dep/xmit_linux.c	1969-12-31 18:00:00.000000000 -0600
-+++ b/drivers/staging/rtl8723bs/os_dep/xmit_linux.c	2016-10-13 14:21:42.944937151 -0500
+diff -Naur linux-4.9/drivers/staging/rtl8723bs/os_dep/xmit_linux.c linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/xmit_linux.c
+--- linux-4.9/drivers/staging/rtl8723bs/os_dep/xmit_linux.c	1969-12-31 18:00:00.000000000 -0600
++++ linux-4.9.8723bs/drivers/staging/rtl8723bs/os_dep/xmit_linux.c	2016-12-11 19:46:26.407144498 -0600
 @@ -0,0 +1,298 @@
 +/******************************************************************************
 + *

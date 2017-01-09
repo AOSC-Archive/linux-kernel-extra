@@ -1,4 +1,4 @@
-KERNEL=4.8.4-aosc-uksm
+KERNEL=4.9.0-aosc-uksm
 
 if uname -a | grep 'ppc ' > /dev/null; then
 	for i in uni smp; do
