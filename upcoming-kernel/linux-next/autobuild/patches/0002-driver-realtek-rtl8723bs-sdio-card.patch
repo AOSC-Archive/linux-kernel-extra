@@ -13,7 +13,7 @@ diff -Naur linux-4.9/drivers/staging/Kconfig linux-4.9.8723bs/drivers/staging/Kc
 diff -Naur linux-4.9/drivers/staging/Makefile linux-4.9.8723bs/drivers/staging/Makefile
 --- linux-4.9/drivers/staging/Makefile	2016-12-11 13:17:54.000000000 -0600
 +++ linux-4.9.8723bs/drivers/staging/Makefile	2016-12-11 19:46:59.437264535 -0600
-@@ -42,3 +42,4 @@
+@@ -42,4 +42,5 @@
  obj-$(CONFIG_KS7010)		+= ks7010/
  obj-$(CONFIG_GREYBUS)		+= greybus/
  obj-$(CONFIG_BCM2835_VCHIQ)	+= vc04_services/
