@@ -16,8 +16,6 @@ cp arch/x86/boot/bzImage "$PKGDIR"/boot/vmlinuz-aosc-main-$version
 export ARCH=$OLDARCH
 rm -rf "$PKGDIR"/usr/lib/firmware
 
-mkdir -p /usr/lib/modules/$version$LOCALNAME/kernel/drivers/net/wireless
-
 OLDARCH=$ARCH
 unset ARCH
 mkdir -p debian
@@ -36,6 +34,8 @@ rm -f "$objtree/debian/hdrsrcfiles" "$objtree/debian/hdrobjfiles"
 export ARCH=$OLDARCH
 rm -fr "$PKGDIR"/usr/src/linux-headers-${version}/"$PKGDIR"
 
-rm -rf "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/{build,source}
-ln -sfv /usr/src/linux-headers-$version "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/build
-ln -sfv /usr/src/linux-headers-$version "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/source
+ver_dir_name=$(ls "$PKGDIR"/usr/lib/modules)
+
+rm -rf "$PKGDIR"/usr/lib/modules/${ver_dir_name}/{build,source}
+ln -sfv /usr/src/linux-headers-$version "$PKGDIR"/usr/lib/modules/${ver_dir_name}/build
+ln -sfv /usr/src/linux-headers-$version "$PKGDIR"/usr/lib/modules/${ver_dir_name}/source
