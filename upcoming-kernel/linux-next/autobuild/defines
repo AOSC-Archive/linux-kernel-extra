@@ -1,0 +1,12 @@
+PKGNAME=linux-next
+PKGSEC=kernel
+PKGDEP=""
+BUILDDEP="bc dracut git"
+if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
+    BUILDDEP+=" grub"
+fi
+PKGDES="linux-next branch, use at your own risk."
+
+ABSTRIP=no
+ABELFDEP=no
+ABRPMAUTOPROVONLY=yes
