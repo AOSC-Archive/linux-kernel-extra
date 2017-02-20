@@ -3,3 +3,9 @@
 for i in autobuild/patches/*.patch; do
     patch -Np1 -i $i
 done
+
+# Staging: Ultra KSM
+
+for i in autobuild/patches/uksm/*.patch; do
+    patch -Np1 -i $i
+done
