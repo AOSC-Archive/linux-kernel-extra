@@ -1,0 +1,12 @@
+PKGNAME=linux-kernel-staging-4.9.11
+PKGSEC=kernel
+PKGDEP=""
+BUILDDEP="bc dracut git"
+if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
+    BUILDDEP+=" grub"
+fi
+PKGDES="Linux Kernel version 4.9.11 for test use"
+
+ABSTRIP=no
+ABELFDEP=no
+ABRPMAUTOPROVONLY=yes
