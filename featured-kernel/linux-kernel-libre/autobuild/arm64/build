@@ -2,7 +2,7 @@ OLDARCH=$ARCH
 unset ARCH
 cp -v autobuild/$OLDARCH/config "$SRCDIR"/.config
 
-LOCALNAME=-aosc-libre
+LOCALNAME=-gnu-aosc-libre
 version=$PKGVER
 
 make

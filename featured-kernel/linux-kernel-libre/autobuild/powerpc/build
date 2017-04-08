@@ -9,7 +9,7 @@ for i in uni smp; do
 	unset ARCH
 	cp -v autobuild/$OLDARCH/config-$i "$SRCDIR"/.config
 
-	LOCALNAME=-aosc-libre-$i
+	LOCALNAME=-gnu-aosc-libre-$i
 	version=$PKGVER
 	fakeroot="$SRCDIR/../$i"
 
@@ -43,7 +43,7 @@ for i in uni smp; do
 done
 
 for i in uni smp; do
-	LOCALNAME=-aosc-libre-$i
+	LOCALNAME=-gnu-aosc-libre-$i
 	version=$PKGVER
 	ln -sfv /usr/src/linux-headers-${version}-${i} "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/build
 	ln -sfv /usr/src/linux-headers-${version}-${i} "$PKGDIR"/usr/lib/modules/${version}${LOCALNAME}/source

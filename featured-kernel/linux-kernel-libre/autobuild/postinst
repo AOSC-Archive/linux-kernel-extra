@@ -1,5 +1,5 @@
 LOCALVER=aosc-libre
-VER=4.10.8
+VER=4.10.8-gnu
 KERNEL=${VER}-${LOCALVER}
 
 if uname -a | grep 'ppc ' > /dev/null; then
