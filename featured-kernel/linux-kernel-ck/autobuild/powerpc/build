@@ -16,7 +16,7 @@ for i in uni smp; do
 	make
 	make INSTALL_MOD_PATH="$fakeroot" modules_install
 
-	cp -v vmlinux "$PKGDIR"/boot/vmlinux-aosc-main-${i}-${version}
+	cp -v vmlinux "$PKGDIR"/boot/vmlinux-aosc-ck-${i}-${version}
 	export ARCH=$OLDARCH
 
 	cp -rv "$SRCDIR"/../"$i"/lib/ "$PKGDIR"/usr/
