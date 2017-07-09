@@ -1,6 +1,0 @@
-4.8-sched-bfs-512.patch
-preempt-desktop-tune.patch
-hz-no_default_250.patch
-hz-default_1000.patch
-kconfig-expose_vmsplit_option.patch
-wb-buf-throttle-v7.patch
