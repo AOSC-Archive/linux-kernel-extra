@@ -3,9 +3,3 @@
 for i in autobuild/patches/*.patch; do
     patch -Np1 -i $i
 done
-
-# linux-zen patches
-for i in autobuild/patches/linux-zen/*.patch; do
-    patch -Np1 -i $i
-done
-
