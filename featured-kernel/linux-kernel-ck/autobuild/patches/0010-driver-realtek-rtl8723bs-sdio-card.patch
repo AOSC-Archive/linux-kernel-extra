@@ -1,3 +1,6 @@
+Patch modified manually by Junde Yhi due to API change in commit
+95876855a55072572895a236b156ffb357fd5538.
+
 diff -Naur linux-4.11/drivers/staging/Kconfig linux-4.11-8723bs/drivers/staging/Kconfig
 --- linux-4.11/drivers/staging/Kconfig	2017-05-01 10:47:48.000000000 +0800
 +++ linux-4.11-8723bs/drivers/staging/Kconfig	2017-05-01 22:12:05.505487253 +0800
@@ -100791,7 +100794,7 @@ diff -Naur linux-4.11/drivers/staging/rtl8723bs/Makefile linux-4.11-8723bs/drive
 diff -Naur linux-4.11/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c linux-4.11-8723bs/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c
 --- linux-4.11/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c	1970-01-01 08:00:00.000000000 +0800
 +++ linux-4.11-8723bs/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c	2017-05-01 22:10:53.674689646 +0800
-@@ -0,0 +1,3608 @@
+@@ -0,0 +1,3609 @@
 +/******************************************************************************
 + *
 + * Copyright(c) 2007 - 2012 Realtek Corporation. All rights reserved.
@@ -103471,7 +103474,8 @@ diff -Naur linux-4.11/drivers/staging/rtl8723bs/os_dep/ioctl_cfg80211.c linux-4.
 +	mon_ndev->type = ARPHRD_IEEE80211_RADIOTAP;
 +	strncpy(mon_ndev->name, name, IFNAMSIZ);
 +	mon_ndev->name[IFNAMSIZ - 1] = 0;
-+	mon_ndev->destructor = rtw_ndev_destructor;
++	mon_ndev->needs_free_netdev = true;
++	mon_ndev->priv_destructor = rtw_ndev_destructor;
 +
 +	mon_ndev->netdev_ops = &rtw_cfg80211_monitor_if_ops;
 +
@@ -110922,7 +110926,7 @@ diff -Naur linux-4.11/drivers/staging/rtl8723bs/os_dep/osdep_service.c linux-4.1
 diff -Naur linux-4.11/drivers/staging/rtl8723bs/os_dep/os_intfs.c linux-4.11-8723bs/drivers/staging/rtl8723bs/os_dep/os_intfs.c
 --- linux-4.11/drivers/staging/rtl8723bs/os_dep/os_intfs.c	1970-01-01 08:00:00.000000000 +0800
 +++ linux-4.11-8723bs/drivers/staging/rtl8723bs/os_dep/os_intfs.c	2017-05-01 22:10:53.678023016 +0800
-@@ -0,0 +1,1915 @@
+@@ -0,0 +1,1913 @@
 +/******************************************************************************
 + *
 + * Copyright(c) 2007 - 2011 Realtek Corporation. All rights reserved.
@@ -112132,8 +112136,6 @@ diff -Naur linux-4.11/drivers/staging/rtl8723bs/os_dep/os_intfs.c linux-4.11-872
 +
 +	if (ndev->ieee80211_ptr)
 +		kfree((u8 *)ndev->ieee80211_ptr);
-+
-+	free_netdev(ndev);
 +}
 +
 +void rtw_dev_unload(struct adapter *padapter)
