@@ -1,3 +1,3 @@
-VER=4.12.10
+VER=4.12.13
 SRCTBL="https://cdn.kernel.org/pub/linux/kernel/v${VER:0:1}.x/linux-${VER}.tar.xz"
-CHKSUM="sha256::c0fbf7b7fdd518a6e731fc7a6f0d9ade0840f553007dd414a223eb4a83a7a684"
+CHKSUM="sha256::896eb29ccb9fb17f16cc50bee87a47cbc436343850cd1ad038ca3bc2ebe15da3"
