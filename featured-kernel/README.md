@@ -52,6 +52,6 @@ similar to CK, we instead have tuned this kernel for absolute interactivity
 compilation (`CONFIG_MNATIVE=y`)**, which means **this kernel will only be able
 to run on the machine where the kernel is compiled (or newer)**. While this
 fully utilize your processor (and boost the system), you should know that **this
-kernel is not portable**.
+kernel is not portable once it is compiled**.
 
 See https://github.com/zen-kernel/zen-kernel/issues/30 for more information.
