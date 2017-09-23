@@ -1,38 +1,34 @@
-linux-kernel-extra
-==================
+# Semi-official ABBS tree for extra Linux Kernel variants
 
-This is a semi-official ABBS tree for extra Linux Kernel variants (patches,
-forks, etc.) and configurations (say, for a specific machine type or processor
-family). No binary is provided for packages in this tree, so you will need to
-read our semi-comprehensive guide on how to build packages from an ABBS tree
-[here](https://github.com/AOSC-Dev/aosc-os-abbs/wiki).
+This repository contains kernel configuration for Linux Kernel with extra
+functionalities (e.g. enhancements, aggressive improvements, special flavor).
 
-Kernel variants
----------------
+NOTE: No binary is provided. You will need to read our semi-comprehensive guide
+on how to build packages from an ABBS tree [here](https://github.com/AOSC-Dev/aosc-os-abbs/wiki).
 
-#### featured-kernel/\*
+More to come in the future. If you would like more, you are welcomed to create a
+PR to us (but please first read our [contribution guidelines]()).
+
+## Kernel variants
+
+### `featured-kernel`
 
 This class of packages provides Linux Kernel with special features that are not
-present in mainline kernel, such as the Con Kolivas' Kernel Patch Set (linux-ck),
-PaX/Grsecurity kernel enhancement functionalities (linux-grsec), and so on.
+present in vanilla Kernel code, such as Con Kolivas' Kernel Patch Set
+(`linux-ck`), PaX/Grsecurity kernel security enhancement (`linux-grsec`), etc.
+Features in the [AOSC mainline kernel](https://github.com/AOSC-Dev/aosc-os-abbs/tree/staging/extra-kernel/linux-kernel)
+will be all retained.
 
-Generally these kernels are designed to work on all architectures. However,
-there may still be some kernels are platform-specific.
+These kernels should work on all architectures. However, some kernels might be
+somewhat platform-specific. If you are not sure, please first check upstreams of
+these kernel improvements.
 
-#### machine-kernel/\*
+### `machine-kernel`
 
 This class of packages provides Linux Kernel with machine-specific
 optimizations, while retaining all the features that a mainline
 [AOSC kernel](https://github.com/AOSC-Dev/aosc-os-abbs/tree/staging/extra-kernel/linux-kernel)
-provides - `linux-kernel-broadwell` for instance, is a Kernel configuration with
+provides. For instance, `linux-kernel-broadwell` is a Kernel configuration with
 standard features, but specifically optimized for Intel Broadwell processors
 during build-time. Which should provide a significant boost in performance on
 machines with the respective processor family.
-
-#### march-kernel/linux-kernel-native
-
-This class of packages provides Linux Kernel with native optimizations **specific
-to the build machine** (-march=native flag). Which should result in a considerable
-boost in performance at the price of losing any sort of portability.
-
-(More to come in the future)
