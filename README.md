@@ -7,7 +7,7 @@ NOTE: No binary is provided. You will need to read our semi-comprehensive guide
 on how to build packages from an ABBS tree [here](https://github.com/AOSC-Dev/aosc-os-abbs/wiki).
 
 More to come in the future. If you would like more, you are welcomed to create a
-PR to us (but please first read our [contribution guidelines]()).
+PR to us (but please first read our [contribution guidelines](https://github.com/AOSC-Dev/aosc-os-abbs/blob/staging/CONTRIBUTING.md)).
 
 ## Kernel variants
 
