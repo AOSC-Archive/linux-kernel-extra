@@ -1,8 +1,8 @@
- Documentation/block/bfq-iosched.txt              |   122 +-
+ Documentation/block/bfq-iosched.txt              |    81 +-
  Documentation/scheduler/sched-BFS.txt            |   351 +
  Documentation/scheduler/sched-MuQSS.txt          |   347 +
  Documentation/sysctl/kernel.txt                  |    37 +
- Documentation/tp_smapi.txt                       |   267 +
+ Documentation/tp_smapi.txt                       |   275 +
  Makefile                                         |     8 +-
  arch/powerpc/platforms/cell/spufs/sched.c        |     5 -
  arch/x86/Kconfig                                 |    18 +-
@@ -12,12 +12,12 @@
  arch/x86/include/asm/module.h                    |    38 +
  block/Kconfig.iosched                            |    50 +
  block/Makefile                                   |     2 +
- block/bfq-cgroup-included.c                      |  1329 +
+ block/bfq-cgroup-included.c                      |  1346 +
  block/bfq-ioc.c                                  |    36 +
- block/bfq-mq-iosched.c                           |  5693 +++
+ block/bfq-mq-iosched.c                           |  5887 +++
  block/bfq-mq.h                                   |   987 +
- block/bfq-sched.c                                |  2057 +
- block/bfq-sq-iosched.c                           |  5405 +++
+ block/bfq-sched.c                                |  2059 +
+ block/bfq-sq-iosched.c                           |  5498 +++
  block/bfq.h                                      |   989 +
  block/elevator.c                                 |     4 +
  drivers/cpufreq/cpufreq_ondemand.c               |    12 +-
@@ -27,7 +27,8 @@
  drivers/macintosh/adbhid.c                       |    83 +-
  drivers/platform/x86/Kconfig                     |    19 +
  drivers/platform/x86/Makefile                    |     2 +
- drivers/platform/x86/hdaps.c                     |   947 +-
+ drivers/platform/x86/hdaps.c                     |   949 +-
+ drivers/platform/x86/hp-wmi.c                    |     2 +-
  drivers/platform/x86/thinkpad_ec.c               |   513 +
  drivers/platform/x86/tp_smapi.c                  |  1493 +
  drivers/scsi/Kconfig                             |     2 +
@@ -105,13 +106,13 @@
  kernel/livepatch/transition.c                    |     8 +-
  kernel/rcu/Kconfig                               |     2 +-
  kernel/sched/Makefile                            |    14 +-
- kernel/sched/MuQSS.c                             |  6855 ++++
- kernel/sched/MuQSS.h                             |   701 +
+ kernel/sched/MuQSS.c                             |  6931 ++++
+ kernel/sched/MuQSS.h                             |   725 +
  kernel/sched/cpufreq_schedutil.c                 |    12 +
  kernel/sched/cputime.c                           |    22 +-
  kernel/sched/fair.c                              |    25 +
  kernel/sched/idle.c                              |    13 +-
- kernel/sched/sched.h                             |    30 +-
+ kernel/sched/sched.h                             |    29 +
  kernel/skip_list.c                               |   148 +
  kernel/sysctl.c                                  |    52 +-
  kernel/time/clockevents.c                        |     5 +
@@ -122,13 +123,13 @@
  mm/page-writeback.c                              |     8 +
  net/ipv4/Kconfig                                 |     4 +
  scripts/mkcompile_h                              |     4 +-
- 124 files changed, 101349 insertions(+), 589 deletions(-)
+ 125 files changed, 101753 insertions(+), 561 deletions(-)
 
 diff --git a/Documentation/block/bfq-iosched.txt b/Documentation/block/bfq-iosched.txt
-index 05e2822a80b34d0f..6aa5a8885170224d 100644
+index 3d6951d63489563e..30ef2dba85ad7363 100644
 --- a/Documentation/block/bfq-iosched.txt
 +++ b/Documentation/block/bfq-iosched.txt
-@@ -11,29 +11,40 @@ controllers), BFQ's main features are:
+@@ -11,23 +11,62 @@ controllers), BFQ's main features are:
    groups (switching back to time distribution when needed to keep
    throughput high).
  
@@ -146,186 +147,59 @@ index 05e2822a80b34d0f..6aa5a8885170224d 100644
  schedules that may lead to a lower throughput. If your main or only
  goal, for a given device, is to achieve the maximum-possible
  throughput at all times, then do switch off all low-latency heuristics
--for that device, by setting low_latency to 0. Full details in Section 3.
-+for that device, by setting low_latency to 0. See Section 3 for
-+details on how to configure BFQ for the desired tradeoff between
-+latency and throughput, or on how to maximize throughput.
+ for that device, by setting low_latency to 0. See Section 3 for
+ details on how to configure BFQ for the desired tradeoff between
+ latency and throughput, or on how to maximize throughput.
  
- On average CPUs, the current version of BFQ can handle devices
- performing at most ~30K IOPS; at most ~50 KIOPS on faster CPUs. As a
- reference, 30-50 KIOPS correspond to very high bandwidths with
- sequential I/O (e.g., 8-12 GB/s if I/O requests are 256 KB large), and
--to 120-200 MB/s with 4KB random I/O. BFQ has not yet been tested on
--multi-queue devices.
-+to 120-200 MB/s with 4KB random I/O. BFQ is currently being tested on
-+multi-queue devices too.
+-On average CPUs, the current version of BFQ can handle devices
+-performing at most ~30K IOPS; at most ~50 KIOPS on faster CPUs. As a
+-reference, 30-50 KIOPS correspond to very high bandwidths with
+-sequential I/O (e.g., 8-12 GB/s if I/O requests are 256 KB large), and
+-to 120-200 MB/s with 4KB random I/O. BFQ is currently being tested on
+-multi-queue devices too.
++BFQ has a non-null overhead, which limits the maximum IOPS that a CPU
++can process for a device scheduled with BFQ. To give an idea of the
++limits on slow or average CPUs, here are, first, the limits of bfq-mq
++and bfq for three different CPUs, on, respectively, an average laptop,
++an old desktop, and a cheap embedded system, in case full hierarchical
++support is enabled (i.e., CONFIG_MQ_BFQ_GROUP_IOSCHED is set for
++bfq-mq, or CONFIG_BFQ_GROUP_IOSCHED is set for bfq), but
++CONFIG_DEBUG_BLK_CGROUP is not set (Section 4-2):
++- Intel i7-4850HQ: 400 KIOPS
++- AMD A8-3850: 250 KIOPS
++- ARM CortexTM-A53 Octa-core: 80 KIOPS
  
 -The table of contents follow. Impatients can just jump to Section 3.
++As for bfq-sq, it cannot reach the above IOPS, because of the
++inherent, lower parallelism of legacy blk and of the components within
++it (including bfq-sq itself). In particular, results with
++CONFIG_DEBUG_BLK_CGROUP unset are rather fluctuating. The limits
++reported below for the case CONFIG_DEBUG_BLK_CGROUP set will however
++provide a lower bound to the limits of bfq-sq.
++
++Turning back to bfq-mq and bfq, If CONFIG_DEBUG_BLK_CGROUP is set (and
++of course full hierarchical support is enabled), then the sustainable
++throughput with bfq-mq and bfq decreases, because all blkio.bfq*
++statistics are created and updated (Section 4-2).  For bfq-mq and bfq,
++this leads to the following maximum sustainable throughputs, on the
++same systems as above:
++- Intel i7-4850HQ: 310 KIOPS
++- AMD A8-3850: 200 KIOPS
++- ARM CortexTM-A53 Octa-core: 56 KIOPS
++
++Finally, if CONFIG_DEBUG_BLK_CGROUP is set (and full hierarchical
++support is enabled), then bfq-sq exhibits the following limits:
++- Intel i7-4850HQ: 250 KIOPS
++- AMD A8-3850: 170 KIOPS
++- ARM CortexTM-A53 Octa-core: 45 KIOPS
++
++BFQ works for multi-queue devices too (bfq and bfq-mq instances).
++
 +The table of contents follows. Impatients can just jump to Section 3.
  
  CONTENTS
  
- 1. When may BFQ be useful?
-  1-1 Personal systems
-  1-2 Server systems
- 2. How does BFQ work?
--3. What are BFQ's tunable?
-+3. What are BFQ's tunables and how to properly configure BFQ?
- 4. BFQ group scheduling
-  4-1 Service guarantees provided
-  4-2 Interface
-@@ -145,19 +156,28 @@ plus a lot of code, are borrowed from CFQ.
-       contrast, BFQ may idle the device for a short time interval,
-       giving the process the chance to go on being served if it issues
-       a new request in time. Device idling typically boosts the
--      throughput on rotational devices, if processes do synchronous
--      and sequential I/O. In addition, under BFQ, device idling is
--      also instrumental in guaranteeing the desired throughput
--      fraction to processes issuing sync requests (see the description
--      of the slice_idle tunable in this document, or [1, 2], for more
--      details).
-+      throughput on rotational devices and on non-queueing flash-based
-+      devices, if processes do synchronous and sequential I/O. In
-+      addition, under BFQ, device idling is also instrumental in
-+      guaranteeing the desired throughput fraction to processes
-+      issuing sync requests (see the description of the slice_idle
-+      tunable in this document, or [1, 2], for more details).
- 
-       - With respect to idling for service guarantees, if several
- 	processes are competing for the device at the same time, but
--	all processes (and groups, after the following commit) have
--	the same weight, then BFQ guarantees the expected throughput
--	distribution without ever idling the device. Throughput is
--	thus as high as possible in this common scenario.
-+	all processes and groups have the same weight, then BFQ
-+	guarantees the expected throughput distribution without ever
-+	idling the device. Throughput is thus as high as possible in
-+	this common scenario.
-+
-+     - On flash-based storage with internal queueing of commands
-+       (typically NCQ), device idling happens to be always detrimental
-+       for throughput. So, with these devices, BFQ performs idling
-+       only when strictly needed for service guarantees, i.e., for
-+       guaranteeing low latency or fairness. In these cases, overall
-+       throughput may be sub-optimal. No solution currently exists to
-+       provide both strong service guarantees and optimal throughput
-+       on devices with internal queueing.
- 
-   - If low-latency mode is enabled (default configuration), BFQ
-     executes some special heuristics to detect interactive and soft
-@@ -191,10 +211,7 @@ plus a lot of code, are borrowed from CFQ.
-   - Queues are scheduled according to a variant of WF2Q+, named
-     B-WF2Q+, and implemented using an augmented rb-tree to preserve an
-     O(log N) overall complexity.  See [2] for more details. B-WF2Q+ is
--    also ready for hierarchical scheduling. However, for a cleaner
--    logical breakdown, the code that enables and completes
--    hierarchical support is provided in the next commit, which focuses
--    exactly on this feature.
-+    also ready for hierarchical scheduling, details in Section 4.
- 
-   - B-WF2Q+ guarantees a tight deviation with respect to an ideal,
-     perfectly fair, and smooth service. In particular, B-WF2Q+
-@@ -249,13 +266,24 @@ plus a lot of code, are borrowed from CFQ.
-   the Idle class, to prevent it from starving.
- 
- 
--3. What are BFQ's tunable?
--==========================
-+3. What are BFQ's tunables and how to properly configure BFQ?
-+=============================================================
- 
--The tunables back_seek-max, back_seek_penalty, fifo_expire_async and
--fifo_expire_sync below are the same as in CFQ. Their description is
--just copied from that for CFQ. Some considerations in the description
--of slice_idle are copied from CFQ too.
-+Most BFQ tunables affect service guarantees (basically latency and
-+fairness) and throughput. For full details on how to choose the
-+desired tradeoff between service guarantees and throughput, see the
-+parameters slice_idle, strict_guarantees and low_latency. For details
-+on how to maximise throughput, see slice_idle, timeout_sync and
-+max_budget. The other performance-related parameters have been
-+inherited from, and have been preserved mostly for compatibility with
-+CFQ. So far, no performance improvement has been reported after
-+changing the latter parameters in BFQ.
-+
-+In particular, the tunables back_seek-max, back_seek_penalty,
-+fifo_expire_async and fifo_expire_sync below are the same as in
-+CFQ. Their description is just copied from that for CFQ. Some
-+considerations in the description of slice_idle are copied from CFQ
-+too.
- 
- per-process ioprio and weight
- -----------------------------
-@@ -285,40 +313,43 @@ number of seeks and see improved throughput.
- 
- Setting slice_idle to 0 will remove all the idling on queues and one
- should see an overall improved throughput on faster storage devices
--like multiple SATA/SAS disks in hardware RAID configuration.
-+like multiple SATA/SAS disks in hardware RAID configuration, as well
-+as flash-based storage with internal command queueing (and
-+parallelism).
- 
- So depending on storage and workload, it might be useful to set
- slice_idle=0.  In general for SATA/SAS disks and software RAID of
- SATA/SAS disks keeping slice_idle enabled should be useful. For any
- configurations where there are multiple spindles behind single LUN
--(Host based hardware RAID controller or for storage arrays), setting
--slice_idle=0 might end up in better throughput and acceptable
--latencies.
-+(Host based hardware RAID controller or for storage arrays), or with
-+flash-based fast storage, setting slice_idle=0 might end up in better
-+throughput and acceptable latencies.
- 
- Idling is however necessary to have service guarantees enforced in
- case of differentiated weights or differentiated I/O-request lengths.
- To see why, suppose that a given BFQ queue A must get several I/O
- requests served for each request served for another queue B. Idling
- ensures that, if A makes a new I/O request slightly after becoming
- empty, then no request of B is dispatched in the middle, and thus A
- does not lose the possibility to get more than one request dispatched
- before the next request of B is dispatched. Note that idling
- guarantees the desired differentiated treatment of queues only in
- terms of I/O-request dispatches. To guarantee that the actual service
- order then corresponds to the dispatch order, the strict_guarantees
- tunable must be set too.
- 
- There is an important flipside for idling: apart from the above cases
- where it is beneficial also for throughput, idling can severely impact
- throughput. One important case is random workload. Because of this
- issue, BFQ tends to avoid idling as much as possible, when it is not
--beneficial also for throughput. As a consequence of this behavior, and
--of further issues described for the strict_guarantees tunable,
--short-term service guarantees may be occasionally violated. And, in
--some cases, these guarantees may be more important than guaranteeing
--maximum throughput. For example, in video playing/streaming, a very
--low drop rate may be more important than maximum throughput. In these
--cases, consider setting the strict_guarantees parameter.
-+beneficial also for throughput (as detailed in Section 2). As a
-+consequence of this behavior, and of further issues described for the
-+strict_guarantees tunable, short-term service guarantees may be
-+occasionally violated. And, in some cases, these guarantees may be
-+more important than guaranteeing maximum throughput. For example, in
-+video playing/streaming, a very low drop rate may be more important
-+than maximum throughput. In these cases, consider setting the
-+strict_guarantees parameter.
- 
- strict_guarantees
- -----------------
-@@ -420,6 +451,13 @@ The default value is 0, which enables auto-tuning: BFQ sets max_budget
- to the maximum number of sectors that can be served during
- timeout_sync, according to the estimated peak rate.
- 
-+For specific devices, some users have occasionally reported to have
-+reached a higher throughput by setting max_budget explicitly, i.e., by
-+setting max_budget to a higher value than 0. In particular, they have
-+set max_budget to higher values than those to which BFQ would have set
-+it with auto-tuning. An alternative way to achieve this goal is to
-+just increase the value of timeout_sync, leaving max_budget equal to 0.
-+
- weights
- -------
- 
-@@ -510,18 +548,20 @@ To get proportional sharing of bandwidth with BFQ for a given device,
+@@ -494,18 +533,36 @@ To get proportional sharing of bandwidth with BFQ for a given device,
  BFQ must of course be the active scheduler for that device.
  
  Within each group directory, the names of the files associated with
@@ -341,6 +215,22 @@ index 05e2822a80b34d0f..6aa5a8885170224d 100644
 +to set the weight of a group with the mainline BFQ is blkio.bfq.weight
  or io.bfq.weight.
  
++As for cgroups-v1 (blkio controller), the exact set of stat files
++created, and kept up-to-date by bfq*, depends on whether
++CONFIG_DEBUG_BLK_CGROUP is set. If it is set, then bfq* creates all
++the stat files documented in
++Documentation/cgroup-v1/blkio-controller.txt. If, instead,
++CONFIG_DEBUG_BLK_CGROUP is not set, then bfq* creates only the files
++blkio.bfq*.io_service_bytes
++blkio.bfq*.io_service_bytes_recursive
++blkio.bfq*.io_serviced
++blkio.bfq*.io_serviced_recursive
++
++The value of CONFIG_DEBUG_BLK_CGROUP greatly influences the maximum
++throughput sustainable with bfq*, because updating the blkio.bfq*
++stats is rather costly, especially for some of the stats enabled by
++CONFIG_DEBUG_BLK_CGROUP.
++
  Parameters to set
  -----------------
  
@@ -1062,7 +952,7 @@ index 0000000000000000..7c18444444e2b6fd
 +
 +Con Kolivas <kernel@kolivas.org> Sat, 29th October 2016
 diff --git a/Documentation/sysctl/kernel.txt b/Documentation/sysctl/kernel.txt
-index bac23c198360507d..1d93520e2163519a 100644
+index 694968c7523cc286..6c4a94a2245eed19 100644
 --- a/Documentation/sysctl/kernel.txt
 +++ b/Documentation/sysctl/kernel.txt
 @@ -39,6 +39,7 @@ show up in /proc/sys/kernel:
@@ -1073,13 +963,14 @@ index bac23c198360507d..1d93520e2163519a 100644
  - kptr_restrict
  - l2cr                        [ PPC only ]
  - modprobe                    ==> Documentation/debugging-modules.txt
-@@ -72,26 +73,28 @@ show up in /proc/sys/kernel:
+@@ -73,27 +74,29 @@ show up in /proc/sys/kernel:
  - randomize_va_space
  - real-root-dev               ==> Documentation/admin-guide/initrd.rst
  - reboot-cmd                  [ SPARC only ]
 +- rr_interval
  - rtsig-max
  - rtsig-nr
+ - seccomp/                    ==> Documentation/userspace-api/seccomp_filter.rst
  - sem
  - sem_next_id		      [ sysv ipc ]
  - sg-big-buff                 [ generic SCSI device (sg) ]
@@ -1102,7 +993,7 @@ index bac23c198360507d..1d93520e2163519a 100644
  - version
  
  ==============================================================
-@@ -394,6 +397,16 @@ When kptr_restrict is set to (2), kernel pointers printed using
+@@ -396,6 +399,16 @@ When kptr_restrict is set to (2), kernel pointers printed using
  
  ==============================================================
  
@@ -1119,7 +1010,7 @@ index bac23c198360507d..1d93520e2163519a 100644
  l2cr: (PPC only)
  
  This flag controls the L2 cache of G3 processor boards. If
-@@ -810,6 +823,20 @@ rebooting. ???
+@@ -822,6 +835,20 @@ rebooting. ???
  
  ==============================================================
  
@@ -1140,7 +1031,7 @@ index bac23c198360507d..1d93520e2163519a 100644
  rtsig-max & rtsig-nr:
  
  The file rtsig-max can be used to tune the maximum number
-@@ -1048,3 +1075,13 @@ The softlockup threshold is (2 * watchdog_thresh). Setting this
+@@ -1060,3 +1087,13 @@ The softlockup threshold is (2 * watchdog_thresh). Setting this
  tunable to zero will disable lockup detection altogether.
  
  ==============================================================
@@ -1156,11 +1047,11 @@ index bac23c198360507d..1d93520e2163519a 100644
 +==============================================================
 diff --git a/Documentation/tp_smapi.txt b/Documentation/tp_smapi.txt
 new file mode 100644
-index 0000000000000000..d037301094decdea
+index 0000000000000000..a249678a8866c166
 --- /dev/null
 +++ b/Documentation/tp_smapi.txt
-@@ -0,0 +1,267 @@
-+tp_smapi version 0.40
+@@ -0,0 +1,275 @@
++tp_smapi version 0.42
 +IBM ThinkPad hardware functions driver
 +
 +Author:  Shem Multinymous <multinymous@gmail.com>
@@ -1300,9 +1191,17 @@ index 0000000000000000..d037301094decdea
 +* A30
 +* G41
 +* R40, R50p, R51, R52
-+* T23, T40, T40p, T41, T41p, T42, T42p, T43, T43p, T60
-+* X24, X31, X32, X40, X41, X60
++* T23, T40, T40p, T41, T41p, T42, T42p, T43, T43p, T60, T61, T400, T410, T420 (partially)
++* X24, X31, X32, X40, X41, X60, X61, X200, X201, X220 (partially)
 +* Z60t, Z61m
++
++Does not work on:
++* X230 and newer
++* T430 and newer
++* Any ThinkPad Edge
++* Any ThinkPad Yoga
++* Any ThinkPad L series
++* Any ThinkPad P series
 +
 +Not all functions are available on all models; for detailed status, see:
 +  http://thinkwiki.org/wiki/tp_smapi
@@ -1428,21 +1327,21 @@ index 0000000000000000..d037301094decdea
 +thinkpad_ec module and the H8S hardware documentation:
 +http://documentation.renesas.com/eng/products/mpumcu/rej09b0300_2140bhm.pdf
 diff --git a/Makefile b/Makefile
-index 66ec023da82281c8..0edd61de571f91f5 100644
+index 75d89dc2b94ac87a..7df4dd8a1449922f 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1,8 +1,8 @@
+@@ -2,8 +2,8 @@
  VERSION = 4
- PATCHLEVEL = 13
- SUBLEVEL = 8
+ PATCHLEVEL = 14
+ SUBLEVEL = 2
 -EXTRAVERSION =
--NAME = Fearless Coyote
+-NAME = Petit Gorille
 +EXTRAVERSION = -zen
-+NAME = Mediated Meditation
++NAME = My Bodhi is Ready
  
  # *DOCUMENTATION*
  # To see a list of typical targets execute "make help"
-@@ -638,12 +638,16 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+@@ -639,12 +639,16 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
  KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
  KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
  else
@@ -1476,10 +1375,10 @@ index 1fbb5da17dd27ffa..29a929e61f766055 100644
   * Frequency of the spu scheduler tick.  By default we do one SPU scheduler
   * tick for every 10 CPU scheduler ticks.
 diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 323cb065be5eda12..ac5e3ef34526334e 100644
+index 2fdb23313dd55fa2..e06a7b4e1dc43142 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -945,10 +945,26 @@ config SCHED_SMT
+@@ -947,10 +947,26 @@ config SCHED_SMT
  	depends on SMP
  	---help---
  	  SMT scheduler support improves the CPU scheduler's decision making
@@ -1508,10 +1407,10 @@ index 323cb065be5eda12..ac5e3ef34526334e 100644
  	def_bool y
  	prompt "Multi-core scheduler support"
 diff --git a/arch/x86/Kconfig.cpu b/arch/x86/Kconfig.cpu
-index 3ba5ff2f2d082b36..893ba158db2a65fc 100644
+index 65a9a4716e34f553..86b520bb1bd3668b 100644
 --- a/arch/x86/Kconfig.cpu
 +++ b/arch/x86/Kconfig.cpu
-@@ -115,6 +115,7 @@ config MPENTIUMM
+@@ -116,6 +116,7 @@ config MPENTIUMM
  config MPENTIUM4
  	bool "Pentium-4/Celeron(P4-based)/Pentium-4 M/older Xeon"
  	depends on X86_32
@@ -1519,7 +1418,7 @@ index 3ba5ff2f2d082b36..893ba158db2a65fc 100644
  	---help---
  	  Select this for Intel Pentium 4 chips.  This includes the
  	  Pentium 4, Pentium D, P4-based Celeron and Xeon, and
-@@ -147,30 +148,100 @@ config MPENTIUM4
+@@ -148,30 +149,100 @@ config MPENTIUM4
  		-Paxville
  		-Dempsey
  
@@ -1624,7 +1523,7 @@ index 3ba5ff2f2d082b36..893ba158db2a65fc 100644
  config MCRUSOE
  	bool "Crusoe"
  	depends on X86_32
-@@ -252,65 +323,155 @@ config MVIAC7
+@@ -253,65 +324,155 @@ config MVIAC7
  
  config MPSC
  	bool "Intel P4 / older Netburst based Xeon"
@@ -1790,7 +1689,7 @@ index 3ba5ff2f2d082b36..893ba158db2a65fc 100644
  	default "4" if MELAN || M486 || MGEODEGX1
  	default "5" if MWINCHIP3D || MWINCHIPC6 || MCRUSOE || MEFFICEON || MCYRIXIII || MK6 || MPENTIUMIII || MPENTIUMII || M686 || M586MMX || M586TSC || M586 || MVIAC3_2 || MGEODE_LX
  
-@@ -341,45 +502,46 @@ config X86_ALIGNMENT_16
+@@ -342,45 +503,46 @@ config X86_ALIGNMENT_16
  
  config X86_INTEL_USERCOPY
  	def_bool y
@@ -1857,10 +1756,10 @@ index 3ba5ff2f2d082b36..893ba158db2a65fc 100644
  config X86_MINIMUM_CPU_FAMILY
  	int
 diff --git a/arch/x86/Makefile b/arch/x86/Makefile
-index 1e902f926be3fd2d..402174752e734d05 100644
+index a20eacd9c7e9a738..69016bd9b5f6fde5 100644
 --- a/arch/x86/Makefile
 +++ b/arch/x86/Makefile
-@@ -121,13 +121,40 @@ else
+@@ -124,13 +124,40 @@ else
  	KBUILD_CFLAGS += $(call cc-option,-mskip-rax-setup)
  
          # FIXME - should be integrated in Makefile.cpu (Makefile_32.cpu)
@@ -1905,10 +1804,10 @@ index 1e902f926be3fd2d..402174752e734d05 100644
          KBUILD_CFLAGS += $(cflags-y)
  
 diff --git a/arch/x86/Makefile_32.cpu b/arch/x86/Makefile_32.cpu
-index f3717d36718a5974..84418cce5ad621d7 100644
+index 1f5faf8606b40a9c..a25c0f818b15e68c 100644
 --- a/arch/x86/Makefile_32.cpu
 +++ b/arch/x86/Makefile_32.cpu
-@@ -22,17 +22,36 @@ cflags-$(CONFIG_MK6)		+= -march=k6
+@@ -23,17 +23,36 @@ cflags-$(CONFIG_MK6)		+= -march=k6
  # Please note, that patches that add -march=athlon-xp and friends are pointless.
  # They make zero difference whatsosever to performance at this time.
  cflags-$(CONFIG_MK7)		+= -march=athlon
@@ -1948,10 +1847,10 @@ index f3717d36718a5974..84418cce5ad621d7 100644
  # AMD Elan support
  cflags-$(CONFIG_MELAN)		+= -march=i486
 diff --git a/arch/x86/include/asm/module.h b/arch/x86/include/asm/module.h
-index e3b7819caeef1c81..470307f813d52641 100644
+index 8546fafa21a91305..f8edc0bc1ccfd034 100644
 --- a/arch/x86/include/asm/module.h
 +++ b/arch/x86/include/asm/module.h
-@@ -15,24 +15,62 @@
+@@ -25,24 +25,62 @@ struct mod_arch_specific {
  #define MODULE_PROC_FAMILY "586MMX "
  #elif defined CONFIG_MCORE2
  #define MODULE_PROC_FAMILY "CORE2 "
@@ -2015,10 +1914,10 @@ index e3b7819caeef1c81..470307f813d52641 100644
  #define MODULE_PROC_FAMILY "ELAN "
  #elif defined CONFIG_MCRUSOE
 diff --git a/block/Kconfig.iosched b/block/Kconfig.iosched
-index fd2cefa47d354fae..9defb306c075d38f 100644
+index a4a8914bf7a408dd..299a6861fb90e59e 100644
 --- a/block/Kconfig.iosched
 +++ b/block/Kconfig.iosched
-@@ -39,31 +39,81 @@ config CFQ_GROUP_IOSCHED
+@@ -40,31 +40,81 @@ config CFQ_GROUP_IOSCHED
  	---help---
  	  Enable group IO scheduling in CFQ.
  
@@ -2101,10 +2000,10 @@ index fd2cefa47d354fae..9defb306c075d38f 100644
  	tristate "MQ deadline I/O scheduler"
  	default y
 diff --git a/block/Makefile b/block/Makefile
-index 2b281cf258a0abda..40b9b5d367617ce7 100644
+index 6a56303b992529a0..a571329c23f060d6 100644
 --- a/block/Makefile
 +++ b/block/Makefile
-@@ -23,6 +23,8 @@ obj-$(CONFIG_MQ_IOSCHED_DEADLINE)	+= mq-deadline.o
+@@ -24,6 +24,8 @@ obj-$(CONFIG_MQ_IOSCHED_DEADLINE)	+= mq-deadline.o
  obj-$(CONFIG_MQ_IOSCHED_KYBER)	+= kyber-iosched.o
  bfq-y				:= bfq-iosched.o bfq-wf2q.o bfq-cgroup.o
  obj-$(CONFIG_IOSCHED_BFQ)	+= bfq.o
@@ -2115,10 +2014,10 @@ index 2b281cf258a0abda..40b9b5d367617ce7 100644
  obj-$(CONFIG_BLK_CMDLINE_PARSER)	+= cmdline-parser.o
 diff --git a/block/bfq-cgroup-included.c b/block/bfq-cgroup-included.c
 new file mode 100644
-index 0000000000000000..631e53d9150d7506
+index 0000000000000000..562b0ce581a7242f
 --- /dev/null
 +++ b/block/bfq-cgroup-included.c
-@@ -0,0 +1,1329 @@
+@@ -0,0 +1,1346 @@
 +/*
 + * BFQ: CGROUPS support.
 + *
@@ -2136,7 +2035,7 @@ index 0000000000000000..631e53d9150d7506
 + * file.
 + */
 +
-+#ifdef BFQ_GROUP_IOSCHED_ENABLED
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) && defined(CONFIG_DEBUG_BLK_CGROUP)
 +
 +/* bfqg stats flags */
 +enum bfqg_stats_flags {
@@ -2276,6 +2175,63 @@ index 0000000000000000..631e53d9150d7506
 +	bfqg_stats_update_group_wait_time(stats);
 +}
 +
++static void bfqg_stats_update_io_add(struct bfq_group *bfqg,
++				struct bfq_queue *bfqq, unsigned int op)
++{
++	blkg_rwstat_add(&bfqg->stats.queued, op, 1);
++	bfqg_stats_end_empty_time(&bfqg->stats);
++	if (!(bfqq == ((struct bfq_data *)bfqg->bfqd)->in_service_queue))
++		bfqg_stats_set_start_group_wait_time(bfqg, bfqq_group(bfqq));
++}
++
++static void bfqg_stats_update_io_remove(struct bfq_group *bfqg, unsigned int op)
++{
++	blkg_rwstat_add(&bfqg->stats.queued, op, -1);
++}
++
++static void bfqg_stats_update_io_merged(struct bfq_group *bfqg, unsigned int op)
++{
++	blkg_rwstat_add(&bfqg->stats.merged, op, 1);
++}
++
++static void bfqg_stats_update_completion(struct bfq_group *bfqg,
++		uint64_t start_time, uint64_t io_start_time, unsigned int op)
++{
++	struct bfqg_stats *stats = &bfqg->stats;
++	unsigned long long now = sched_clock();
++
++	if (time_after64(now, io_start_time))
++		blkg_rwstat_add(&stats->service_time, op,
++				now - io_start_time);
++	if (time_after64(io_start_time, start_time))
++		blkg_rwstat_add(&stats->wait_time, op,
++				io_start_time - start_time);
++}
++
++#else /* BFQ_GROUP_IOSCHED_ENABLED && CONFIG_DEBUG_BLK_CGROUP */
++
++static inline void bfqg_stats_update_io_add(struct bfq_group *bfqg,
++			struct bfq_queue *bfqq, unsigned int op) { }
++static inline void
++bfqg_stats_update_io_remove(struct bfq_group *bfqg, unsigned int op) { }
++static inline void
++bfqg_stats_update_io_merged(struct bfq_group *bfqg, unsigned int op) { }
++static inline void bfqg_stats_update_completion(struct bfq_group *bfqg,
++		uint64_t start_time, uint64_t io_start_time,
++		unsigned int op) { }
++static inline void
++bfqg_stats_set_start_group_wait_time(struct bfq_group *bfqg,
++		struct bfq_group *curr_bfqg) { }
++static inline void bfqg_stats_end_empty_time(struct bfqg_stats *stats) { }
++static inline void bfqg_stats_update_dequeue(struct bfq_group *bfqg) { }
++static inline void bfqg_stats_set_start_empty_time(struct bfq_group *bfqg) { }
++static inline void bfqg_stats_update_idle_time(struct bfq_group *bfqg) { }
++static inline void bfqg_stats_set_start_idle_time(struct bfq_group *bfqg) { }
++static inline void bfqg_stats_update_avg_queue_size(struct bfq_group *bfqg) { }
++
++#endif /* BFQ_GROUP_IOSCHED_ENABLED && CONFIG_DEBUG_BLK_CGROUP */
++
++#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +static struct blkcg_policy blkcg_policy_bfq;
 +
 +/*
@@ -2368,44 +2324,10 @@ index 0000000000000000..631e53d9150d7506
 +}
 +#endif
 +
-+static void bfqg_stats_update_io_add(struct bfq_group *bfqg,
-+				     struct bfq_queue *bfqq,
-+				     unsigned int op)
-+{
-+	blkg_rwstat_add(&bfqg->stats.queued, op, 1);
-+	bfqg_stats_end_empty_time(&bfqg->stats);
-+	if (!(bfqq == ((struct bfq_data *)bfqg->bfqd)->in_service_queue))
-+		bfqg_stats_set_start_group_wait_time(bfqg, bfqq_group(bfqq));
-+}
-+
-+static void bfqg_stats_update_io_remove(struct bfq_group *bfqg, unsigned int op)
-+{
-+	blkg_rwstat_add(&bfqg->stats.queued, op, -1);
-+}
-+
-+static void bfqg_stats_update_io_merged(struct bfq_group *bfqg, unsigned int op)
-+{
-+	blkg_rwstat_add(&bfqg->stats.merged, op, 1);
-+}
-+
-+static void bfqg_stats_update_completion(struct bfq_group *bfqg,
-+			uint64_t start_time, uint64_t io_start_time,
-+			unsigned int op)
-+{
-+	struct bfqg_stats *stats = &bfqg->stats;
-+	unsigned long long now = sched_clock();
-+
-+	if (time_after64(now, io_start_time))
-+		blkg_rwstat_add(&stats->service_time, op,
-+				now - io_start_time);
-+	if (time_after64(io_start_time, start_time))
-+		blkg_rwstat_add(&stats->wait_time, op,
-+				io_start_time - start_time);
-+}
-+
 +/* @stats = 0 */
 +static void bfqg_stats_reset(struct bfqg_stats *stats)
 +{
++#ifdef CONFIG_DEBUG_BLK_CGROUP
 +	/* queued stats shouldn't be cleared */
 +	blkg_rwstat_reset(&stats->merged);
 +	blkg_rwstat_reset(&stats->service_time);
@@ -2417,6 +2339,7 @@ index 0000000000000000..631e53d9150d7506
 +	blkg_stat_reset(&stats->group_wait_time);
 +	blkg_stat_reset(&stats->idle_time);
 +	blkg_stat_reset(&stats->empty_time);
++#endif
 +}
 +
 +/* @to += @from */
@@ -2425,6 +2348,7 @@ index 0000000000000000..631e53d9150d7506
 +	if (!to || !from)
 +		return;
 +
++#ifdef CONFIG_DEBUG_BLK_CGROUP
 +	/* queued stats shouldn't be cleared */
 +	blkg_rwstat_add_aux(&to->merged, &from->merged);
 +	blkg_rwstat_add_aux(&to->service_time, &from->service_time);
@@ -2437,6 +2361,7 @@ index 0000000000000000..631e53d9150d7506
 +	blkg_stat_add_aux(&to->group_wait_time, &from->group_wait_time);
 +	blkg_stat_add_aux(&to->idle_time, &from->idle_time);
 +	blkg_stat_add_aux(&to->empty_time, &from->empty_time);
++#endif
 +}
 +
 +/*
@@ -2488,6 +2413,7 @@ index 0000000000000000..631e53d9150d7506
 +
 +static void bfqg_stats_exit(struct bfqg_stats *stats)
 +{
++#ifdef CONFIG_DEBUG_BLK_CGROUP
 +	blkg_rwstat_exit(&stats->merged);
 +	blkg_rwstat_exit(&stats->service_time);
 +	blkg_rwstat_exit(&stats->wait_time);
@@ -2499,10 +2425,12 @@ index 0000000000000000..631e53d9150d7506
 +	blkg_stat_exit(&stats->group_wait_time);
 +	blkg_stat_exit(&stats->idle_time);
 +	blkg_stat_exit(&stats->empty_time);
++#endif
 +}
 +
 +static int bfqg_stats_init(struct bfqg_stats *stats, gfp_t gfp)
 +{
++#ifdef CONFIG_DEBUG_BLK_CGROUP
 +	if (blkg_rwstat_init(&stats->merged, gfp) ||
 +	    blkg_rwstat_init(&stats->service_time, gfp) ||
 +	    blkg_rwstat_init(&stats->wait_time, gfp) ||
@@ -2517,6 +2445,7 @@ index 0000000000000000..631e53d9150d7506
 +		bfqg_stats_exit(stats);
 +		return -ENOMEM;
 +	}
++#endif
 +
 +	return 0;
 +}
@@ -3124,6 +3053,7 @@ index 0000000000000000..631e53d9150d7506
 +	return bfq_io_set_weight_legacy(of_css(of), NULL, weight);
 +}
 +
++#ifdef CONFIG_DEBUG_BLK_CGROUP
 +static int bfqg_print_stat(struct seq_file *sf, void *v)
 +{
 +	blkcg_print_blkgs(sf, css_to_blkcg(seq_css(sf)), blkg_prfill_stat,
@@ -3229,6 +3159,7 @@ index 0000000000000000..631e53d9150d7506
 +			  0, false);
 +	return 0;
 +}
++#endif /* CONFIG_DEBUG_BLK_CGROUP */
 +
 +static struct bfq_group *
 +bfq_create_group_hierarchy(struct bfq_data *bfqd, int node)
@@ -3258,15 +3189,6 @@ index 0000000000000000..631e53d9150d7506
 +
 +	/* statistics, covers only the tasks in the bfqg */
 +	{
-+		.name = BFQ_CGROUP_FNAME(time),
-+		.private = offsetof(struct bfq_group, stats.time),
-+		.seq_show = bfqg_print_stat,
-+	},
-+	{
-+		.name = BFQ_CGROUP_FNAME(sectors),
-+		.seq_show = bfqg_print_stat_sectors,
-+	},
-+	{
 +		.name = BFQ_CGROUP_FNAME(io_service_bytes),
 +		.private = (unsigned long)&blkcg_policy_bfq,
 +		.seq_show = blkg_print_stat_bytes,
@@ -3275,6 +3197,16 @@ index 0000000000000000..631e53d9150d7506
 +		.name = BFQ_CGROUP_FNAME(io_serviced),
 +		.private = (unsigned long)&blkcg_policy_bfq,
 +		.seq_show = blkg_print_stat_ios,
++	},
++#ifdef CONFIG_DEBUG_BLK_CGROUP
++	{
++		.name = BFQ_CGROUP_FNAME(time),
++		.private = offsetof(struct bfq_group, stats.time),
++		.seq_show = bfqg_print_stat,
++	},
++	{
++		.name = BFQ_CGROUP_FNAME(sectors),
++		.seq_show = bfqg_print_stat_sectors,
 +	},
 +	{
 +		.name = BFQ_CGROUP_FNAME(io_service_time),
@@ -3296,17 +3228,9 @@ index 0000000000000000..631e53d9150d7506
 +		.private = offsetof(struct bfq_group, stats.queued),
 +		.seq_show = bfqg_print_rwstat,
 +	},
++#endif /* CONFIG_DEBUG_BLK_CGROUP */
 +
 +	/* the same statictics which cover the bfqg and its descendants */
-+	{
-+		.name = BFQ_CGROUP_FNAME(time_recursive),
-+		.private = offsetof(struct bfq_group, stats.time),
-+		.seq_show = bfqg_print_stat_recursive,
-+	},
-+	{
-+		.name = BFQ_CGROUP_FNAME(sectors_recursive),
-+		.seq_show = bfqg_print_stat_sectors_recursive,
-+	},
 +	{
 +		.name = BFQ_CGROUP_FNAME(io_service_bytes_recursive),
 +		.private = (unsigned long)&blkcg_policy_bfq,
@@ -3316,6 +3240,16 @@ index 0000000000000000..631e53d9150d7506
 +		.name = BFQ_CGROUP_FNAME(io_serviced_recursive),
 +		.private = (unsigned long)&blkcg_policy_bfq,
 +		.seq_show = blkg_print_stat_ios_recursive,
++	},
++#ifdef CONFIG_DEBUG_BLK_CGROUP
++	{
++		.name = BFQ_CGROUP_FNAME(time_recursive),
++		.private = offsetof(struct bfq_group, stats.time),
++		.seq_show = bfqg_print_stat_recursive,
++	},
++	{
++		.name = BFQ_CGROUP_FNAME(sectors_recursive),
++		.seq_show = bfqg_print_stat_sectors_recursive,
 +	},
 +	{
 +		.name = BFQ_CGROUP_FNAME(io_service_time_recursive),
@@ -3361,6 +3295,7 @@ index 0000000000000000..631e53d9150d7506
 +		.private = offsetof(struct bfq_group, stats.dequeue),
 +		.seq_show = bfqg_print_stat,
 +	},
++#endif	/* CONFIG_DEBUG_BLK_CGROUP */
 +	{ }	/* terminate */
 +};
 +
@@ -3377,25 +3312,6 @@ index 0000000000000000..631e53d9150d7506
 +#undef BFQ_CGROUP_FNAME
 +
 +#else /* BFQ_GROUP_IOSCHED_ENABLED */
-+
-+static inline void bfqg_stats_update_io_add(struct bfq_group *bfqg,
-+			struct bfq_queue *bfqq, unsigned int op) { }
-+static inline void
-+bfqg_stats_update_io_remove(struct bfq_group *bfqg, unsigned int op) { }
-+static inline void
-+bfqg_stats_update_io_merged(struct bfq_group *bfqg, unsigned int op) { }
-+static inline void bfqg_stats_update_completion(struct bfq_group *bfqg,
-+			uint64_t start_time, uint64_t io_start_time,
-+			unsigned int op) { }
-+static inline void
-+bfqg_stats_set_start_group_wait_time(struct bfq_group *bfqg,
-+				     struct bfq_group *curr_bfqg) { }
-+static inline void bfqg_stats_end_empty_time(struct bfqg_stats *stats) { }
-+static inline void bfqg_stats_update_dequeue(struct bfq_group *bfqg) { }
-+static inline void bfqg_stats_set_start_empty_time(struct bfq_group *bfqg) { }
-+static inline void bfqg_stats_update_idle_time(struct bfq_group *bfqg) { }
-+static inline void bfqg_stats_set_start_idle_time(struct bfq_group *bfqg) { }
-+static inline void bfqg_stats_update_avg_queue_size(struct bfq_group *bfqg) { }
 +
 +static void bfq_bfqq_move(struct bfq_data *bfqd, struct bfq_queue *bfqq,
 +			  struct bfq_group *bfqg) {}
@@ -3492,10 +3408,10 @@ index 0000000000000000..fb7bb8f08b75ae47
 +}
 diff --git a/block/bfq-mq-iosched.c b/block/bfq-mq-iosched.c
 new file mode 100644
-index 0000000000000000..8c5dce7716cbe927
+index 0000000000000000..0fc757ae7a426787
 --- /dev/null
 +++ b/block/bfq-mq-iosched.c
-@@ -0,0 +1,5693 @@
+@@ -0,0 +1,5887 @@
 +/*
 + * Budget Fair Queueing (BFQ) I/O scheduler.
 + *
@@ -3587,6 +3503,7 @@ index 0000000000000000..8c5dce7716cbe927
 +#include "blk-mq-tag.h"
 +#include "blk-mq-sched.h"
 +#include "bfq-mq.h"
++#include "blk-wbt.h"
 +
 +/* Expiration time of sync (0) and async (1) requests, in ns. */
 +static const u64 bfq_fifo_expire[2] = { NSEC_PER_SEC / 4, NSEC_PER_SEC / 8 };
@@ -4213,6 +4130,15 @@ index 0000000000000000..8c5dce7716cbe927
 +	return dur;
 +}
 +
++/* switch back from soft real-time to interactive weight raising */
++static void switch_back_to_interactive_wr(struct bfq_queue *bfqq,
++					  struct bfq_data *bfqd)
++{
++	bfqq->wr_coeff = bfqd->bfq_wr_coeff;
++	bfqq->wr_cur_max_time = bfq_wr_duration(bfqd);
++	bfqq->last_wr_start_finish = bfqq->wr_start_at_switch_to_srt;
++}
++
 +static void
 +bfq_bfqq_resume_state(struct bfq_queue *bfqq, struct bfq_data *bfqd,
 +		      struct bfq_io_cq *bic, bool bfq_already_existing)
@@ -4241,15 +4167,29 @@ index 0000000000000000..8c5dce7716cbe927
 +	bfqq->wr_cur_max_time = bic->saved_wr_cur_max_time;
 +	BUG_ON(time_is_after_jiffies(bfqq->last_wr_start_finish));
 +
++	bfq_log_bfqq(bfqq->bfqd, bfqq,
++		     "[%s] bic %p wr_coeff %d start_finish %lu max_time %lu",
++		     __func__,
++		     bic, bfqq->wr_coeff, bfqq->last_wr_start_finish,
++		     bfqq->wr_cur_max_time);
++
 +	if (bfqq->wr_coeff > 1 && (bfq_bfqq_in_large_burst(bfqq) ||
 +				   time_is_before_jiffies(bfqq->last_wr_start_finish +
 +							  bfqq->wr_cur_max_time))) {
-+		bfq_log_bfqq(bfqq->bfqd, bfqq,
++		if (bfqq->wr_cur_max_time == bfqd->bfq_wr_rt_max_time &&
++		    !bfq_bfqq_in_large_burst(bfqq) &&
++		    time_is_after_eq_jiffies(bfqq->wr_start_at_switch_to_srt +
++					     bfq_wr_duration(bfqd))) {
++			switch_back_to_interactive_wr(bfqq, bfqd);
++			bfq_log_bfqq(bfqq->bfqd, bfqq,
++			     "resume state: switching back to interactive");
++		} else {
++			bfqq->wr_coeff = 1;
++			bfq_log_bfqq(bfqq->bfqd, bfqq,
 +			     "resume state: switching off wr (%lu + %lu < %lu)",
 +			     bfqq->last_wr_start_finish, bfqq->wr_cur_max_time,
 +			     jiffies);
-+
-+		bfqq->wr_coeff = 1;
++		}
 +	}
 +
 +	/* make sure weight will be updated, however we got here */
@@ -4868,7 +4808,6 @@ index 0000000000000000..8c5dce7716cbe927
 +	BUG_ON(bfqq->entity.budget < bfqq->entity.service);
 +
 +	BUG_ON(bfqq == bfqd->in_service_queue);
-+	bfqg_stats_update_io_add(bfqq_group(RQ_BFQQ(rq)), bfqq, rq->cmd_flags);
 +
 +	/*
 +	 * bfqq deserves to be weight-raised if:
@@ -5015,6 +4954,8 @@ index 0000000000000000..8c5dce7716cbe927
 +
 +	BUG_ON(!RQ_BFQQ(rq));
 +	BUG_ON(RQ_BFQQ(rq) != bfqq);
++	WARN_ON(blk_rq_sectors(rq) == 0);
++
 +	elv_rb_add(&bfqq->sort_list, rq);
 +
 +	/*
@@ -5208,7 +5149,6 @@ index 0000000000000000..8c5dce7716cbe927
 +		BUG_ON(bfqq->meta_pending == 0);
 +		bfqq->meta_pending--;
 +	}
-+	bfqg_stats_update_io_remove(bfqq_group(bfqq), rq->cmd_flags);
 +}
 +
 +static bool bfq_bio_merge(struct blk_mq_hw_ctx *hctx, struct bio *bio)
@@ -5298,7 +5238,7 @@ index 0000000000000000..8c5dce7716cbe927
 +		bfqq->next_rq = next_rq;
 +
 +		bfq_log_bfqq(bfqd, bfqq,
-+			"requests_merged: req %p prev %p next_rq %p bfqq %p",
++			"request_merged: req %p prev %p next_rq %p bfqq %p",
 +			     req, prev, next_rq, bfqq);
 +
 +		/*
@@ -5353,6 +5293,7 @@ index 0000000000000000..8c5dce7716cbe927
 +		bfqq->next_rq = rq;
 +
 +	bfq_remove_request(q, next);
++	bfqg_stats_update_io_remove(bfqq_group(bfqq), next->cmd_flags);
 +
 +	spin_unlock_irq(&bfqq->bfqd->lock);
 +end:
@@ -5700,11 +5641,33 @@ index 0000000000000000..8c5dce7716cbe927
 +	bic->saved_IO_bound = bfq_bfqq_IO_bound(bfqq);
 +	bic->saved_in_large_burst = bfq_bfqq_in_large_burst(bfqq);
 +	bic->was_in_burst_list = !hlist_unhashed(&bfqq->burst_list_node);
-+	bic->saved_wr_coeff = bfqq->wr_coeff;
-+	bic->saved_wr_start_at_switch_to_srt = bfqq->wr_start_at_switch_to_srt;
-+	bic->saved_last_wr_start_finish = bfqq->last_wr_start_finish;
-+	bic->saved_wr_cur_max_time = bfqq->wr_cur_max_time;
++	if (unlikely(bfq_bfqq_just_created(bfqq) &&
++		     !bfq_bfqq_in_large_burst(bfqq))) {
++		/*
++		 * bfqq being merged ritgh after being created: bfqq
++		 * would have deserved interactive weight raising, but
++		 * did not make it to be set in a weight-raised state,
++		 * because of this early merge.  Store directly the
++		 * weight-raising state that would have been assigned
++		 * to bfqq, so that to avoid that bfqq unjustly fails
++		 * to enjoy weight raising if split soon.
++		 */
++		bic->saved_wr_coeff = bfqq->bfqd->bfq_wr_coeff;
++		bic->saved_wr_cur_max_time = bfq_wr_duration(bfqq->bfqd);
++		bic->saved_last_wr_start_finish = jiffies;
++	} else {
++		bic->saved_wr_coeff = bfqq->wr_coeff;
++		bic->saved_wr_start_at_switch_to_srt =
++			bfqq->wr_start_at_switch_to_srt;
++		bic->saved_last_wr_start_finish = bfqq->last_wr_start_finish;
++		bic->saved_wr_cur_max_time = bfqq->wr_cur_max_time;
++	}
 +	BUG_ON(time_is_after_jiffies(bfqq->last_wr_start_finish));
++	bfq_log_bfqq(bfqq->bfqd, bfqq,
++		     "[%s] bic %p wr_coeff %d start_finish %lu max_time %lu",
++		     __func__,
++		     bic, bfqq->wr_coeff, bfqq->last_wr_start_finish,
++		     bfqq->wr_cur_max_time);
 +}
 +
 +static void
@@ -5868,7 +5831,6 @@ index 0000000000000000..8c5dce7716cbe927
 +				       struct bfq_queue *bfqq)
 +{
 +	if (bfqq) {
-+		bfqg_stats_update_avg_queue_size(bfqq_group(bfqq));
 +		bfq_clear_bfqq_fifo_expire(bfqq);
 +
 +		bfqd->budgets_assigned = (bfqd->budgets_assigned*7 + 256) / 8;
@@ -7237,7 +7199,6 @@ index 0000000000000000..8c5dce7716cbe927
 +				 */
 +				bfq_clear_bfqq_wait_request(bfqq);
 +				hrtimer_try_to_cancel(&bfqd->idle_slice_timer);
-+				bfqg_stats_update_idle_time(bfqq_group(bfqq));
 +			}
 +			goto keep_queue;
 +		}
@@ -7306,11 +7267,7 @@ index 0000000000000000..8c5dce7716cbe927
 +					bfq_wr_duration(bfqd)))
 +				bfq_bfqq_end_wr(bfqq);
 +			else {
-+				/* switch back to interactive wr */
-+				bfqq->wr_coeff = bfqd->bfq_wr_coeff;
-+				bfqq->wr_cur_max_time = bfq_wr_duration(bfqd);
-+				bfqq->last_wr_start_finish =
-+					bfqq->wr_start_at_switch_to_srt;
++				switch_back_to_interactive_wr(bfqq, bfqd);
 +				BUG_ON(time_is_after_jiffies(
 +					       bfqq->last_wr_start_finish));
 +				bfqq->entity.prio_changed = 1;
@@ -7529,11 +7486,66 @@ index 0000000000000000..8c5dce7716cbe927
 +{
 +	struct bfq_data *bfqd = hctx->queue->elevator->elevator_data;
 +	struct request *rq;
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++	struct bfq_queue *in_serv_queue, *bfqq;
++	bool waiting_rq, idle_timer_disabled;
++#endif
 +
 +	spin_lock_irq(&bfqd->lock);
 +
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++	in_serv_queue = bfqd->in_service_queue;
++	waiting_rq = in_serv_queue && bfq_bfqq_wait_request(in_serv_queue);
++
 +	rq = __bfq_dispatch_request(hctx);
++
++	idle_timer_disabled =
++		waiting_rq && !bfq_bfqq_wait_request(in_serv_queue);
++
++#else
++	rq = __bfq_dispatch_request(hctx);
++#endif
 +	spin_unlock_irq(&bfqd->lock);
++
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++	bfqq = rq ? RQ_BFQQ(rq) : NULL;
++	if (!idle_timer_disabled && !bfqq)
++		return rq;
++
++	/*
++	 * rq and bfqq are guaranteed to exist until this function
++	 * ends, for the following reasons. First, rq can be
++	 * dispatched to the device, and then can be completed and
++	 * freed, only after this function ends. Second, rq cannot be
++	 * merged (and thus freed because of a merge) any longer,
++	 * because it has already started. Thus rq cannot be freed
++	 * before this function ends, and, since rq has a reference to
++	 * bfqq, the same guarantee holds for bfqq too.
++	 *
++	 * In addition, the following queue lock guarantees that
++	 * bfqq_group(bfqq) exists as well.
++	 */
++	spin_lock_irq(hctx->queue->queue_lock);
++	if (idle_timer_disabled)
++		/*
++		 * Since the idle timer has been disabled,
++		 * in_serv_queue contained some request when
++		 * __bfq_dispatch_request was invoked above, which
++		 * implies that rq was picked exactly from
++		 * in_serv_queue. Thus in_serv_queue == bfqq, and is
++		 * therefore guaranteed to exist because of the above
++		 * arguments.
++		 */
++		bfqg_stats_update_idle_time(bfqq_group(in_serv_queue));
++	if (bfqq) {
++		struct bfq_group *bfqg = bfqq_group(bfqq);
++
++		bfqg_stats_update_avg_queue_size(bfqg);
++		bfqg_stats_set_start_empty_time(bfqg);
++		bfqg_stats_update_io_remove(bfqg, rq->cmd_flags);
++	}
++	spin_unlock_irq(hctx->queue->queue_lock);
++#endif
 +
 +	return rq;
 +}
@@ -7567,16 +7579,37 @@ index 0000000000000000..8c5dce7716cbe927
 +	BUG_ON(bfqq->entity.tree);
 +	BUG_ON(bfq_bfqq_busy(bfqq));
 +
-+	if (bfq_bfqq_sync(bfqq))
-+		/*
-+		 * The fact that this queue is being destroyed does not
-+		 * invalidate the fact that this queue may have been
-+		 * activated during the current burst. As a consequence,
-+		 * although the queue does not exist anymore, and hence
-+		 * needs to be removed from the burst list if there,
-+		 * the burst size has not to be decremented.
-+		 */
++	if (!hlist_unhashed(&bfqq->burst_list_node)) {
 +		hlist_del_init(&bfqq->burst_list_node);
++		/*
++		 * Decrement also burst size after the removal, if the
++		 * process associated with bfqq is exiting, and thus
++		 * does not contribute to the burst any longer. This
++		 * decrement helps filter out false positives of large
++		 * bursts, when some short-lived process (often due to
++		 * the execution of commands by some service) happens
++		 * to start and exit while a complex application is
++		 * starting, and thus spawning several processes that
++		 * do I/O (and that *must not* be treated as a large
++		 * burst, see comments on bfq_handle_burst).
++		 *
++		 * In particular, the decrement is performed only if:
++		 * 1) bfqq is not a merged queue, because, if it is,
++		 * then this free of bfqq is not triggered by the exit
++		 * of the process bfqq is associated with, but exactly
++		 * by the fact that bfqq has just been merged.
++		 * 2) burst_size is greater than 0, to handle
++		 * unbalanced decrements. Unbalanced decrements may
++		 * happen in te following case: bfqq is inserted into
++		 * the current burst list--without incrementing
++		 * bust_size--because of a split, but the current
++		 * burst list is not the burst list bfqq belonged to
++		 * (see comments on the case of a split in
++		 * bfq_set_request).
++		 */
++		if (bfqq->bic && bfqq->bfqd->burst_size > 0)
++			bfqq->bfqd->burst_size--;
++	}
 +
 +	if (bfqq->bfqd)
 +		bfq_log_bfqq(bfqq->bfqd, bfqq, "put_queue: %p freed", bfqq);
@@ -7632,7 +7665,6 @@ index 0000000000000000..8c5dce7716cbe927
 +		unsigned long flags;
 +
 +		spin_lock_irqsave(&bfqd->lock, flags);
-+
 +		bfq_exit_bfqq(bfqd, bfqq);
 +		bic_set_bfqq(bic, NULL, is_sync);
 +		spin_unlock_irqrestore(&bfqd->lock, flags);
@@ -7986,7 +8018,6 @@ index 0000000000000000..8c5dce7716cbe927
 +		 */
 +		bfq_clear_bfqq_wait_request(bfqq);
 +		hrtimer_try_to_cancel(&bfqd->idle_slice_timer);
-+		bfqg_stats_update_idle_time(bfqq_group(bfqq));
 +
 +		/*
 +		 * The queue is not empty, because a new request just
@@ -8001,9 +8032,11 @@ index 0000000000000000..8c5dce7716cbe927
 +	}
 +}
 +
-+static void __bfq_insert_request(struct bfq_data *bfqd, struct request *rq)
++/* returns true if it causes the idle timer to be disabled */
++static bool __bfq_insert_request(struct bfq_data *bfqd, struct request *rq)
 +{
 +	struct bfq_queue *bfqq = RQ_BFQQ(rq), *new_bfqq;
++	bool waiting, idle_timer_disabled = false;
 +	BUG_ON(!bfqq);
 +
 +	assert_spin_locked(&bfqd->lock);
@@ -8033,7 +8066,6 @@ index 0000000000000000..8c5dce7716cbe927
 +				     bfqq->allocated);
 +
 +			new_bfqq->ref++;
-+			bfq_clear_bfqq_just_created(bfqq);
 +			/*
 +			 * If the bic associated with the process
 +			 * issuing this request still points to bfqq
@@ -8045,6 +8077,8 @@ index 0000000000000000..8c5dce7716cbe927
 +			if (bic_to_bfqq(RQ_BIC(rq), 1) == bfqq)
 +				bfq_merge_bfqqs(bfqd, RQ_BIC(rq),
 +						bfqq, new_bfqq);
++
++			bfq_clear_bfqq_just_created(bfqq);
 +			/*
 +			 * rq is about to be enqueued into new_bfqq,
 +			 * release rq reference on bfqq
@@ -8055,12 +8089,16 @@ index 0000000000000000..8c5dce7716cbe927
 +		}
 +	}
 +
++	waiting = bfqq && bfq_bfqq_wait_request(bfqq);
 +	bfq_add_request(rq);
++	idle_timer_disabled = waiting && !bfq_bfqq_wait_request(bfqq);
 +
 +	rq->fifo_time = ktime_get_ns() + bfqd->bfq_fifo_expire[rq_is_sync(rq)];
 +	list_add_tail(&rq->queuelist, &bfqq->fifo);
 +
 +	bfq_rq_enqueued(bfqd, bfqq, rq);
++
++	return idle_timer_disabled;
 +}
 +
 +static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
@@ -8068,6 +8106,11 @@ index 0000000000000000..8c5dce7716cbe927
 +{
 +	struct request_queue *q = hctx->queue;
 +	struct bfq_data *bfqd = q->elevator->elevator_data;
++	struct bfq_queue *bfqq = RQ_BFQQ(rq);
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++	bool idle_timer_disabled = false;
++	unsigned int cmd_flags;
++#endif
 +
 +	spin_lock_irq(&bfqd->lock);
 +	if (blk_mq_sched_try_insert_merge(q, rq)) {
@@ -8081,8 +8124,6 @@ index 0000000000000000..8c5dce7716cbe927
 +
 +	spin_lock_irq(&bfqd->lock);
 +	if (at_head || blk_rq_is_passthrough(rq)) {
-+		struct bfq_queue *bfqq = RQ_BFQQ(rq);
-+
 +		if (at_head)
 +			list_add(&rq->queuelist, &bfqd->dispatch);
 +		else
@@ -8101,7 +8142,17 @@ index 0000000000000000..8c5dce7716cbe927
 +		BUG_ON(!(rq->rq_flags & RQF_GOT));
 +		rq->rq_flags &= ~RQF_GOT;
 +
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++		idle_timer_disabled = __bfq_insert_request(bfqd, rq);
++		/*
++		 * Update bfqq, because, if a queue merge has occurred
++		 * in __bfq_insert_request, then rq has been
++		 * redirected into a new queue.
++		 */
++		bfqq = RQ_BFQQ(rq);
++#else
 +		__bfq_insert_request(bfqd, rq);
++#endif
 +
 +		if (rq_mergeable(rq)) {
 +			elv_rqhash_add(q, rq);
@@ -8109,8 +8160,34 @@ index 0000000000000000..8c5dce7716cbe927
 +				q->last_merge = rq;
 +		}
 +	}
-+
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++	/*
++	 * Cache cmd_flags before releasing scheduler lock, because rq
++	 * may disappear afterwards (for example, because of a request
++	 * merge).
++	 */
++	cmd_flags = rq->cmd_flags;
++#endif
 +	spin_unlock_irq(&bfqd->lock);
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++	if (!bfqq)
++		return;
++	/*
++	 * bfqq still exists, because it can disappear only after
++	 * either it is merged with another queue, or the process it
++	 * is associated with exits. But both actions must be taken by
++	 * the same process currently executing this flow of
++	 * instruction.
++	 *
++	 * In addition, the following queue lock guarantees that
++	 * bfqq_group(bfqq) exists as well.
++	 */
++	spin_lock_irq(q->queue_lock);
++	bfqg_stats_update_io_add(bfqq_group(bfqq), bfqq, cmd_flags);
++	if (idle_timer_disabled)
++		bfqg_stats_update_idle_time(bfqq_group(bfqq));
++	spin_unlock_irq(q->queue_lock);
++#endif
 +}
 +
 +static void bfq_insert_requests(struct blk_mq_hw_ctx *hctx,
@@ -8301,7 +8378,7 @@ index 0000000000000000..8c5dce7716cbe927
 +					     rq_io_start_time_ns(rq),
 +					     rq->cmd_flags);
 +
-+	BUG_ON(blk_rq_sectors(rq) == 0 && !(rq->rq_flags & RQF_STARTED));
++	WARN_ON(blk_rq_sectors(rq) == 0 && !(rq->rq_flags & RQF_STARTED));
 +
 +	if (likely(rq->rq_flags & RQF_STARTED)) {
 +		unsigned long flags;
@@ -8327,8 +8404,11 @@ index 0000000000000000..8c5dce7716cbe927
 +		BUG_ON(in_interrupt());
 +
 +		assert_spin_locked(&bfqd->lock);
-+		if (!RB_EMPTY_NODE(&rq->rb_node))
++		if (!RB_EMPTY_NODE(&rq->rb_node)) {
 +			bfq_remove_request(rq->q, rq);
++			bfqg_stats_update_io_remove(bfqq_group(bfqq),
++						    rq->cmd_flags);
++		}
 +		bfq_put_rq_priv_body(bfqq);
 +	}
 +
@@ -8401,6 +8481,34 @@ index 0000000000000000..8c5dce7716cbe927
 +				     "large burst");
 +			bfq_clear_bfqq_in_large_burst(bfqq);
 +			if (bic->was_in_burst_list)
++				/*
++				 * If bfqq was in the current
++				 * burst list before being
++				 * merged, then we have to add
++				 * it back. And we do not need
++				 * to increase burst_size, as
++				 * we did not decrement
++				 * burst_size when we removed
++				 * bfqq from the burst list as
++				 * a consequence of a merge
++				 * (see comments in
++				 * bfq_put_queue). In this
++				 * respect, it would be rather
++				 * costly to know whether the
++				 * current burst list is still
++				 * the same burst list from
++				 * which bfqq was removed on
++				 * the merge. To avoid this
++				 * cost, if bfqq was in a
++				 * burst list, then we add
++				 * bfqq to the current burst
++				 * list without any further
++				 * check. This can cause
++				 * inappropriate insertions,
++				 * but rarely enough to not
++				 * harm the detection of large
++				 * bursts significantly.
++				 */
 +				hlist_add_head(&bfqq->burst_list_node,
 +					       &bfqd->burst_list);
 +		}
@@ -8447,6 +8555,7 @@ index 0000000000000000..8c5dce7716cbe927
 +				bic->saved_in_large_burst = true;
 +
 +			bfqq = bfq_split_bfqq(bic, bfqq);
++			split = true;
 +
 +			if (!bfqq)
 +				bfqq = bfq_get_bfqq_handle_split(bfqd, bic, bio,
@@ -8770,6 +8879,7 @@ index 0000000000000000..8c5dce7716cbe927
 +	bfq_init_root_group(bfqd->root_group, bfqd);
 +	bfq_init_entity(&bfqd->oom_bfqq.entity, bfqd->root_group);
 +
++	wbt_disable_default(q);
 +	return 0;
 +
 +out_free:
@@ -9191,7 +9301,7 @@ index 0000000000000000..8c5dce7716cbe927
 +MODULE_DESCRIPTION("MQ Budget Fair Queueing I/O Scheduler");
 diff --git a/block/bfq-mq.h b/block/bfq-mq.h
 new file mode 100644
-index 0000000000000000..7ed2cc29be5708b6
+index 0000000000000000..1cb05bb853d2cb5f
 --- /dev/null
 +++ b/block/bfq-mq.h
 @@ -0,0 +1,987 @@
@@ -9981,7 +10091,7 @@ index 0000000000000000..7ed2cc29be5708b6
 +
 +
 +struct bfqg_stats {
-+#ifdef BFQ_GROUP_IOSCHED_ENABLED
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
 +	/* number of ios merged */
 +	struct blkg_rwstat		merged;
 +	/* total time spent on device in ns, may not be accurate w/ queueing */
@@ -10009,7 +10119,7 @@ index 0000000000000000..7ed2cc29be5708b6
 +	uint64_t			start_idle_time;
 +	uint64_t			start_empty_time;
 +	uint16_t			flags;
-+#endif
++#endif /* BFQ_GROUP_IOSCHED_ENABLED && CONFIG_DEBUG_BLK_CGROUP */
 +};
 +
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
@@ -10184,10 +10294,10 @@ index 0000000000000000..7ed2cc29be5708b6
 +#endif /* _BFQ_H */
 diff --git a/block/bfq-sched.c b/block/bfq-sched.c
 new file mode 100644
-index 0000000000000000..e4a2553a2d2cd8f2
+index 0000000000000000..616c0692335aae27
 --- /dev/null
 +++ b/block/bfq-sched.c
-@@ -0,0 +1,2057 @@
+@@ -0,0 +1,2059 @@
 +/*
 + * BFQ: Hierarchical B-WF2Q+ scheduler.
 + *
@@ -11139,8 +11249,10 @@ index 0000000000000000..e4a2553a2d2cd8f2
 +		st->vtime += bfq_delta(served, st->wsum);
 +		bfq_forget_idle(st);
 +	}
++#ifndef BFQ_MQ
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	bfqg_stats_set_start_empty_time(bfqq_group(bfqq));
++#endif
 +#endif
 +	st = bfq_entity_service_tree(&bfqq->entity);
 +	bfq_log_bfqq(bfqq->bfqd, bfqq, "bfqq_served %d secs, vtime %llu on %p",
@@ -12247,10 +12359,10 @@ index 0000000000000000..e4a2553a2d2cd8f2
 +}
 diff --git a/block/bfq-sq-iosched.c b/block/bfq-sq-iosched.c
 new file mode 100644
-index 0000000000000000..5b456e48e0cc0e96
+index 0000000000000000..4bbd7f4c0154a4e4
 --- /dev/null
 +++ b/block/bfq-sq-iosched.c
-@@ -0,0 +1,5405 @@
+@@ -0,0 +1,5498 @@
 +/*
 + * Budget Fair Queueing (BFQ) I/O scheduler.
 + *
@@ -12336,6 +12448,7 @@ index 0000000000000000..5b456e48e0cc0e96
 +#include <linux/ioprio.h>
 +#include "blk.h"
 +#include "bfq.h"
++#include "blk-wbt.h"
 +
 +/* Expiration time of sync (0) and async (1) requests, in ns. */
 +static const u64 bfq_fifo_expire[2] = { NSEC_PER_SEC / 4, NSEC_PER_SEC / 8 };
@@ -12930,6 +13043,15 @@ index 0000000000000000..5b456e48e0cc0e96
 +	return dur;
 +}
 +
++/* switch back from soft real-time to interactive weight raising */
++static void switch_back_to_interactive_wr(struct bfq_queue *bfqq,
++					  struct bfq_data *bfqd)
++{
++	bfqq->wr_coeff = bfqd->bfq_wr_coeff;
++	bfqq->wr_cur_max_time = bfq_wr_duration(bfqd);
++	bfqq->last_wr_start_finish = bfqq->wr_start_at_switch_to_srt;
++}
++
 +static void
 +bfq_bfqq_resume_state(struct bfq_queue *bfqq, struct bfq_data *bfqd,
 +		      struct bfq_io_cq *bic, bool bfq_already_existing)
@@ -12957,15 +13079,29 @@ index 0000000000000000..5b456e48e0cc0e96
 +	bfqq->wr_cur_max_time = bic->saved_wr_cur_max_time;
 +	BUG_ON(time_is_after_jiffies(bfqq->last_wr_start_finish));
 +
++	bfq_log_bfqq(bfqq->bfqd, bfqq,
++		     "[%s] bic %p wr_coeff %d start_finish %lu max_time %lu",
++		     __func__,
++		     bic, bfqq->wr_coeff, bfqq->last_wr_start_finish,
++		     bfqq->wr_cur_max_time);
++
 +	if (bfqq->wr_coeff > 1 && (bfq_bfqq_in_large_burst(bfqq) ||
 +				   time_is_before_jiffies(bfqq->last_wr_start_finish +
 +							  bfqq->wr_cur_max_time))) {
-+		bfq_log_bfqq(bfqq->bfqd, bfqq,
++		if (bfqq->wr_cur_max_time == bfqd->bfq_wr_rt_max_time &&
++		    !bfq_bfqq_in_large_burst(bfqq) &&
++		    time_is_after_eq_jiffies(bfqq->wr_start_at_switch_to_srt +
++					     bfq_wr_duration(bfqd))) {
++			switch_back_to_interactive_wr(bfqq, bfqd);
++			bfq_log_bfqq(bfqq->bfqd, bfqq,
++			     "resume state: switching back to interactive");
++		} else {
++			bfqq->wr_coeff = 1;
++			bfq_log_bfqq(bfqq->bfqd, bfqq,
 +			     "resume state: switching off wr (%lu + %lu < %lu)",
 +			     bfqq->last_wr_start_finish, bfqq->wr_cur_max_time,
 +			     jiffies);
-+
-+		bfqq->wr_coeff = 1;
++		}
 +	}
 +
 +	/* make sure weight will be updated, however we got here */
@@ -14334,10 +14470,27 @@ index 0000000000000000..5b456e48e0cc0e96
 +	bic->saved_IO_bound = bfq_bfqq_IO_bound(bfqq);
 +	bic->saved_in_large_burst = bfq_bfqq_in_large_burst(bfqq);
 +	bic->was_in_burst_list = !hlist_unhashed(&bfqq->burst_list_node);
-+	bic->saved_wr_coeff = bfqq->wr_coeff;
-+	bic->saved_wr_start_at_switch_to_srt = bfqq->wr_start_at_switch_to_srt;
-+	bic->saved_last_wr_start_finish = bfqq->last_wr_start_finish;
-+	bic->saved_wr_cur_max_time = bfqq->wr_cur_max_time;
++	if (unlikely(bfq_bfqq_just_created(bfqq) &&
++		     !bfq_bfqq_in_large_burst(bfqq))) {
++		/*
++		 * bfqq being merged ritgh after being created: bfqq
++		 * would have deserved interactive weight raising, but
++		 * did not make it to be set in a weight-raised state,
++		 * because of this early merge.	Store directly the
++		 * weight-raising state that would have been assigned
++		 * to bfqq, so that to avoid that bfqq unjustly fails
++		 * to enjoy weight raising if split soon.
++		 */
++		bic->saved_wr_coeff = bfqq->bfqd->bfq_wr_coeff;
++		bic->saved_wr_cur_max_time = bfq_wr_duration(bfqq->bfqd);
++		bic->saved_last_wr_start_finish = jiffies;
++	} else {
++		bic->saved_wr_coeff = bfqq->wr_coeff;
++		bic->saved_wr_start_at_switch_to_srt =
++			bfqq->wr_start_at_switch_to_srt;
++		bic->saved_last_wr_start_finish = bfqq->last_wr_start_finish;
++		bic->saved_wr_cur_max_time = bfqq->wr_cur_max_time;
++	}
 +	BUG_ON(time_is_after_jiffies(bfqq->last_wr_start_finish));
 +}
 +
@@ -15955,11 +16108,7 @@ index 0000000000000000..5b456e48e0cc0e96
 +					bfq_wr_duration(bfqd)))
 +				bfq_bfqq_end_wr(bfqq);
 +			else {
-+				/* switch back to interactive wr */
-+				bfqq->wr_coeff = bfqd->bfq_wr_coeff;
-+				bfqq->wr_cur_max_time = bfq_wr_duration(bfqd);
-+				bfqq->last_wr_start_finish =
-+					bfqq->wr_start_at_switch_to_srt;
++				switch_back_to_interactive_wr(bfqq, bfqd);
 +				BUG_ON(time_is_after_jiffies(
 +					       bfqq->last_wr_start_finish));
 +				bfqq->entity.prio_changed = 1;
@@ -16161,16 +16310,37 @@ index 0000000000000000..5b456e48e0cc0e96
 +	BUG_ON(bfqq->entity.tree);
 +	BUG_ON(bfq_bfqq_busy(bfqq));
 +
-+	if (bfq_bfqq_sync(bfqq))
-+		/*
-+		 * The fact that this queue is being destroyed does not
-+		 * invalidate the fact that this queue may have been
-+		 * activated during the current burst. As a consequence,
-+		 * although the queue does not exist anymore, and hence
-+		 * needs to be removed from the burst list if there,
-+		 * the burst size has not to be decremented.
-+		 */
++	if (!hlist_unhashed(&bfqq->burst_list_node)) {
 +		hlist_del_init(&bfqq->burst_list_node);
++		/*
++		 * Decrement also burst size after the removal, if the
++		 * process associated with bfqq is exiting, and thus
++		 * does not contribute to the burst any longer. This
++		 * decrement helps filter out false positives of large
++		 * bursts, when some short-lived process (often due to
++		 * the execution of commands by some service) happens
++		 * to start and exit while a complex application is
++		 * starting, and thus spawning several processes that
++		 * do I/O (and that *must not* be treated as a large
++		 * burst, see comments on bfq_handle_burst).
++		 *
++		 * In particular, the decrement is performed only if:
++		 * 1) bfqq is not a merged queue, because, if it is,
++		 * then this free of bfqq is not triggered by the exit
++		 * of the process bfqq is associated with, but exactly
++		 * by the fact that bfqq has just been merged.
++		 * 2) burst_size is greater than 0, to handle
++		 * unbalanced decrements. Unbalanced decrements may
++		 * happen in te following case: bfqq is inserted into
++		 * the current burst list--without incrementing
++		 * bust_size--because of a split, but the current
++		 * burst list is not the burst list bfqq belonged to
++		 * (see comments on the case of a split in
++		 * bfq_set_request).
++		 */
++		if (bfqq->bic && bfqq->bfqd->burst_size > 0)
++			bfqq->bfqd->burst_size--;
++	}
 +
 +	bfq_log_bfqq(bfqq->bfqd, bfqq, "put_queue: %p freed", bfqq);
 +
@@ -16616,10 +16786,11 @@ index 0000000000000000..5b456e48e0cc0e96
 +			new_bfqq->allocated[rq_data_dir(rq)]++;
 +			bfqq->allocated[rq_data_dir(rq)]--;
 +			new_bfqq->ref++;
-+			bfq_clear_bfqq_just_created(bfqq);
 +			if (bic_to_bfqq(RQ_BIC(rq), 1) == bfqq)
 +				bfq_merge_bfqqs(bfqd, RQ_BIC(rq),
 +						bfqq, new_bfqq);
++
++			bfq_clear_bfqq_just_created(bfqq);
 +			/*
 +			 * rq is about to be enqueued into new_bfqq,
 +			 * release rq reference on bfqq
@@ -16912,6 +17083,34 @@ index 0000000000000000..5b456e48e0cc0e96
 +					     "large burst");
 +				bfq_clear_bfqq_in_large_burst(bfqq);
 +				if (bic->was_in_burst_list)
++					/*
++					 * If bfqq was in the current
++					 * burst list before being
++					 * merged, then we have to add
++					 * it back. And we do not need
++					 * to increase burst_size, as
++					 * we did not decrement
++					 * burst_size when we removed
++					 * bfqq from the burst list as
++					 * a consequence of a merge
++					 * (see comments in
++					 * bfq_put_queue). In this
++					 * respect, it would be rather
++					 * costly to know whether the
++					 * current burst list is still
++					 * the same burst list from
++					 * which bfqq was removed on
++					 * the merge. To avoid this
++					 * cost, if bfqq was in a
++					 * burst list, then we add
++					 * bfqq to the current burst
++					 * list without any further
++					 * check. This can cause
++					 * inappropriate insertions,
++					 * but rarely enough to not
++					 * harm the detection of large
++					 * bursts significantly.
++					 */
 +					hlist_add_head(&bfqq->burst_list_node,
 +						       &bfqd->burst_list);
 +			}
@@ -17241,6 +17440,11 @@ index 0000000000000000..5b456e48e0cc0e96
 +	return -ENOMEM;
 +}
 +
++static void bfq_registered_queue(struct request_queue *q)
++{
++	wbt_disable_default(q);
++}
++
 +static void bfq_slab_kill(void)
 +{
 +	kmem_cache_destroy(bfq_pool);
@@ -17550,6 +17754,7 @@ index 0000000000000000..5b456e48e0cc0e96
 +		.elevator_may_queue_fn =	bfq_may_queue,
 +		.elevator_init_fn =		bfq_init_queue,
 +		.elevator_exit_fn =		bfq_exit_queue,
++		.elevator_registered_fn =	bfq_registered_queue,
 +	},
 +	.icq_size =		sizeof(struct bfq_io_cq),
 +	.icq_align =		__alignof__(struct bfq_io_cq),
@@ -17658,7 +17863,7 @@ index 0000000000000000..5b456e48e0cc0e96
 +MODULE_LICENSE("GPL");
 diff --git a/block/bfq.h b/block/bfq.h
 new file mode 100644
-index 0000000000000000..15d326f466b73145
+index 0000000000000000..47cd4d5a8c329aaa
 --- /dev/null
 +++ b/block/bfq.h
 @@ -0,0 +1,989 @@
@@ -18455,7 +18660,7 @@ index 0000000000000000..15d326f466b73145
 +
 +
 +struct bfqg_stats {
-+#ifdef BFQ_GROUP_IOSCHED_ENABLED
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
 +	/* number of ios merged */
 +	struct blkg_rwstat		merged;
 +	/* total time spent on device in ns, may not be accurate w/ queueing */
@@ -18483,7 +18688,7 @@ index 0000000000000000..15d326f466b73145
 +	uint64_t			start_idle_time;
 +	uint64_t			start_empty_time;
 +	uint16_t			flags;
-+#endif
++#endif /* BFQ_GROUP_IOSCHED_ENABLED && CONFIG_DEBUG_BLK_CGROUP */
 +};
 +
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
@@ -18652,7 +18857,7 @@ index 0000000000000000..15d326f466b73145
 +
 +#endif /* _BFQ_H */
 diff --git a/block/elevator.c b/block/elevator.c
-index 4bb2f0c93fa6c09d..32e60249d547a1be 100644
+index 153926a909011e5f..bd29d18010670712 100644
 --- a/block/elevator.c
 +++ b/block/elevator.c
 @@ -229,7 +229,11 @@ int elevator_init(struct request_queue *q, char *name)
@@ -18668,7 +18873,7 @@ index 4bb2f0c93fa6c09d..32e60249d547a1be 100644
  				return 0;
  		} else
 diff --git a/drivers/cpufreq/cpufreq_ondemand.c b/drivers/cpufreq/cpufreq_ondemand.c
-index 3937acf7e026cdf8..3d35d89f9d95ddee 100644
+index 6b423eebfd5dbefc..9824216839a3ef65 100644
 --- a/drivers/cpufreq/cpufreq_ondemand.c
 +++ b/drivers/cpufreq/cpufreq_ondemand.c
 @@ -21,10 +21,18 @@
@@ -18693,7 +18898,7 @@ index 3937acf7e026cdf8..3d35d89f9d95ddee 100644
  #define MIN_FREQUENCY_UP_THRESHOLD		(1)
  #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 diff --git a/drivers/input/mouse/synaptics.c b/drivers/input/mouse/synaptics.c
-index 5af0b7d200bc23ff..f83df7014e9db50b 100644
+index ee5466a374bf0f37..4fce7aa591b4f20d 100644
 --- a/drivers/input/mouse/synaptics.c
 +++ b/drivers/input/mouse/synaptics.c
 @@ -1315,7 +1315,9 @@ static void set_input_params(struct psmouse *psmouse,
@@ -18738,10 +18943,10 @@ index 97a420c11eed59b1..c8621e9b2e4ae6f6 100644
  	tristate "Support for mouse button 2+3 emulation"
  	depends on SYSCTL && INPUT
 diff --git a/drivers/macintosh/adbhid.c b/drivers/macintosh/adbhid.c
-index 09d72bb00d12c775..8d23b2763829dff1 100644
+index e091193104f741b7..19b9a363eda31f40 100644
 --- a/drivers/macintosh/adbhid.c
 +++ b/drivers/macintosh/adbhid.c
-@@ -261,6 +261,15 @@ static struct adb_ids buttons_ids;
+@@ -262,6 +262,15 @@ static struct adb_ids buttons_ids;
  #define ADBMOUSE_MS_A3		8	/* Mouse systems A3 trackball (handler 3) */
  #define ADBMOUSE_MACALLY2	9	/* MacAlly 2-button mouse */
  
@@ -18757,7 +18962,7 @@ index 09d72bb00d12c775..8d23b2763829dff1 100644
  static void
  adbhid_keyboard_input(unsigned char *data, int nb, int apoll)
  {
-@@ -405,6 +414,9 @@ static void
+@@ -406,6 +415,9 @@ static void
  adbhid_mouse_input(unsigned char *data, int nb, int autopoll)
  {
  	int id = (data[0] >> 4) & 0x0f;
@@ -18767,7 +18972,7 @@ index 09d72bb00d12c775..8d23b2763829dff1 100644
  
  	if (!adbhid[id]) {
  		printk(KERN_ERR "ADB HID on ID %d not yet registered\n", id);
-@@ -436,66 +448,108 @@ adbhid_mouse_input(unsigned char *data, int nb, int autopoll)
+@@ -437,66 +449,108 @@ adbhid_mouse_input(unsigned char *data, int nb, int autopoll)
  	      high bits of y-axis motion.  XY is additional
  	      high bits of x-axis motion.
  
@@ -18884,7 +19089,7 @@ index 09d72bb00d12c775..8d23b2763829dff1 100644
  	input_sync(adbhid[id]->input);
  }
  
-@@ -849,6 +903,15 @@ adbhid_input_register(int id, int default_id, int original_handler_id,
+@@ -850,6 +904,15 @@ adbhid_input_register(int id, int default_id, int original_handler_id,
  		input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |
  			BIT_MASK(BTN_MIDDLE) | BIT_MASK(BTN_RIGHT);
  		input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y);
@@ -18900,7 +19105,7 @@ index 09d72bb00d12c775..8d23b2763829dff1 100644
  		break;
  
  	case ADB_MISC:
-@@ -1132,7 +1195,11 @@ init_trackpad(int id)
+@@ -1133,7 +1196,11 @@ init_trackpad(int id)
  	            r1_buffer[3],
  	            r1_buffer[4],
  	            r1_buffer[5],
@@ -18946,10 +19151,10 @@ index 80b87954f6ddf686..6685d384fb573e83 100644
  	default n
  	help
 diff --git a/drivers/platform/x86/Makefile b/drivers/platform/x86/Makefile
-index 91cec1751461189a..d0f6e81a0338667f 100644
+index f9e3ae683bbe3729..8a95be6c309c552c 100644
 --- a/drivers/platform/x86/Makefile
 +++ b/drivers/platform/x86/Makefile
-@@ -28,6 +28,8 @@ obj-$(CONFIG_TC1100_WMI)	+= tc1100-wmi.o
+@@ -29,6 +29,8 @@ obj-$(CONFIG_TC1100_WMI)	+= tc1100-wmi.o
  obj-$(CONFIG_SONY_LAPTOP)	+= sony-laptop.o
  obj-$(CONFIG_IDEAPAD_LAPTOP)	+= ideapad-laptop.o
  obj-$(CONFIG_THINKPAD_ACPI)	+= thinkpad_acpi.o
@@ -18959,9 +19164,18 @@ index 91cec1751461189a..d0f6e81a0338667f 100644
  obj-$(CONFIG_FUJITSU_LAPTOP)	+= fujitsu-laptop.o
  obj-$(CONFIG_FUJITSU_TABLET)	+= fujitsu-tablet.o
 diff --git a/drivers/platform/x86/hdaps.c b/drivers/platform/x86/hdaps.c
-index 458e6c948c11e4b6..dadfb99be5f04032 100644
+index c26baf77938eaba1..0c1974b6334f2fc7 100644
 --- a/drivers/platform/x86/hdaps.c
 +++ b/drivers/platform/x86/hdaps.c
+@@ -2,7 +2,7 @@
+  * hdaps.c - driver for IBM's Hard Drive Active Protection System
+  *
+  * Copyright (C) 2005 Robert Love <rml@novell.com>
+- * Copyright (C) 2005 Jesper Juhl <jj@chaosbits.net>
++ * Copyright (C) 2005 Jesper Juhl <jesper.juhl@gmail.com>
+  *
+  * The HardDisk Active Protection System (hdaps) is present in IBM ThinkPads
+  * starting with the R40, T41, and X40.  It provides a basic two-axis
 @@ -30,611 +30,864 @@
  
  #include <linux/delay.h>
@@ -19022,7 +19236,7 @@ index 458e6c948c11e4b6..dadfb99be5f04032 100644
 -#define HDAPS_POLL_INTERVAL	50	/* poll for input every 1/20s (50 ms)*/
  #define HDAPS_INPUT_FUZZ	4	/* input event threshold */
  #define HDAPS_INPUT_FLAT	4
-+#define KMACT_REMEMBER_PERIOD   (HZ/10) /* keyboard/mouse persistance */
++#define KMACT_REMEMBER_PERIOD   (HZ/10) /* keyboard/mouse persistence */
  
 -#define HDAPS_X_AXIS		(1 << 0)
 -#define HDAPS_Y_AXIS		(1 << 1)
@@ -19951,7 +20165,7 @@ index 458e6c948c11e4b6..dadfb99be5f04032 100644
 -   "ThinkPad T42p", so the order of the entries matters.
 -   If your ThinkPad is not recognized, please update to latest
 -   BIOS. This is especially the case for some R52 ThinkPads. */
--static struct dmi_system_id __initdata hdaps_whitelist[] = {
+-static const struct dmi_system_id hdaps_whitelist[] __initconst = {
 -	HDAPS_DMI_MATCH_INVERT("IBM", "ThinkPad R50p", HDAPS_BOTH_AXES),
 -	HDAPS_DMI_MATCH_NORMAL("IBM", "ThinkPad R50"),
 -	HDAPS_DMI_MATCH_NORMAL("IBM", "ThinkPad R51"),
@@ -19979,7 +20193,7 @@ index 458e6c948c11e4b6..dadfb99be5f04032 100644
 +   Note that HDAPS_DMI_MATCH_NORMAL("ThinkPad T42") would match
 +   "ThinkPad T42p", and enumeration stops after first match,
 +   so the order of the entries matters. */
-+struct dmi_system_id __initdata hdaps_whitelist[] = {
++const struct dmi_system_id hdaps_whitelist[] __initconst = {
 +	HDAPS_DMI_MATCH_INVERT("IBM", "ThinkPad R50p", HDAPS_ORIENT_INVERT_XY),
 +	HDAPS_DMI_MATCH_INVERT("IBM", "ThinkPad R60", HDAPS_ORIENT_INVERT_XY),
 +	HDAPS_DMI_MATCH_INVERT("IBM", "ThinkPad T41p", HDAPS_ORIENT_INVERT_XY),
@@ -20174,6 +20388,19 @@ index 458e6c948c11e4b6..dadfb99be5f04032 100644
  
  MODULE_AUTHOR("Robert Love");
  MODULE_DESCRIPTION("IBM Hard Drive Active Protection System (HDAPS) driver");
+diff --git a/drivers/platform/x86/hp-wmi.c b/drivers/platform/x86/hp-wmi.c
+index b4ed3dc983d5229c..b4224389febebe46 100644
+--- a/drivers/platform/x86/hp-wmi.c
++++ b/drivers/platform/x86/hp-wmi.c
+@@ -297,7 +297,7 @@ static int hp_wmi_hw_state(int mask)
+ 	if (state < 0)
+ 		return state;
+ 
+-	return state & 0x1;
++	return !!(state & mask);
+ }
+ 
+ static int __init hp_wmi_bios_2008_later(void)
 diff --git a/drivers/platform/x86/thinkpad_ec.c b/drivers/platform/x86/thinkpad_ec.c
 new file mode 100644
 index 0000000000000000..597614bc17e6c70b
@@ -22193,7 +22420,7 @@ index 0000000000000000..209cb6487e241324
 +module_init(tp_init);
 +module_exit(tp_exit);
 diff --git a/drivers/scsi/Kconfig b/drivers/scsi/Kconfig
-index d145e0d9022755d4..4a62250778046f24 100644
+index 41366339b95015c2..ea75f8f41b1e6199 100644
 --- a/drivers/scsi/Kconfig
 +++ b/drivers/scsi/Kconfig
 @@ -1613,4 +1613,6 @@ source "drivers/scsi/device_handler/Kconfig"
@@ -22204,10 +22431,10 @@ index d145e0d9022755d4..4a62250778046f24 100644
 +
  endmenu
 diff --git a/drivers/scsi/Makefile b/drivers/scsi/Makefile
-index 93dbe58c47c845dd..0d8385621c312602 100644
+index 1639bf8b1ab66775..9ec0dfae7e3227a5 100644
 --- a/drivers/scsi/Makefile
 +++ b/drivers/scsi/Makefile
-@@ -154,6 +154,7 @@ obj-$(CONFIG_SCSI_ENCLOSURE)	+= ses.o
+@@ -155,6 +155,7 @@ obj-$(CONFIG_SCSI_ENCLOSURE)	+= ses.o
  
  obj-$(CONFIG_SCSI_OSD_INITIATOR) += osd/
  obj-$(CONFIG_SCSI_HISI_SAS) += hisi_sas/
@@ -23323,7 +23550,7 @@ index 0000000000000000..ff30e4cb51b61ec6
 +module_exit(vhba_exit);
 +
 diff --git a/drivers/tty/Kconfig b/drivers/tty/Kconfig
-index 95103054c0e469fa..c5af5f064e22b664 100644
+index cc2b4d9433ed2ccf..79b8b549668521f2 100644
 --- a/drivers/tty/Kconfig
 +++ b/drivers/tty/Kconfig
 @@ -75,6 +75,19 @@ config VT_CONSOLE_SLEEP
@@ -23504,10 +23731,10 @@ index 0037104d66ac320f..2dae13136fbd2c00 100644
  
  endif # LOGO
 diff --git a/drivers/video/logo/Makefile b/drivers/video/logo/Makefile
-index 3b437813584cec4f..6a34664ddb0677e7 100644
+index 6194373ee4240456..f700edd4696dd4ee 100644
 --- a/drivers/video/logo/Makefile
 +++ b/drivers/video/logo/Makefile
-@@ -6,6 +6,18 @@ obj-$(CONFIG_LOGO_LINUX_VGA16)		+= logo_linux_vga16.o
+@@ -7,6 +7,18 @@ obj-$(CONFIG_LOGO_LINUX_VGA16)		+= logo_linux_vga16.o
  obj-$(CONFIG_LOGO_LINUX_CLUT224)	+= logo_linux_clut224.o
  obj-$(CONFIG_LOGO_BLACKFIN_CLUT224)	+= logo_blackfin_clut224.o
  obj-$(CONFIG_LOGO_BLACKFIN_VGA16)	+= logo_blackfin_vga16.o
@@ -82252,10 +82479,10 @@ index 7aee6d699fd6b389..53731da06f66ccbb 100644
  
  endmenu
 diff --git a/fs/Makefile b/fs/Makefile
-index 7bbaca9c67b146e2..bc255a7280dd9322 100644
+index ef772f1eaff80ade..dc12c6b6e643db41 100644
 --- a/fs/Makefile
 +++ b/fs/Makefile
-@@ -78,6 +78,7 @@ obj-$(CONFIG_HUGETLBFS)		+= hugetlbfs/
+@@ -79,6 +79,7 @@ obj-$(CONFIG_HUGETLBFS)		+= hugetlbfs/
  obj-$(CONFIG_CODA_FS)		+= coda/
  obj-$(CONFIG_MINIX_FS)		+= minix/
  obj-$(CONFIG_FAT_FS)		+= fat/
@@ -82264,7 +82491,7 @@ index 7bbaca9c67b146e2..bc255a7280dd9322 100644
  obj-$(CONFIG_ISO9660_FS)	+= isofs/
  obj-$(CONFIG_HFSPLUS_FS)	+= hfsplus/ # Before hfs to find wrapped HFS+
 diff --git a/fs/exec.c b/fs/exec.c
-index 62175cbcc80171df..3aca8111a8e76078 100644
+index 3e14ba25f678bf88..e7e45c27b20b74e4 100644
 --- a/fs/exec.c
 +++ b/fs/exec.c
 @@ -63,6 +63,8 @@
@@ -95105,7 +95332,7 @@ index 0000000000000000..a93fa46be04e8d6a
 +
 +#define EXFAT_VERSION  "1.2.9"
 diff --git a/fs/open.c b/fs/open.c
-index 35bb784763a4fde3..d8dc52ad435c1f06 100644
+index 7ea118471dce5999..8cd3f3660e3766b3 100644
 --- a/fs/open.c
 +++ b/fs/open.c
 @@ -34,6 +34,9 @@
@@ -95127,10 +95354,10 @@ index 35bb784763a4fde3..d8dc52ad435c1f06 100644
  	}
  	putname(tmp);
 diff --git a/fs/proc/base.c b/fs/proc/base.c
-index 719c2e943ea1028f..e5bf085fc0345c3c 100644
+index 9d357b2ea6cb59af..7572cc59ec3b5a93 100644
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -464,7 +464,7 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
+@@ -465,7 +465,7 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
  		seq_printf(m, "0 0 0\n");
  	else
  		seq_printf(m, "%llu %llu %lu\n",
@@ -95140,10 +95367,10 @@ index 719c2e943ea1028f..e5bf085fc0345c3c 100644
  		   task->sched_info.pcount);
  
 diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 2a5d52fa90f5da35..743ac9afe6f1416e 100644
+index 8da66379f7ea7afc..35e837f0187e0087 100644
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
-@@ -44,16 +44,20 @@ struct blk_queue_stats;
+@@ -45,16 +45,20 @@ struct blk_queue_stats;
  struct blk_stat_callback;
  
  #define BLKDEV_MIN_RQ	4
@@ -95165,7 +95392,7 @@ index 2a5d52fa90f5da35..743ac9afe6f1416e 100644
  
  typedef void (rq_end_io_fn)(struct request *, blk_status_t);
  
-@@ -120,6 +124,10 @@ typedef __u32 __bitwise req_flags_t;
+@@ -121,6 +125,10 @@ typedef __u32 __bitwise req_flags_t;
  /* Look at ->special_vec for the actual data payload instead of the
     bio chain. */
  #define RQF_SPECIAL_PAYLOAD	((__force req_flags_t)(1 << 18))
@@ -95177,10 +95404,10 @@ index 2a5d52fa90f5da35..743ac9afe6f1416e 100644
  /* flags that prevent us from merging requests: */
  #define RQF_NOMERGE_FLAGS \
 diff --git a/include/linux/init_task.h b/include/linux/init_task.h
-index a2f6707e9fc054a9..6b1e807ab1bbe287 100644
+index 8062e6cc607c8207..afe9887aced118b4 100644
 --- a/include/linux/init_task.h
 +++ b/include/linux/init_task.h
-@@ -177,8 +177,6 @@ extern struct cred init_cred;
+@@ -172,8 +172,6 @@ extern struct cred init_cred;
  # define INIT_VTIME(tsk)
  #endif
  
@@ -95188,8 +95415,8 @@ index a2f6707e9fc054a9..6b1e807ab1bbe287 100644
 -
  #ifdef CONFIG_RT_MUTEXES
  # define INIT_RT_MUTEXES(tsk)						\
- 	.pi_waiters = RB_ROOT,						\
-@@ -229,6 +227,80 @@ extern struct cred init_cred;
+ 	.pi_waiters = RB_ROOT_CACHED,					\
+@@ -223,6 +221,80 @@ extern struct cred init_cred;
   *  INIT_TASK is used to set up the first task table, touch at
   * your own risk!. Base=0, limit=0x1fffff (=2MB)
   */
@@ -95270,7 +95497,7 @@ index a2f6707e9fc054a9..6b1e807ab1bbe287 100644
  #define INIT_TASK(tsk)	\
  {									\
  	INIT_TASK_TI(tsk)						\
-@@ -306,7 +378,7 @@ extern struct cred init_cred;
+@@ -300,7 +372,7 @@ extern struct cred init_cred;
  	INIT_LIVEPATCH(tsk)						\
  	INIT_TASK_SECURITY						\
  }
@@ -95280,10 +95507,10 @@ index a2f6707e9fc054a9..6b1e807ab1bbe287 100644
  /* Attach to the init_task data structure for proper alignment */
  #define __init_task_data __attribute__((__section__(".data..init_task")))
 diff --git a/include/linux/ioprio.h b/include/linux/ioprio.h
-index 8c1239020d79d36a..ebe98b91de3b3369 100644
+index 2cdd7480989962c6..0448fc17cd93cf01 100644
 --- a/include/linux/ioprio.h
 +++ b/include/linux/ioprio.h
-@@ -51,6 +51,8 @@ enum {
+@@ -52,6 +52,8 @@ enum {
   */
  static inline int task_nice_ioprio(struct task_struct *task)
  {
@@ -95293,10 +95520,10 @@ index 8c1239020d79d36a..ebe98b91de3b3369 100644
  }
  
 diff --git a/include/linux/linux_logo.h b/include/linux/linux_logo.h
-index ca5bd91d12e169cd..5489dcb0f8bf0e30 100644
+index 5e3581d76c7f466d..dbdf85ce007fb2d5 100644
 --- a/include/linux/linux_logo.h
 +++ b/include/linux/linux_logo.h
-@@ -37,6 +37,18 @@ extern const struct linux_logo logo_linux_vga16;
+@@ -38,6 +38,18 @@ extern const struct linux_logo logo_linux_vga16;
  extern const struct linux_logo logo_linux_clut224;
  extern const struct linux_logo logo_blackfin_vga16;
  extern const struct linux_logo logo_blackfin_clut224;
@@ -95316,10 +95543,10 @@ index ca5bd91d12e169cd..5489dcb0f8bf0e30 100644
  extern const struct linux_logo logo_mac_clut224;
  extern const struct linux_logo logo_parisc_clut224;
 diff --git a/include/linux/sched.h b/include/linux/sched.h
-index c05ac5f5aa034db1..2057e2482a45a946 100644
+index fdf74f27acf1e980..35dc91a0e2edc630 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -26,6 +26,9 @@
+@@ -27,6 +27,9 @@
  #include <linux/signal_types.h>
  #include <linux/mm_types_task.h>
  #include <linux/task_io_accounting.h>
@@ -95377,7 +95604,7 @@ index c05ac5f5aa034db1..2057e2482a45a946 100644
  #ifdef CONFIG_CGROUP_SCHED
  	struct task_group		*sched_task_group;
  #endif
-@@ -709,6 +729,10 @@ struct task_struct {
+@@ -710,6 +730,10 @@ struct task_struct {
  #ifdef CONFIG_ARCH_HAS_SCALED_CPUTIME
  	u64				utimescaled;
  	u64				stimescaled;
@@ -95388,7 +95615,7 @@ index c05ac5f5aa034db1..2057e2482a45a946 100644
  #endif
  	u64				gtime;
  	struct prev_cputime		prev_cputime;
-@@ -1104,6 +1128,40 @@ struct task_struct {
+@@ -1115,6 +1139,40 @@ struct task_struct {
  	 */
  };
  
@@ -95430,10 +95657,10 @@ index c05ac5f5aa034db1..2057e2482a45a946 100644
  {
  	return task->pids[PIDTYPE_PID].pid;
 diff --git a/include/linux/sched/nohz.h b/include/linux/sched/nohz.h
-index 028d17b918a7e28b..51d6b336c75596b9 100644
+index 3d3a97d9399d8925..b03197d355240c57 100644
 --- a/include/linux/sched/nohz.h
 +++ b/include/linux/sched/nohz.h
-@@ -5,24 +5,24 @@
+@@ -6,24 +6,24 @@
   * This is the interface between the scheduler and nohz/dynticks:
   */
  
@@ -95461,10 +95688,10 @@ index 028d17b918a7e28b..51d6b336c75596b9 100644
  void calc_load_nohz_stop(void);
  #else
 diff --git a/include/linux/sched/prio.h b/include/linux/sched/prio.h
-index 2cc450f6ec5423cc..7bb2181d3ac7121f 100644
+index 7d64feafc408e109..43c9d9e50c0941f3 100644
 --- a/include/linux/sched/prio.h
 +++ b/include/linux/sched/prio.h
-@@ -19,8 +19,20 @@
+@@ -20,8 +20,20 @@
   */
  
  #define MAX_USER_RT_PRIO	100
@@ -95486,7 +95713,7 @@ index 2cc450f6ec5423cc..7bb2181d3ac7121f 100644
  #define DEFAULT_PRIO		(MAX_RT_PRIO + NICE_WIDTH / 2)
  
 diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
-index c97e5f09692768d0..8c71fcae7dd382a7 100644
+index 05b8650f06f5334a..27e880d5534c8a38 100644
 --- a/include/linux/sched/task.h
 +++ b/include/linux/sched/task.h
 @@ -80,7 +80,7 @@ extern long kernel_wait4(pid_t, int *, int, struct rusage *);
@@ -95650,10 +95877,10 @@ index 0000000000000000..fb634b74adf3fb7f
 +/* This part must be outside protection */
 +#include <trace/define_trace.h>
 diff --git a/include/uapi/linux/sched.h b/include/uapi/linux/sched.h
-index e2a6c7b3510b4a73..ccc4bc0a5d104d36 100644
+index 30a9e51bbb1e583f..0178fd277aaaa3d3 100644
 --- a/include/uapi/linux/sched.h
 +++ b/include/uapi/linux/sched.h
-@@ -36,9 +36,16 @@
+@@ -37,9 +37,16 @@
  #define SCHED_FIFO		1
  #define SCHED_RR		2
  #define SCHED_BATCH		3
@@ -95672,10 +95899,10 @@ index e2a6c7b3510b4a73..ccc4bc0a5d104d36 100644
  /* Can be ORed in to make sure the process is reverted back to SCHED_NORMAL on fork */
  #define SCHED_RESET_ON_FORK     0x40000000
 diff --git a/include/uapi/linux/vt.h b/include/uapi/linux/vt.h
-index f69034887e687d3a..18db2755a27c2686 100644
+index e9d39c48520af18b..3bceead8da40b3e2 100644
 --- a/include/uapi/linux/vt.h
 +++ b/include/uapi/linux/vt.h
-@@ -2,12 +2,25 @@
+@@ -3,12 +3,25 @@
  #define _UAPI_LINUX_VT_H
  
  
@@ -95703,7 +95930,7 @@ index f69034887e687d3a..18db2755a27c2686 100644
  		   consoles 16 and higher (since it returns a short) */
  
 diff --git a/init/Kconfig b/init/Kconfig
-index 8514b25db21c6bb6..07879460209d2a48 100644
+index 3c1faaa2af4aad76..ee74086f0d4ff84a 100644
 --- a/init/Kconfig
 +++ b/init/Kconfig
 @@ -38,6 +38,47 @@ config THREAD_INFO_IN_TASK
@@ -95809,10 +96036,10 @@ index 8514b25db21c6bb6..07879460209d2a48 100644
  	bool "Optimize for size"
  	help
 diff --git a/init/main.c b/init/main.c
-index 052481fbe3633f64..6c4c372248338585 100644
+index 0ee9c6866ada1d98..76038238f45e613f 100644
 --- a/init/main.c
 +++ b/init/main.c
-@@ -832,7 +832,6 @@ int __init_or_module do_one_initcall(initcall_t fn)
+@@ -841,7 +841,6 @@ int __init_or_module do_one_initcall(initcall_t fn)
  	return ret;
  }
  
@@ -95820,7 +96047,7 @@ index 052481fbe3633f64..6c4c372248338585 100644
  extern initcall_t __initcall_start[];
  extern initcall_t __initcall0_start[];
  extern initcall_t __initcall1_start[];
-@@ -992,6 +991,8 @@ static int __ref kernel_init(void *unused)
+@@ -1001,6 +1000,8 @@ static int __ref kernel_init(void *unused)
  
  	rcu_end_inkernel_boot();
  
@@ -95830,18 +96057,18 @@ index 052481fbe3633f64..6c4c372248338585 100644
  		ret = run_init_process(ramdisk_execute_command);
  		if (!ret)
 diff --git a/kernel/Makefile b/kernel/Makefile
-index 4cb8e8b23c6ecbcf..3fce4ce700916b56 100644
+index 172d151d429caeb3..38b9a81ddffc73f6 100644
 --- a/kernel/Makefile
 +++ b/kernel/Makefile
-@@ -9,7 +9,7 @@ obj-y     = fork.o exec_domain.o panic.o \
+@@ -10,7 +10,7 @@ obj-y     = fork.o exec_domain.o panic.o \
  	    extable.o params.o \
  	    kthread.o sys_ni.o nsproxy.o \
  	    notifier.o ksysfs.o cred.o reboot.o \
 -	    async.o range.o smpboot.o ucount.o
 +	    async.o range.o smpboot.o ucount.o skip_list.o
  
+ obj-$(CONFIG_MODULES) += kmod.o
  obj-$(CONFIG_MULTIUSER) += groups.o
- 
 diff --git a/kernel/delayacct.c b/kernel/delayacct.c
 index 4a1c33416b6a2daa..e9ffeea9d4684a25 100644
 --- a/kernel/delayacct.c
@@ -95856,7 +96083,7 @@ index 4a1c33416b6a2daa..e9ffeea9d4684a25 100644
  	d->cpu_count += t1;
  
 diff --git a/kernel/exit.c b/kernel/exit.c
-index 135b36985f8a2d9c..c6338050aea8c448 100644
+index f6cad39f35dfbe44..ef1bcbd8526d06c6 100644
 --- a/kernel/exit.c
 +++ b/kernel/exit.c
 @@ -129,28 +129,28 @@ static void __exit_signal(struct task_struct *tsk)
@@ -95980,10 +96207,10 @@ index b004a1fb603236f3..ac22ea5f8ae0fdaa 100644
  	bool success = false;
  	char err_buf[STACK_ERR_BUF_SIZE];
 diff --git a/kernel/rcu/Kconfig b/kernel/rcu/Kconfig
-index be90c945063f46b7..9a18f7e72d6619e0 100644
+index 9210379c0353676b..2dd2f03843cc3507 100644
 --- a/kernel/rcu/Kconfig
 +++ b/kernel/rcu/Kconfig
-@@ -94,7 +94,7 @@ config CONTEXT_TRACKING
+@@ -93,7 +93,7 @@ config CONTEXT_TRACKING
  config CONTEXT_TRACKING_FORCE
  	bool "Force context tracking"
  	depends on CONTEXT_TRACKING
@@ -95993,10 +96220,10 @@ index be90c945063f46b7..9a18f7e72d6619e0 100644
  	  The major pre-requirement for full dynticks to work is to
  	  support the context tracking subsystem. But there are also
 diff --git a/kernel/sched/Makefile b/kernel/sched/Makefile
-index 53f0164ed362dd91..bc5cbe48af25fe14 100644
+index a9ee16bbc6931a6e..edb7560bbb39c15d 100644
 --- a/kernel/sched/Makefile
 +++ b/kernel/sched/Makefile
-@@ -15,13 +15,19 @@ ifneq ($(CONFIG_SCHED_OMIT_FRAME_POINTER),y)
+@@ -16,14 +16,20 @@ ifneq ($(CONFIG_SCHED_OMIT_FRAME_POINTER),y)
  CFLAGS_core.o := $(PROFILING) -fno-omit-frame-pointer
  endif
  
@@ -96020,12 +96247,14 @@ index 53f0164ed362dd91..bc5cbe48af25fe14 100644
 +obj-$(CONFIG_SCHEDSTATS) += stats.o
  obj-$(CONFIG_CPU_FREQ) += cpufreq.o
  obj-$(CONFIG_CPU_FREQ_GOV_SCHEDUTIL) += cpufreq_schedutil.o
+ obj-$(CONFIG_MEMBARRIER) += membarrier.o
 diff --git a/kernel/sched/MuQSS.c b/kernel/sched/MuQSS.c
 new file mode 100644
-index 0000000000000000..7188b12a37e029b7
+index 0000000000000000..06cee920b162c39c
 --- /dev/null
 +++ b/kernel/sched/MuQSS.c
-@@ -0,0 +1,6855 @@
+@@ -0,0 +1,6931 @@
++// SPDX-License-Identifier: GPL-2.0
 +/*
 + *  kernel/sched/MuQSS.c, was kernel/sched.c
 + *
@@ -96138,7 +96367,7 @@ index 0000000000000000..7188b12a37e029b7
 +
 +void print_scheduler_version(void)
 +{
-+	printk(KERN_INFO "MuQSS CPU scheduler v0.161 by Con Kolivas.\n");
++	printk(KERN_INFO "MuQSS CPU scheduler v0.162 by Con Kolivas.\n");
 +}
 +
 +/*
@@ -96221,18 +96450,6 @@ index 0000000000000000..7188b12a37e029b7
 +#else
 +struct rq *uprq;
 +#endif /* CONFIG_SMP */
-+
-+#ifdef CONFIG_SMP
-+static inline int cpu_of(struct rq *rq)
-+{
-+	return rq->cpu;
-+}
-+#else /* CONFIG_SMP */
-+static inline int cpu_of(struct rq *rq)
-+{
-+	return 0;
-+}
-+#endif
 +
 +#include "stats.h"
 +
@@ -96602,9 +96819,13 @@ index 0000000000000000..7188b12a37e029b7
 +{
 +	int cpu;
 +#ifdef CONFIG_LOCKDEP
-+	struct rq *rq = task_rq(p);
++	/* Kernel threads call this when creating workqueues while still
++	 * inactive from __kthread_bind_mask, holding only the pi_lock */
++	if (!(p->flags & PF_KTHREAD)) {
++		struct rq *rq = task_rq(p);
 +
-+	lockdep_assert_held(&rq->lock);
++		lockdep_assert_held(&rq->lock);
++	}
 +#endif
 +	if (test_tsk_need_resched(p))
 +		return;
@@ -96784,7 +97005,7 @@ index 0000000000000000..7188b12a37e029b7
 +
 +	rq->load_update = rq->niffies;
 +	if (likely(rq_local(rq)))
-+		cpufreq_trigger(rq->niffies, flags);
++		cpufreq_trigger(rq, flags);
 +}
 +
 +/*
@@ -97289,17 +97510,18 @@ index 0000000000000000..7188b12a37e029b7
 +}
 +
 +#ifdef CONFIG_SMP
-+void set_task_cpu(struct task_struct *p, unsigned int cpu)
++void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 +{
 +	struct rq *rq;
 +
-+	if (task_cpu(p) == cpu)
++	if (task_cpu(p) == new_cpu)
 +		return;
 +
 +	/* Do NOT call set_task_cpu on a currently queued task as we will not
-+	 * be reliably holding the rq lock after changing cpu. */
++	 * be reliably holding the rq lock after changing CPU. */
 +	BUG_ON(task_queued(p));
 +	rq = task_rq(p);
++
 +#ifdef CONFIG_LOCKDEP
 +	/*
 +	 * The caller should hold either p->pi_lock or rq->lock, when changing
@@ -97311,7 +97533,8 @@ index 0000000000000000..7188b12a37e029b7
 +	WARN_ON_ONCE(debug_locks && !(lockdep_is_held(&p->pi_lock) ||
 +				      lockdep_is_held(&rq->lock)));
 +#endif
-+	trace_sched_migrate_task(p, cpu);
++
++	trace_sched_migrate_task(p, new_cpu);
 +	perf_event_task_migrate(p);
 +
 +	/*
@@ -97321,7 +97544,7 @@ index 0000000000000000..7188b12a37e029b7
 +	 */
 +	smp_wmb();
 +
-+	p->wake_cpu = cpu;
++	p->wake_cpu = new_cpu;
 +
 +	if (task_running(rq, p)) {
 +		/*
@@ -97331,18 +97554,18 @@ index 0000000000000000..7188b12a37e029b7
 +		lockdep_assert_held(&rq->lock);
 +
 +		/*
-+		 * We can't change the task_thread_info cpu on a running task
-+		 * as p will still be protected by the rq lock of the cpu it
++		 * We can't change the task_thread_info CPU on a running task
++		 * as p will still be protected by the rq lock of the CPU it
 +		 * is still running on so we only set the wake_cpu for it to be
-+		 * lazily updated once off the cpu.
++		 * lazily updated once off the CPU.
 +		 */
 +		return;
 +	}
 +
 +#ifdef CONFIG_THREAD_INFO_IN_TASK
-+	p->cpu = cpu;
++	p->cpu = new_cpu;
 +#else
-+	task_thread_info(p)->cpu = cpu;
++	task_thread_info(p)->cpu = new_cpu;
 +#endif
 +	/* We're no longer protecting p after this point since we're holding
 +	 * the wrong runqueue lock. */
@@ -97928,8 +98151,8 @@ index 0000000000000000..7188b12a37e029b7
 +	 * reordered with p->state check below. This pairs with mb() in
 +	 * set_current_state() the waiting thread does.
 +	 */
-+	smp_mb__before_spinlock();
 +	raw_spin_lock_irqsave(&p->pi_lock, flags);
++	smp_mb__after_spinlock();
 +	/* state is a volatile long, どうして、分からない */
 +	if (!((unsigned int)p->state & state))
 +		goto out;
@@ -98588,6 +98811,16 @@ index 0000000000000000..7188b12a37e029b7
 +	prev_state = prev->state;
 +	vtime_task_switch(prev);
 +	perf_event_task_sched_in(prev, current);
++	/*
++	 * The membarrier system call requires a full memory barrier
++	 * after storing to rq->curr, before going back to user-space.
++	 *
++	 * TODO: This smp_mb__after_unlock_lock can go away if PPC end
++	 * up adding a full barrier to switch_mm(), or we should figure
++	 * out if a smp_mb__after_unlock_lock is really the proper API
++	 * to use.
++	 */
++	smp_mb__after_unlock_lock();
 +	finish_lock_switch(rq, prev);
 +	finish_arch_post_lock_switch();
 +
@@ -99698,8 +99931,8 @@ index 0000000000000000..7188b12a37e029b7
 +	 * can't be reordered with __set_current_state(TASK_INTERRUPTIBLE)
 +	 * done by the caller to avoid the race with signal_wake_up().
 +	 */
-+	smp_mb__before_spinlock();
 +	rq_lock(rq);
++	smp_mb__after_spinlock();
 +#ifdef CONFIG_SMP
 +	if (rq->preempt) {
 +		/*
@@ -99787,6 +100020,21 @@ index 0000000000000000..7188b12a37e029b7
 +			wake_siblings(rq);
 +		rq->nr_switches++;
 +		rq->curr = next;
++		/*
++		 * The membarrier system call requires each architecture
++		 * to have a full memory barrier after updating
++		 * rq->curr, before returning to user-space. For TSO
++		 * (e.g. x86), the architecture must provide its own
++		 * barrier in switch_mm(). For weakly ordered machines
++		 * for which spin_unlock() acts as a full memory
++		 * barrier, finish_lock_switch() in common code takes
++		 * care of this barrier. For weakly ordered machines for
++		 * which spin_unlock() acts as a RELEASE barrier (only
++		 * arm64 and PowerPC), arm64 has a full barrier in
++		 * switch_to(), and PowerPC has
++		 * smp_mb__after_unlock_lock() before
++		 * finish_lock_switch().
++		 */
 +		++*switch_count;
 +
 +		trace_sched_switch(preempt, prev, next);
@@ -99813,8 +100061,8 @@ index 0000000000000000..7188b12a37e029b7
 +	 * To avoid it, we have to wait for releasing tsk->pi_lock which
 +	 * is held by try_to_wake_up()
 +	 */
-+	smp_mb();
-+	raw_spin_unlock_wait(&current->pi_lock);
++	raw_spin_lock_irq(&current->pi_lock);
++	raw_spin_unlock_irq(&current->pi_lock);
 +
 +	/* Causes final put_task_struct in finish_task_switch(). */
 +	__set_current_state(TASK_DEAD);
@@ -101386,24 +101634,17 @@ index 0000000000000000..7188b12a37e029b7
 +	return retval;
 +}
 +
-+static const char stat_nam[] = TASK_STATE_TO_CHAR_STR;
-+
 +void sched_show_task(struct task_struct *p)
 +{
 +	unsigned long free = 0;
 +	int ppid;
-+	unsigned long state = p->state;
-+
-+	/* Make sure the string lines up properly with the number of task states: */
-+	BUILD_BUG_ON(sizeof(TASK_STATE_TO_CHAR_STR)-1 != ilog2(TASK_STATE_MAX)+1);
 +
 +	if (!try_get_task_stack(p))
 +		return;
-+	if (state)
-+		state = __ffs(state) + 1;
-+	printk(KERN_INFO "%-15.15s %c", p->comm,
-+		state < sizeof(stat_nam) - 1 ? stat_nam[state] : '?');
-+	if (state == TASK_RUNNING)
++
++	printk(KERN_INFO "%-15.15s %c", p->comm, task_state_to_char(p));
++
++	if (p->state == TASK_RUNNING)
 +		printk(KERN_CONT "  running task    ");
 +#ifdef CONFIG_DEBUG_STACK_USAGE
 +	free = stack_not_used(p);
@@ -101420,6 +101661,27 @@ index 0000000000000000..7188b12a37e029b7
 +	print_worker_info(KERN_INFO, p);
 +	show_stack(p, NULL);
 +	put_task_stack(p);
++}
++
++static inline bool
++state_filter_match(unsigned long state_filter, struct task_struct *p)
++{
++	/* no filter, everything matches */
++	if (!state_filter)
++		return true;
++
++	/* filter, but doesn't match */
++	if (!(p->state & state_filter))
++		return false;
++
++	/*
++	 * When looking for TASK_UNINTERRUPTIBLE skip TASK_IDLE (allows
++	 * TASK_KILLABLE).
++	 */
++	if (state_filter == TASK_UNINTERRUPTIBLE && p->state == TASK_IDLE)
++		return false;
++
++	return true;
 +}
 +
 +void show_state_filter(unsigned long state_filter)
@@ -101444,7 +101706,7 @@ index 0000000000000000..7188b12a37e029b7
 +		 */
 +		touch_nmi_watchdog();
 +		touch_all_softlockup_watchdogs();
-+		if (!state_filter || (p->state & state_filter))
++		if (state_filter_match(state_filter, p))
 +			sched_show_task(p);
 +	}
 +
@@ -102078,29 +102340,71 @@ index 0000000000000000..7188b12a37e029b7
 +	return table;
 +}
 +
++static cpumask_var_t sd_sysctl_cpus;
 +static struct ctl_table_header *sd_sysctl_header;
++
 +void register_sched_domain_sysctl(void)
 +{
-+	int i, cpu_num = num_possible_cpus();
-+	struct ctl_table *entry = sd_alloc_ctl_entry(cpu_num + 1);
++	static struct ctl_table *cpu_entries;
++	static struct ctl_table **cpu_idx;
 +	char buf[32];
++	int i;
 +
-+	WARN_ON(sd_ctl_dir[0].child);
-+	sd_ctl_dir[0].child = entry;
++	if (!cpu_entries) {
++		cpu_entries = sd_alloc_ctl_entry(num_possible_cpus() + 1);
++		if (!cpu_entries)
++			return;
 +
-+	if (entry == NULL)
-+		return;
++		WARN_ON(sd_ctl_dir[0].child);
++		sd_ctl_dir[0].child = cpu_entries;
++	}
 +
-+	for_each_possible_cpu(i) {
-+		snprintf(buf, 32, "cpu%d", i);
-+		entry->procname = kstrdup(buf, GFP_KERNEL);
-+		entry->mode = 0555;
-+		entry->child = sd_alloc_ctl_cpu_table(i);
-+		entry++;
++	if (!cpu_idx) {
++		struct ctl_table *e = cpu_entries;
++
++		cpu_idx = kcalloc(nr_cpu_ids, sizeof(struct ctl_table*), GFP_KERNEL);
++		if (!cpu_idx)
++			return;
++
++		/* deal with sparse possible map */
++		for_each_possible_cpu(i) {
++			cpu_idx[i] = e;
++			e++;
++		}
++	}
++
++	if (!cpumask_available(sd_sysctl_cpus)) {
++		if (!alloc_cpumask_var(&sd_sysctl_cpus, GFP_KERNEL))
++			return;
++
++		/* init to possible to not have holes in @cpu_entries */
++		cpumask_copy(sd_sysctl_cpus, cpu_possible_mask);
++	}
++
++	for_each_cpu(i, sd_sysctl_cpus) {
++		struct ctl_table *e = cpu_idx[i];
++
++		if (e->child)
++			sd_free_ctl_entry(&e->child);
++
++		if (!e->procname) {
++			snprintf(buf, 32, "cpu%d", i);
++			e->procname = kstrdup(buf, GFP_KERNEL);
++		}
++		e->mode = 0555;
++		e->child = sd_alloc_ctl_cpu_table(i);
++
++		__cpumask_clear_cpu(i, sd_sysctl_cpus);
 +	}
 +
 +	WARN_ON(sd_sysctl_header);
 +	sd_sysctl_header = register_sysctl_table(sd_ctl_root);
++}
++
++void dirty_sched_domain_sysctl(int cpu)
++{
++	if (cpumask_available(sd_sysctl_cpus))
++		__cpumask_set_cpu(cpu, sd_sysctl_cpus);
 +}
 +
 +/* may be called multiple times per register */
@@ -102108,8 +102412,6 @@ index 0000000000000000..7188b12a37e029b7
 +{
 +	unregister_sysctl_table(sd_sysctl_header);
 +	sd_sysctl_header = NULL;
-+	if (sd_ctl_dir[0].child)
-+		sd_free_ctl_entry(&sd_ctl_dir[0].child);
 +}
 +#endif /* CONFIG_SYSCTL */
 +
@@ -102154,16 +102456,15 @@ index 0000000000000000..7188b12a37e029b7
 +		 * operation in the resume sequence, just build a single sched
 +		 * domain, ignoring cpusets.
 +		 */
-+		num_cpus_frozen--;
-+		if (likely(num_cpus_frozen)) {
-+			partition_sched_domains(1, NULL, NULL);
++		partition_sched_domains(1, NULL, NULL);
++		if (--num_cpus_frozen)
 +			return;
-+		}
 +		/*
 +		 * This is the last CPU online operation. So fall through and
 +		 * restore the original sched domains by considering the
 +		 * cpuset configurations.
 +		 */
++		cpuset_force_rebuild();
 +	}
 +
 +	cpuset_update_active_cpus();
@@ -102736,7 +103037,10 @@ index 0000000000000000..7188b12a37e029b7
 +{}
 +
 +#ifdef CONFIG_SCHED_DEBUG
-+void proc_sched_show_task(struct task_struct *p, struct seq_file *m)
++__read_mostly bool sched_debug_enabled;
++
++void proc_sched_show_task(struct task_struct *p, struct pid_namespace *ns,
++			  struct seq_file *m)
 +{}
 +
 +void proc_sched_set_task(struct task_struct *p)
@@ -102883,10 +103187,11 @@ index 0000000000000000..7188b12a37e029b7
 +#endif	/* CONFIG_CGROUP_SCHED */
 diff --git a/kernel/sched/MuQSS.h b/kernel/sched/MuQSS.h
 new file mode 100644
-index 0000000000000000..0bee8d7aac35a404
+index 0000000000000000..29b05efbcd2b36e6
 --- /dev/null
 +++ b/kernel/sched/MuQSS.h
-@@ -0,0 +1,701 @@
+@@ -0,0 +1,725 @@
++/* SPDX-License-Identifier: GPL-2.0 */
 +#include <linux/sched.h>
 +#include <linux/cpuidle.h>
 +#include <linux/freezer.h>
@@ -103438,9 +103743,13 @@ index 0000000000000000..0bee8d7aac35a404
 +
 +#if defined(CONFIG_SCHED_DEBUG) && defined(CONFIG_SYSCTL)
 +void register_sched_domain_sysctl(void);
++void dirty_sched_domain_sysctl(int cpu);
 +void unregister_sched_domain_sysctl(void);
 +#else
 +static inline void register_sched_domain_sysctl(void)
++{
++}
++static inline void dirty_sched_domain_sysctl(int cpu)
 +{
 +}
 +static inline void unregister_sched_domain_sysctl(void)
@@ -103494,6 +103803,10 @@ index 0000000000000000..0bee8d7aac35a404
 +}
 +#endif
 +
++#ifdef CONFIG_SCHED_DEBUG
++extern bool sched_debug_enabled;
++#endif
++
 +extern void schedule_idle(void);
 +
 +#ifdef CONFIG_IRQ_TIME_ACCOUNTING
@@ -103526,18 +103839,33 @@ index 0000000000000000..0bee8d7aac35a404
 +}
 +#endif /* CONFIG_IRQ_TIME_ACCOUNTING */
 +
++#ifdef CONFIG_SMP
++static inline int cpu_of(struct rq *rq)
++{
++	return rq->cpu;
++}
++#else /* CONFIG_SMP */
++static inline int cpu_of(struct rq *rq)
++{
++	return 0;
++}
++#endif
++
 +#ifdef CONFIG_CPU_FREQ
 +DECLARE_PER_CPU(struct update_util_data *, cpufreq_update_util_data);
 +
-+static inline void cpufreq_trigger(u64 time, unsigned int flags)
++static inline void cpufreq_trigger(struct rq *rq, unsigned int flags)
 +{
-+       struct update_util_data *data = rcu_dereference_sched(*this_cpu_ptr(&cpufreq_update_util_data));
++	struct update_util_data *data;
 +
-+       if (data)
-+               data->func(data, time, flags);
++	data = rcu_dereference_sched(*per_cpu_ptr(&cpufreq_update_util_data,
++						  cpu_of(rq)));
++
++	if (data)
++		data->func(data, rq->niffies, flags);
 +}
 +#else
-+static inline void cpufreq_trigger(u64 time, unsigned int flag)
++static inline void cpufreq_trigger(struct rq *rq, unsigned int flag)
 +{
 +}
 +#endif /* CONFIG_CPU_FREQ */
@@ -103589,17 +103917,17 @@ index 0000000000000000..0bee8d7aac35a404
 +
 +#endif /* MUQSS_SCHED_H */
 diff --git a/kernel/sched/cpufreq_schedutil.c b/kernel/sched/cpufreq_schedutil.c
-index 29a397067ffa0f7c..4dd1de8ea21154a9 100644
+index ba0da243fdd83761..1a4cbc53334c5ac4 100644
 --- a/kernel/sched/cpufreq_schedutil.c
 +++ b/kernel/sched/cpufreq_schedutil.c
-@@ -154,16 +154,28 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
+@@ -176,16 +176,28 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
  	return cpufreq_driver_resolve_freq(policy, freq);
  }
  
 +#ifdef CONFIG_SCHED_MUQSS
-+static void sugov_get_util(unsigned long *util, unsigned long *max)
++static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
 +{
-+	struct rq *rq = this_rq();
++	struct rq *rq = cpu_rq(cpu);
 +
 +	*util = rq->load_avg;
 +	if (*util > SCHED_CAPACITY_SCALE)
@@ -103607,12 +103935,12 @@ index 29a397067ffa0f7c..4dd1de8ea21154a9 100644
 +	*max = SCHED_CAPACITY_SCALE;
 +}
 +#else /* CONFIG_SCHED_MUQSS */
- static void sugov_get_util(unsigned long *util, unsigned long *max)
+ static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
  {
- 	struct rq *rq = this_rq();
+ 	struct rq *rq = cpu_rq(cpu);
  	unsigned long cfs_max;
  
- 	cfs_max = arch_scale_cpu_capacity(NULL, smp_processor_id());
+ 	cfs_max = arch_scale_cpu_capacity(NULL, cpu);
  
  	*util = min(rq->cfs.avg.util_avg, cfs_max);
  	*max = cfs_max;
@@ -103662,10 +103990,10 @@ index 14d2dbf97c531db0..9217632f44c706aa 100644
  
  	task_cputime(p, &cputime.utime, &cputime.stime);
 diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
-index c95880e216f6900e..1b43c00f4503b97c 100644
+index 5c09ddf8c8321ca1..237337a23fc6acff 100644
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
-@@ -50,78 +50,103 @@
+@@ -51,78 +51,103 @@
   *
   * (default: 6ms * (1 + ilog(ncpus)), units: nanoseconds)
   */
@@ -103770,7 +104098,7 @@ index c95880e216f6900e..1b43c00f4503b97c 100644
  /*
   * The margin used when comparing utilization with CPU capacity:
 diff --git a/kernel/sched/idle.c b/kernel/sched/idle.c
-index 6c23e30c0e5cc5ad..ada98f2d403624f8 100644
+index 257f4f0b4532b042..34833f395cb501d1 100644
 --- a/kernel/sched/idle.c
 +++ b/kernel/sched/idle.c
 @@ -209,24 +209,30 @@ static void cpuidle_idle_call(void)
@@ -103817,18 +104145,19 @@ index 6c23e30c0e5cc5ad..ada98f2d403624f8 100644
  
  	/*
 diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
-index eeef1a3086d1e74a..c896b638b0bba12c 100644
+index 3b448ba82225dfb6..7c213bfe3d3c2c5e 100644
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
-@@ -1,4 +1,6 @@
--
+@@ -1,5 +1,8 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ 
 +#ifdef CONFIG_SCHED_MUQSS
 +#include "MuQSS.h"
 +#else /* CONFIG_SCHED_MUQSS */
  #include <linux/sched.h>
  #include <linux/sched/autogroup.h>
  #include <linux/sched/sysctl.h>
-@@ -2092,3 +2094,29 @@ static inline void cpufreq_update_this_cpu(struct rq *rq, unsigned int flags) {}
+@@ -2090,3 +2093,29 @@ static inline void cpufreq_update_util(struct rq *rq, unsigned int flags) {}
  #else /* arch_scale_freq_capacity */
  #define arch_scale_freq_invariant()	(false)
  #endif
@@ -104013,7 +104342,7 @@ index 0000000000000000..bf5c6e97e1396a74
 +	l->entries--;
 +}
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 423554ad361020b3..5054083756dcc50e 100644
+index d9c31bc2eaea2c95..560806c9b29984bc 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
 @@ -126,8 +126,14 @@ static int __maybe_unused one = 1;
@@ -104067,7 +104396,7 @@ index 423554ad361020b3..5054083756dcc50e 100644
  #ifdef CONFIG_PROVE_LOCKING
  	{
  		.procname	= "prove_locking",
-@@ -1027,6 +1035,44 @@ static struct ctl_table kern_table[] = {
+@@ -1023,6 +1031,44 @@ static struct ctl_table kern_table[] = {
  		.proc_handler	= proc_dointvec,
  	},
  #endif
@@ -104131,10 +104460,10 @@ index 4237e0744e26bd27..4b83ffaba78c99cc 100644
  /**
   * clockevents_increase_min_delta - raise minimum delta of a clock event device
 diff --git a/kernel/time/posix-cpu-timers.c b/kernel/time/posix-cpu-timers.c
-index a3bd5dbe0dc40700..8e829df88defd3f8 100644
+index 5b117110b55b59af..67d94423acde34b0 100644
 --- a/kernel/time/posix-cpu-timers.c
 +++ b/kernel/time/posix-cpu-timers.c
-@@ -818,30 +818,30 @@ static void check_thread_timers(struct task_struct *tsk,
+@@ -818,29 +818,29 @@ static void check_thread_timers(struct task_struct *tsk,
  	tsk_expires->virt_exp = expires;
  
  	tsk_expires->sched_exp = check_timers_list(++timers, firing,
@@ -104144,10 +104473,9 @@ index a3bd5dbe0dc40700..8e829df88defd3f8 100644
  	/*
  	 * Check for the special case thread timers.
  	 */
- 	soft = READ_ONCE(sig->rlim[RLIMIT_RTTIME].rlim_cur);
+ 	soft = task_rlimit(tsk, RLIMIT_RTTIME);
  	if (soft != RLIM_INFINITY) {
- 		unsigned long hard =
- 			READ_ONCE(sig->rlim[RLIMIT_RTTIME].rlim_max);
+ 		unsigned long hard = task_rlimit_max(tsk, RLIMIT_RTTIME);
  
  		if (hard != RLIM_INFINITY &&
 -		    tsk->rt.timeout > DIV_ROUND_UP(hard, USEC_PER_SEC/HZ)) {
@@ -104168,7 +104496,7 @@ index a3bd5dbe0dc40700..8e829df88defd3f8 100644
  			/*
  			 * At the soft limit, send a SIGXCPU every second.
  			 */
-@@ -1082,7 +1082,7 @@ static inline int fastpath_timer_check(struct task_struct *tsk)
+@@ -1081,7 +1081,7 @@ static inline int fastpath_timer_check(struct task_struct *tsk)
  		struct task_cputime task_sample;
  
  		task_cputime(tsk, &task_sample.utime, &task_sample.stime);
@@ -104220,10 +104548,10 @@ index f2674a056c268a58..9c18e16059a3ddbd 100644
  
  /**
 diff --git a/kernel/trace/trace_selftest.c b/kernel/trace/trace_selftest.c
-index b17ec642793bc327..0fc412923847d7e4 100644
+index cd70eb5df38ecce0..e631657718e5faf8 100644
 --- a/kernel/trace/trace_selftest.c
 +++ b/kernel/trace/trace_selftest.c
-@@ -1040,10 +1040,15 @@ static int trace_wakeup_test_thread(void *data)
+@@ -1041,10 +1041,15 @@ static int trace_wakeup_test_thread(void *data)
  {
  	/* Make this a -deadline thread */
  	static const struct sched_attr attr = {
@@ -104240,10 +104568,10 @@ index b17ec642793bc327..0fc412923847d7e4 100644
  	struct wakeup_test_data *x = data;
  
 diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index c617b9d1d6cb687c..cc4bc8134d209b68 100644
+index dfdad67d8f6cce47..2456bd7773a60b9f 100644
 --- a/lib/Kconfig.debug
 +++ b/lib/Kconfig.debug
-@@ -976,7 +976,7 @@ config SCHED_INFO
+@@ -980,7 +980,7 @@ config SCHED_INFO
  
  config SCHEDSTATS
  	bool "Collect scheduler statistics"
@@ -104252,16 +104580,16 @@ index c617b9d1d6cb687c..cc4bc8134d209b68 100644
  	select SCHED_INFO
  	help
  	  If you say Y here, additional code will be inserted into the
-@@ -1556,6 +1556,7 @@ config LATENCYTOP
+@@ -1578,6 +1578,7 @@ config LATENCYTOP
  	depends on DEBUG_KERNEL
  	depends on STACKTRACE_SUPPORT
  	depends on PROC_FS
 +	depends on !SCHED_MUQSS
- 	select FRAME_POINTER if !MIPS && !PPC && !S390 && !MICROBLAZE && !ARM_UNWIND && !ARC
+ 	select FRAME_POINTER if !MIPS && !PPC && !S390 && !MICROBLAZE && !ARM_UNWIND && !ARC && !X86
  	select KALLSYMS
  	select KALLSYMS_ALL
 diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index bf050ab025b76a26..fa54c2ad6bbb825e 100644
+index 0b9c5cbe8eba086b..c9ca12e9a2785c11 100644
 --- a/mm/page-writeback.c
 +++ b/mm/page-writeback.c
 @@ -71,24 +71,32 @@ static long ratelimit_pages = 32;
@@ -104298,10 +104626,10 @@ index bf050ab025b76a26..fa54c2ad6bbb825e 100644
  /*
   * vm_dirty_bytes starts at 0 (disabled) so that it is a function of
 diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
-index 91a2557942fa8533..80e72479f98defbf 100644
+index f48fe6fc7e8c413d..3c05cb430817f6d2 100644
 --- a/net/ipv4/Kconfig
 +++ b/net/ipv4/Kconfig
-@@ -699,6 +699,9 @@ choice
+@@ -697,6 +697,9 @@ choice
  	config DEFAULT_VEGAS
  		bool "Vegas" if TCP_CONG_VEGAS=y
  
@@ -104311,7 +104639,7 @@ index 91a2557942fa8533..80e72479f98defbf 100644
  	config DEFAULT_VENO
  		bool "Veno" if TCP_CONG_VENO=y
  
-@@ -732,6 +735,7 @@ config DEFAULT_TCP_CONG
+@@ -730,6 +733,7 @@ config DEFAULT_TCP_CONG
  	default "htcp" if DEFAULT_HTCP
  	default "hybla" if DEFAULT_HYBLA
  	default "vegas" if DEFAULT_VEGAS
@@ -104320,10 +104648,10 @@ index 91a2557942fa8533..80e72479f98defbf 100644
  	default "veno" if DEFAULT_VENO
  	default "reno" if DEFAULT_RENO
 diff --git a/scripts/mkcompile_h b/scripts/mkcompile_h
-index fd8fdb91581dd45c..935223acc2d00ada 100755
+index 959199c3147ec79e..be1316aa0739edfe 100755
 --- a/scripts/mkcompile_h
 +++ b/scripts/mkcompile_h
-@@ -54,8 +54,8 @@ else
+@@ -55,8 +55,8 @@ else
  fi
  
  UTS_VERSION="#$VERSION"
