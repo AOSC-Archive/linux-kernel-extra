@@ -1,35 +1,37 @@
- Documentation/block/bfq-iosched.txt              |    81 +-
+ Documentation/admin-guide/kernel-parameters.txt  |     8 +
+ Documentation/block/bfq-iosched.txt              |    74 +-
  Documentation/scheduler/sched-BFS.txt            |   351 +
- Documentation/scheduler/sched-MuQSS.txt          |   347 +
+ Documentation/scheduler/sched-MuQSS.txt          |   373 +
  Documentation/sysctl/kernel.txt                  |    37 +
  Documentation/tp_smapi.txt                       |   275 +
  Makefile                                         |     8 +-
  arch/powerpc/platforms/cell/spufs/sched.c        |     5 -
- arch/x86/Kconfig                                 |    18 +-
+ arch/x86/Kconfig                                 |    91 +-
  arch/x86/Kconfig.cpu                             |   228 +-
  arch/x86/Makefile                                |    33 +-
  arch/x86/Makefile_32.cpu                         |    23 +-
  arch/x86/include/asm/module.h                    |    38 +
  block/Kconfig.iosched                            |    50 +
  block/Makefile                                   |     2 +
- block/bfq-cgroup-included.c                      |  1346 +
+ block/bfq-cgroup-included.c                      |  1353 +
  block/bfq-ioc.c                                  |    36 +
- block/bfq-mq-iosched.c                           |  6081 +++
+ block/bfq-mq-iosched.c                           |  6141 +++
  block/bfq-mq.h                                   |  1005 +
  block/bfq-sched.c                                |  2066 +
- block/bfq-sq-iosched.c                           |  5615 +++
+ block/bfq-sq-iosched.c                           |  5618 +++
  block/bfq.h                                      |   996 +
  block/elevator.c                                 |     4 +
  drivers/cpufreq/cpufreq_ondemand.c               |    12 +-
+ drivers/gpu/drm/amd/display/dc/basics/logger.c   |     2 +-
  drivers/gpu/drm/i915/intel_dp.c                  |     3 +-
+ drivers/infiniband/core/addr.c                   |     1 +
  drivers/input/mouse/synaptics.c                  |     4 +-
  drivers/input/mouse/synaptics.h                  |     1 +
  drivers/macintosh/Kconfig                        |     7 +
  drivers/macintosh/adbhid.c                       |    83 +-
- drivers/net/ethernet/intel/e1000e/ich8lan.c      |    11 +-
  drivers/platform/x86/Kconfig                     |    19 +
  drivers/platform/x86/Makefile                    |     2 +
- drivers/platform/x86/hdaps.c                     |   949 +-
+ drivers/platform/x86/hdaps.c                     |   957 +-
  drivers/platform/x86/thinkpad_ec.c               |   513 +
  drivers/platform/x86/tp_smapi.c                  |  1493 +
  drivers/scsi/Kconfig                             |     2 +
@@ -92,6 +94,7 @@
  include/linux/sched.h                            |    60 +-
  include/linux/sched/nohz.h                       |     4 +-
  include/linux/sched/prio.h                       |    12 +
+ include/linux/sched/rt.h                         |     2 +
  include/linux/sched/task.h                       |     2 +-
  include/linux/skip_list.h                        |    33 +
  include/linux/thinkpad_ec.h                      |    47 +
@@ -101,7 +104,6 @@
  init/Kconfig                                     |    75 +-
  init/main.c                                      |     3 +-
  kernel/Makefile                                  |     2 +-
- kernel/cgroup/cgroup.c                           |    14 +-
  kernel/delayacct.c                               |     2 +-
  kernel/exit.c                                    |     4 +-
  kernel/fork.c                                    |    15 +
@@ -109,13 +111,14 @@
  kernel/livepatch/transition.c                    |     8 +-
  kernel/rcu/Kconfig                               |     2 +-
  kernel/sched/Makefile                            |    14 +-
- kernel/sched/MuQSS.c                             |  6931 ++++
- kernel/sched/MuQSS.h                             |   725 +
+ kernel/sched/MuQSS.c                             |  7187 ++++
+ kernel/sched/MuQSS.h                             |   729 +
  kernel/sched/cpufreq_schedutil.c                 |    12 +
  kernel/sched/cputime.c                           |    22 +-
  kernel/sched/fair.c                              |    25 +
- kernel/sched/idle.c                              |    13 +-
+ kernel/sched/idle.c                              |    10 +-
  kernel/sched/sched.h                             |    29 +
+ kernel/sched/topology.c                          |     8 +
  kernel/skip_list.c                               |   148 +
  kernel/sysctl.c                                  |    64 +-
  kernel/time/clockevents.c                        |     5 +
@@ -125,17 +128,34 @@
  kernel/user_namespace.c                          |     7 +
  lib/Kconfig.debug                                |     3 +-
  mm/page-writeback.c                              |     8 +
- net/dccp/proto.c                                 |     5 +
  net/ipv4/Kconfig                                 |     4 +
- net/xfrm/xfrm_policy.c                           |     8 +-
  scripts/mkcompile_h                              |     4 +-
- 131 files changed, 102173 insertions(+), 573 deletions(-)
+ 132 files changed, 102583 insertions(+), 573 deletions(-)
 
+diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
+index 1e762c210f1b..5f0a74791f61 100644
+--- a/Documentation/admin-guide/kernel-parameters.txt
++++ b/Documentation/admin-guide/kernel-parameters.txt
+@@ -3794,6 +3794,14 @@
+ 			Memory area to be used by remote processor image,
+ 			managed by CMA.
+ 
++	rqshare=	[X86] Select the MuQSS scheduler runqueue sharing type.
++			Format: <string>
++			smt -- Share SMT (hyperthread) sibling runqueues
++			mc -- Share MC (multicore) sibling runqueues
++			smp -- Share SMP runqueues
++			none -- So not share any runqueues
++			Default value is mc
++
+ 	rw		[KNL] Mount root device read-write on boot
+ 
+ 	S		[KNL] Run init in single mode
 diff --git a/Documentation/block/bfq-iosched.txt b/Documentation/block/bfq-iosched.txt
-index 3d6951d63489563e..30ef2dba85ad7363 100644
+index 8d8d8f06cab2..30ef2dba85ad 100644
 --- a/Documentation/block/bfq-iosched.txt
 +++ b/Documentation/block/bfq-iosched.txt
-@@ -11,23 +11,62 @@ controllers), BFQ's main features are:
+@@ -11,38 +11,62 @@ controllers), BFQ's main features are:
    groups (switching back to time distribution when needed to keep
    throughput high).
  
@@ -157,25 +177,27 @@ index 3d6951d63489563e..30ef2dba85ad7363 100644
  details on how to configure BFQ for the desired tradeoff between
  latency and throughput, or on how to maximize throughput.
  
--On average CPUs, the current version of BFQ can handle devices
--performing at most ~30K IOPS; at most ~50 KIOPS on faster CPUs. As a
--reference, 30-50 KIOPS correspond to very high bandwidths with
--sequential I/O (e.g., 8-12 GB/s if I/O requests are 256 KB large), and
--to 120-200 MB/s with 4KB random I/O. BFQ is currently being tested on
--multi-queue devices too.
-+BFQ has a non-null overhead, which limits the maximum IOPS that a CPU
-+can process for a device scheduled with BFQ. To give an idea of the
+ BFQ has a non-null overhead, which limits the maximum IOPS that a CPU
+ can process for a device scheduled with BFQ. To give an idea of the
+-limits on slow or average CPUs, here are, first, the limits of BFQ for
+-three different CPUs, on, respectively, an average laptop, an old
+-desktop, and a cheap embedded system, in case full hierarchical
+-support is enabled (i.e., CONFIG_BFQ_GROUP_IOSCHED is set), but
 +limits on slow or average CPUs, here are, first, the limits of bfq-mq
 +and bfq for three different CPUs, on, respectively, an average laptop,
 +an old desktop, and a cheap embedded system, in case full hierarchical
 +support is enabled (i.e., CONFIG_MQ_BFQ_GROUP_IOSCHED is set for
 +bfq-mq, or CONFIG_BFQ_GROUP_IOSCHED is set for bfq), but
-+CONFIG_DEBUG_BLK_CGROUP is not set (Section 4-2):
-+- Intel i7-4850HQ: 400 KIOPS
-+- AMD A8-3850: 250 KIOPS
-+- ARM CortexTM-A53 Octa-core: 80 KIOPS
+ CONFIG_DEBUG_BLK_CGROUP is not set (Section 4-2):
+ - Intel i7-4850HQ: 400 KIOPS
+ - AMD A8-3850: 250 KIOPS
+ - ARM CortexTM-A53 Octa-core: 80 KIOPS
  
--The table of contents follow. Impatients can just jump to Section 3.
+-If CONFIG_DEBUG_BLK_CGROUP is set (and of course full hierarchical
+-support is enabled), then the sustainable throughput with BFQ
+-decreases, because all blkio.bfq* statistics are created and updated
+-(Section 4-2). For BFQ, this leads to the following maximum
+-sustainable throughputs, on the same systems as above:
 +As for bfq-sq, it cannot reach the above IOPS, because of the
 +inherent, lower parallelism of legacy blk and of the components within
 +it (including bfq-sq itself). In particular, results with
@@ -189,23 +211,25 @@ index 3d6951d63489563e..30ef2dba85ad7363 100644
 +statistics are created and updated (Section 4-2).  For bfq-mq and bfq,
 +this leads to the following maximum sustainable throughputs, on the
 +same systems as above:
-+- Intel i7-4850HQ: 310 KIOPS
-+- AMD A8-3850: 200 KIOPS
-+- ARM CortexTM-A53 Octa-core: 56 KIOPS
-+
+ - Intel i7-4850HQ: 310 KIOPS
+ - AMD A8-3850: 200 KIOPS
+ - ARM CortexTM-A53 Octa-core: 56 KIOPS
+ 
+-BFQ works for multi-queue devices too.
 +Finally, if CONFIG_DEBUG_BLK_CGROUP is set (and full hierarchical
 +support is enabled), then bfq-sq exhibits the following limits:
 +- Intel i7-4850HQ: 250 KIOPS
 +- AMD A8-3850: 170 KIOPS
 +- ARM CortexTM-A53 Octa-core: 45 KIOPS
-+
+ 
+-The table of contents follow. Impatients can just jump to Section 3.
 +BFQ works for multi-queue devices too (bfq and bfq-mq instances).
 +
 +The table of contents follows. Impatients can just jump to Section 3.
  
  CONTENTS
  
-@@ -494,18 +533,36 @@ To get proportional sharing of bandwidth with BFQ for a given device,
+@@ -509,34 +533,36 @@ To get proportional sharing of bandwidth with BFQ for a given device,
  BFQ must of course be the active scheduler for that device.
  
  Within each group directory, the names of the files associated with
@@ -221,22 +245,30 @@ index 3d6951d63489563e..30ef2dba85ad7363 100644
 +to set the weight of a group with the mainline BFQ is blkio.bfq.weight
  or io.bfq.weight.
  
-+As for cgroups-v1 (blkio controller), the exact set of stat files
+ As for cgroups-v1 (blkio controller), the exact set of stat files
+-created, and kept up-to-date by bfq, depends on whether
+-CONFIG_DEBUG_BLK_CGROUP is set. If it is set, then bfq creates all
 +created, and kept up-to-date by bfq*, depends on whether
 +CONFIG_DEBUG_BLK_CGROUP is set. If it is set, then bfq* creates all
-+the stat files documented in
-+Documentation/cgroup-v1/blkio-controller.txt. If, instead,
+ the stat files documented in
+ Documentation/cgroup-v1/blkio-controller.txt. If, instead,
+-CONFIG_DEBUG_BLK_CGROUP is not set, then bfq creates only the files
+-blkio.bfq.io_service_bytes
+-blkio.bfq.io_service_bytes_recursive
+-blkio.bfq.io_serviced
+-blkio.bfq.io_serviced_recursive
 +CONFIG_DEBUG_BLK_CGROUP is not set, then bfq* creates only the files
 +blkio.bfq*.io_service_bytes
 +blkio.bfq*.io_service_bytes_recursive
 +blkio.bfq*.io_serviced
 +blkio.bfq*.io_serviced_recursive
-+
-+The value of CONFIG_DEBUG_BLK_CGROUP greatly influences the maximum
+ 
+ The value of CONFIG_DEBUG_BLK_CGROUP greatly influences the maximum
+-throughput sustainable with bfq, because updating the blkio.bfq.*
 +throughput sustainable with bfq*, because updating the blkio.bfq*
-+stats is rather costly, especially for some of the stats enabled by
-+CONFIG_DEBUG_BLK_CGROUP.
-+
+ stats is rather costly, especially for some of the stats enabled by
+ CONFIG_DEBUG_BLK_CGROUP.
+ 
  Parameters to set
  -----------------
  
@@ -249,7 +281,7 @@ index 3d6951d63489563e..30ef2dba85ad7363 100644
  of the tunable section, is still valid, but all weights higher than
 diff --git a/Documentation/scheduler/sched-BFS.txt b/Documentation/scheduler/sched-BFS.txt
 new file mode 100644
-index 0000000000000000..c0282002a079131b
+index 000000000000..c0282002a079
 --- /dev/null
 +++ b/Documentation/scheduler/sched-BFS.txt
 @@ -0,0 +1,351 @@
@@ -606,10 +638,10 @@ index 0000000000000000..c0282002a079131b
 +Con Kolivas <kernel@kolivas.org> Fri Aug 27 2010
 diff --git a/Documentation/scheduler/sched-MuQSS.txt b/Documentation/scheduler/sched-MuQSS.txt
 new file mode 100644
-index 0000000000000000..7c18444444e2b6fd
+index 000000000000..ae28b85c9995
 --- /dev/null
 +++ b/Documentation/scheduler/sched-MuQSS.txt
-@@ -0,0 +1,347 @@
+@@ -0,0 +1,373 @@
 +MuQSS - The Multiple Queue Skiplist Scheduler by Con Kolivas.
 +
 +MuQSS is a per-cpu runqueue variant of the original BFS scheduler with
@@ -677,6 +709,13 @@ index 0000000000000000..7c18444444e2b6fd
 +reasons. It still does not have a balancing system, choosing to allow the
 +next task scheduling decision and task wakeup CPU choice to allow balancing to
 +happen by virtue of its choices.
++
++As a further evolution of the design, MuQSS normally configures sharing of
++runqueues in a logical fashion for when CPU resources are shared for improved
++latency and throughput. By default it shares runqueues and locks between
++multicore siblings. Optionally it can be configured to run with sharing of
++SMT siblings only, all SMP packages or no sharing at all. Additionally it can
++be selected at boot time.
 +
 +
 +Design details.
@@ -865,6 +904,25 @@ index 0000000000000000..7c18444444e2b6fd
 +throughput. Latency will still be bound by rr_interval, but on a per-CPU basis
 +instead of across the whole system.
 +
++Runqueue sharing.
++
++By default MuQSS chooses to share runqueue resources (specifically the skip
++list and locking) between multicore siblings. It is configurable at build time
++to select between None, SMT, MC and SMP, corresponding to no sharing, sharing
++only between simultaneous mulithreading siblings, multicore siblings, or
++symmetric multiprocessing physical packages. Additionally it can be se at
++bootime with the use of the rqshare parameter. The reason for configurability
++is that some architectures have CPUs with many multicore siblings (>= 16)
++where it may be detrimental to throughput to share runqueues and another
++sharing option may be desirable. Additionally, more sharing than usual can
++improve latency on a system-wide level at the expense of throughput if desired.
++
++The options are:
++none, smt, mc, smp
++
++eg:
++	rqshare=mc
++
 +Isochronous scheduling:
 +
 +Isochronous scheduling is a unique scheduling policy designed to provide
@@ -958,7 +1016,7 @@ index 0000000000000000..7c18444444e2b6fd
 +
 +Con Kolivas <kernel@kolivas.org> Sat, 29th October 2016
 diff --git a/Documentation/sysctl/kernel.txt b/Documentation/sysctl/kernel.txt
-index 694968c7523cc286..6c4a94a2245eed19 100644
+index 694968c7523c..6c4a94a2245e 100644
 --- a/Documentation/sysctl/kernel.txt
 +++ b/Documentation/sysctl/kernel.txt
 @@ -39,6 +39,7 @@ show up in /proc/sys/kernel:
@@ -1053,7 +1111,7 @@ index 694968c7523cc286..6c4a94a2245eed19 100644
 +==============================================================
 diff --git a/Documentation/tp_smapi.txt b/Documentation/tp_smapi.txt
 new file mode 100644
-index 0000000000000000..a249678a8866c166
+index 000000000000..a249678a8866
 --- /dev/null
 +++ b/Documentation/tp_smapi.txt
 @@ -0,0 +1,275 @@
@@ -1333,21 +1391,21 @@ index 0000000000000000..a249678a8866c166
 +thinkpad_ec module and the H8S hardware documentation:
 +http://documentation.renesas.com/eng/products/mpumcu/rej09b0300_2140bhm.pdf
 diff --git a/Makefile b/Makefile
-index 20f7d4de0f1c303a..05457711a5b58f79 100644
+index 28c537fbe328..736bfb0df26a 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -2,8 +2,8 @@
  VERSION = 4
- PATCHLEVEL = 14
- SUBLEVEL = 12
+ PATCHLEVEL = 15
+ SUBLEVEL = 5
 -EXTRAVERSION =
--NAME = Petit Gorille
+-NAME = Fearless Coyote
 +EXTRAVERSION = -zen
-+NAME = My Bodhi is Ready
++NAME = Supercritical Solace
  
  # *DOCUMENTATION*
  # To see a list of typical targets execute "make help"
-@@ -640,12 +640,16 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+@@ -639,12 +639,16 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
  KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
  KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
  else
@@ -1365,7 +1423,7 @@ index 20f7d4de0f1c303a..05457711a5b58f79 100644
  KBUILD_CFLAGS += $(call cc-ifversion, -lt, 0409, \
  			$(call cc-disable-warning,maybe-uninitialized,))
 diff --git a/arch/powerpc/platforms/cell/spufs/sched.c b/arch/powerpc/platforms/cell/spufs/sched.c
-index 1fbb5da17dd27ffa..29a929e61f766055 100644
+index 9033c8194eda..a7437387a8de 100644
 --- a/arch/powerpc/platforms/cell/spufs/sched.c
 +++ b/arch/powerpc/platforms/cell/spufs/sched.c
 @@ -64,11 +64,6 @@ static struct task_struct *spusched_task;
@@ -1381,10 +1439,10 @@ index 1fbb5da17dd27ffa..29a929e61f766055 100644
   * Frequency of the spu scheduler tick.  By default we do one SPU scheduler
   * tick for every 10 CPU scheduler ticks.
 diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 592c974d45588736..dd8dfbc79f11c72b 100644
+index 20da391b5f32..25f624670997 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -947,10 +947,26 @@ config SCHED_SMT
+@@ -961,10 +961,26 @@ config SCHED_SMT
  	depends on SMP
  	---help---
  	  SMT scheduler support improves the CPU scheduler's decision making
@@ -1412,8 +1470,88 @@ index 592c974d45588736..dd8dfbc79f11c72b 100644
  config SCHED_MC
  	def_bool y
  	prompt "Multi-core scheduler support"
+@@ -995,6 +1011,79 @@ config SCHED_MC_PRIO
+ 
+ 	  If unsure say Y here.
+ 
++choice
++	prompt "CPU scheduler runqueue sharing"
++	default RQ_MC if SCHED_MUQSS
++	default RQ_NONE
++
++config RQ_NONE
++	bool "No sharing"
++	help
++	  This is the default behaviour where the CPU scheduler has one runqueue
++	  per CPU, whether it is a physical or logical CPU (hyperthread).
++
++	  This can still be enabled runtime with the boot parameter
++	  rqshare=none
++
++	  If unsure, say N.
++
++config RQ_SMT
++	bool "SMT (hyperthread) siblings"
++	depends on SCHED_SMT && SCHED_MUQSS
++
++	help
++	  With this option enabled, the CPU scheduler will have one runqueue
++	  shared by SMT (hyperthread) siblings. As these logical cores share
++	  one physical core, sharing the runqueue resource can lead to decreased
++	  overhead, lower latency and higher throughput.
++
++	  This can still be enabled runtime with the boot parameter
++	  rqshare=smt
++
++	  If unsure, say N.
++
++config RQ_MC
++	bool "Multicore siblings"
++	depends on SCHED_MC && SCHED_MUQSS
++	help
++	  With this option enabled, the CPU scheduler will have one runqueue
++	  shared by multicore siblings in addition to any SMT siblings.
++	  As these physical cores share caches, sharing the runqueue resource
++	  will lead to lower latency, but its effects on overhead and throughput
++	  are less predictable. As a general rule, 6 or fewer cores will likely
++	  benefit from this, while larger CPUs will only derive a latency
++	  benefit. If your workloads are primarily single threaded, this will
++	  possibly worsen throughput. If you are only concerned about latency
++	  then enable this regardless of how many cores you have.
++
++	  This can still be enabled runtime with the boot parameter
++	  rqshare=mc
++
++	  If unsure, say Y.
++
++config RQ_SMP
++	bool "Symmetric Multi-Processing"
++	depends on SMP && SCHED_MUQSS
++	help
++	  With this option enabled, the CPU scheduler will have one runqueue
++	  shared by all physical CPUs unless they are on separate NUMA nodes.
++	  As physical CPUs usually do not share resources, sharing the runqueue
++	  will normally worsen throughput but improve latency. If you only
++	  care about latency enable this.
++
++	  This can still be enabled runtime with the boot parameter
++	  rqshare=smp
++
++	  If unsure, say N.
++endchoice
++
++config SHARERQ
++	int
++	default 0 if RQ_NONE
++	default 1 if RQ_SMT
++	default 2 if RQ_MC
++	default 3 if RQ_SMP
++
+ source "kernel/Kconfig.preempt"
+ 
+ config UP_LATE_INIT
 diff --git a/arch/x86/Kconfig.cpu b/arch/x86/Kconfig.cpu
-index 65a9a4716e34f553..86b520bb1bd3668b 100644
+index 65a9a4716e34..86b520bb1bd3 100644
 --- a/arch/x86/Kconfig.cpu
 +++ b/arch/x86/Kconfig.cpu
 @@ -116,6 +116,7 @@ config MPENTIUMM
@@ -1762,7 +1900,7 @@ index 65a9a4716e34f553..86b520bb1bd3668b 100644
  config X86_MINIMUM_CPU_FAMILY
  	int
 diff --git a/arch/x86/Makefile b/arch/x86/Makefile
-index a20eacd9c7e9a738..69016bd9b5f6fde5 100644
+index fad55160dcb9..157365b220b9 100644
 --- a/arch/x86/Makefile
 +++ b/arch/x86/Makefile
 @@ -124,13 +124,40 @@ else
@@ -1810,7 +1948,7 @@ index a20eacd9c7e9a738..69016bd9b5f6fde5 100644
          KBUILD_CFLAGS += $(cflags-y)
  
 diff --git a/arch/x86/Makefile_32.cpu b/arch/x86/Makefile_32.cpu
-index 1f5faf8606b40a9c..a25c0f818b15e68c 100644
+index 1f5faf8606b4..a25c0f818b15 100644
 --- a/arch/x86/Makefile_32.cpu
 +++ b/arch/x86/Makefile_32.cpu
 @@ -23,17 +23,36 @@ cflags-$(CONFIG_MK6)		+= -march=k6
@@ -1853,7 +1991,7 @@ index 1f5faf8606b40a9c..a25c0f818b15e68c 100644
  # AMD Elan support
  cflags-$(CONFIG_MELAN)		+= -march=i486
 diff --git a/arch/x86/include/asm/module.h b/arch/x86/include/asm/module.h
-index 7948a17febb4b559..39c823cfa37e3926 100644
+index 7948a17febb4..39c823cfa37e 100644
 --- a/arch/x86/include/asm/module.h
 +++ b/arch/x86/include/asm/module.h
 @@ -25,24 +25,62 @@ struct mod_arch_specific {
@@ -1920,7 +2058,7 @@ index 7948a17febb4b559..39c823cfa37e3926 100644
  #define MODULE_PROC_FAMILY "ELAN "
  #elif defined CONFIG_MCRUSOE
 diff --git a/block/Kconfig.iosched b/block/Kconfig.iosched
-index a4a8914bf7a408dd..299a6861fb90e59e 100644
+index a4a8914bf7a4..299a6861fb90 100644
 --- a/block/Kconfig.iosched
 +++ b/block/Kconfig.iosched
 @@ -40,31 +40,81 @@ config CFQ_GROUP_IOSCHED
@@ -2006,7 +2144,7 @@ index a4a8914bf7a408dd..299a6861fb90e59e 100644
  	tristate "MQ deadline I/O scheduler"
  	default y
 diff --git a/block/Makefile b/block/Makefile
-index 6a56303b992529a0..a571329c23f060d6 100644
+index 6a56303b9925..a571329c23f0 100644
 --- a/block/Makefile
 +++ b/block/Makefile
 @@ -24,6 +24,8 @@ obj-$(CONFIG_MQ_IOSCHED_DEADLINE)	+= mq-deadline.o
@@ -2020,10 +2158,10 @@ index 6a56303b992529a0..a571329c23f060d6 100644
  obj-$(CONFIG_BLK_CMDLINE_PARSER)	+= cmdline-parser.o
 diff --git a/block/bfq-cgroup-included.c b/block/bfq-cgroup-included.c
 new file mode 100644
-index 0000000000000000..562b0ce581a7242f
+index 000000000000..a4f8a03edfc9
 --- /dev/null
 +++ b/block/bfq-cgroup-included.c
-@@ -0,0 +1,1346 @@
+@@ -0,0 +1,1353 @@
 +/*
 + * BFQ: CGROUPS support.
 + *
@@ -2408,6 +2546,8 @@ index 0000000000000000..562b0ce581a7242f
 +		 * Make sure that bfqg and its associated blkg do not
 +		 * disappear before entity.
 +		 */
++		bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] getting bfqg %p and blkg\n", __func__, bfqg);
++
 +		bfqg_and_blkg_get(bfqg);
 +#else
 +		bfqg_get(bfqg);
@@ -2501,7 +2641,6 @@ index 0000000000000000..562b0ce581a7242f
 +		kfree(bfqg);
 +		return NULL;
 +	}
-+
 +#ifdef BFQ_MQ
 +	/* see comments in bfq_bic_update_cgroup for why refcounting */
 +	bfqg_get(bfqg);
@@ -2676,6 +2815,8 @@ index 0000000000000000..562b0ce581a7242f
 +		bfq_put_idle_entity(bfq_entity_service_tree(entity), entity);
 +	}
 +#ifdef BFQ_MQ
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] putting blkg and bfqg %p\n", __func__, bfqg);
++
 +	bfqg_and_blkg_put(bfqq_group(bfqq));
 +#else
 +	bfqg_put(bfqq_group(bfqq));
@@ -2684,6 +2825,8 @@ index 0000000000000000..562b0ce581a7242f
 +	entity->parent = bfqg->my_entity;
 +	entity->sched_data = &bfqg->sched_data;
 +#ifdef BFQ_MQ
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] getting blkg and bfqg %p\n", __func__, bfqg);
++
 +	/* pin down bfqg and its associated blkg  */
 +	bfqg_and_blkg_get(bfqg);
 +#else
@@ -2911,12 +3054,12 @@ index 0000000000000000..562b0ce581a7242f
 +
 +	entity = bfqg->my_entity;
 +
-+	if (!entity) /* root group */
-+		return;
-+
 +#ifdef BFQ_MQ
 +	spin_lock_irqsave(&bfqd->lock, flags);
 +#endif
++
++	if (!entity) /* root group */
++		goto put_async_queues;
 +
 +	/*
 +	 * Empty all service_trees belonging to this group before
@@ -2952,6 +3095,8 @@ index 0000000000000000..562b0ce581a7242f
 +	BUG_ON(bfqg->sched_data.in_service_entity);
 +
 +	__bfq_deactivate_entity(entity, false);
++
++put_async_queues:
 +	bfq_put_async_queues(bfqd, bfqg);
 +
 +#ifdef BFQ_MQ
@@ -3372,7 +3517,7 @@ index 0000000000000000..562b0ce581a7242f
 +#endif
 diff --git a/block/bfq-ioc.c b/block/bfq-ioc.c
 new file mode 100644
-index 0000000000000000..fb7bb8f08b75ae47
+index 000000000000..fb7bb8f08b75
 --- /dev/null
 +++ b/block/bfq-ioc.c
 @@ -0,0 +1,36 @@
@@ -3414,10 +3559,10 @@ index 0000000000000000..fb7bb8f08b75ae47
 +}
 diff --git a/block/bfq-mq-iosched.c b/block/bfq-mq-iosched.c
 new file mode 100644
-index 0000000000000000..63fdd16dec3c175a
+index 000000000000..bb7ccc2f1165
 --- /dev/null
 +++ b/block/bfq-mq-iosched.c
-@@ -0,0 +1,6081 @@
+@@ -0,0 +1,6141 @@
 +/*
 + * Budget Fair Queueing (BFQ) I/O scheduler.
 + *
@@ -7582,9 +7727,9 @@ index 0000000000000000..63fdd16dec3c175a
 +			 * TESTING: reset DISP_LIST flag, because: 1)
 +			 * this rq this request has passed through
 +			 * bfq_prepare_request, 2) then it will have
-+			 * bfq_finish_request invoked on it, and 3) in
-+			 * bfq_finish_request we use this flag to check
-+			 * that bfq_finish_request is not invoked on
++			 * bfq_finish_requeue_request invoked on it, and 3) in
++			 * bfq_finish_requeue_request we use this flag to check
++			 * that bfq_finish_requeue_request is not invoked on
 +			 * requests for which bfq_prepare_request has
 +			 * been invoked.
 +			 */
@@ -7593,8 +7738,8 @@ index 0000000000000000..63fdd16dec3c175a
 +		}
 +
 +		/*
-+		 * We exploit the bfq_finish_request hook to decrement
-+		 * rq_in_driver, but bfq_finish_request will not be
++		 * We exploit the bfq_finish_requeue_request hook to decrement
++		 * rq_in_driver, but bfq_finish_requeue_request will not be
 +		 * invoked on this request. So, to avoid unbalance,
 +		 * just start this request, without incrementing
 +		 * rq_in_driver. As a negative consequence,
@@ -7603,10 +7748,10 @@ index 0000000000000000..63fdd16dec3c175a
 +		 * bfq_schedule_dispatch to be invoked uselessly.
 +		 *
 +		 * As for implementing an exact solution, the
-+		 * bfq_finish_request hook, if defined, is probably
++		 * bfq_finish_requeue_request hook, if defined, is probably
 +		 * invoked also on this request. So, by exploiting
 +		 * this hook, we could 1) increment rq_in_driver here,
-+		 * and 2) decrement it in bfq_finish_request. Such a
++		 * and 2) decrement it in bfq_finish_requeue_request. Such a
 +		 * solution would let the value of the counter be
 +		 * always accurate, but it would entail using an extra
 +		 * interface function. This cost seems higher than the
@@ -7805,10 +7950,11 @@ index 0000000000000000..63fdd16dec3c175a
 +	if (bfqq->bfqd)
 +		bfq_log_bfqq(bfqq->bfqd, bfqq, "put_queue: %p freed", bfqq);
 +
-+	kmem_cache_free(bfq_pool, bfqq);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] putting blkg and bfqg %p\n", __func__, bfqg);
 +	bfqg_and_blkg_put(bfqg);
 +#endif
++	kmem_cache_free(bfq_pool, bfqq);
 +}
 +
 +static void bfq_put_cooperator(struct bfq_queue *bfqq)
@@ -8297,6 +8443,8 @@ index 0000000000000000..63fdd16dec3c175a
 +	return idle_timer_disabled;
 +}
 +
++static void bfq_prepare_request(struct request *rq, struct bio *bio);
++
 +static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
 +			       bool at_head)
 +{
@@ -8337,6 +8485,20 @@ index 0000000000000000..63fdd16dec3c175a
 +	} else {
 +		BUG_ON(!(rq->rq_flags & RQF_GOT));
 +		rq->rq_flags &= ~RQF_GOT;
++
++		if (!bfqq) {
++			/*
++			 * This should never happen. Most likely rq is
++			 * a requeued regular request, being
++			 * re-inserted without being first
++			 * re-prepared. Do a prepare, to avoid
++			 * failure.
++			 */
++			pr_warn("Regular request associated with no queue");
++			WARN_ON(1);
++			bfq_prepare_request(rq, rq->bio);
++			bfqq = RQ_BFQQ(rq);
++		}
 +
 +#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
 +		idle_timer_disabled = __bfq_insert_request(bfqd, rq);
@@ -8529,7 +8691,7 @@ index 0000000000000000..63fdd16dec3c175a
 +	}
 +}
 +
-+static void bfq_finish_request_body(struct bfq_queue *bfqq)
++static void bfq_finish_requeue_request_body(struct bfq_queue *bfqq)
 +{
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
 +		     "put_request_body: allocated %d", bfqq->allocated);
@@ -8539,7 +8701,13 @@ index 0000000000000000..63fdd16dec3c175a
 +	bfq_put_queue(bfqq);
 +}
 +
-+static void bfq_finish_request(struct request *rq)
++/*
++ * Handle either a requeue or a finish for rq. The things to do are
++ * the same in both cases: all references to rq are to be dropped. In
++ * particular, rq is considered completed from the point of view of
++ * the scheduler.
++ */
++static void bfq_finish_requeue_request(struct request *rq)
 +{
 +	struct bfq_queue *bfqq;
 +	struct bfq_data *bfqd;
@@ -8547,11 +8715,27 @@ index 0000000000000000..63fdd16dec3c175a
 +
 +	BUG_ON(!rq);
 +
-+	if (!rq->elv.icq)
++	bfqq = RQ_BFQQ(rq);
++
++	/*
++	 * Requeue and finish hooks are invoked in blk-mq without
++	 * checking whether the involved request is actually still
++	 * referenced in the scheduler. To handle this fact, the
++	 * following two checks make this function exit in case of
++	 * spurious invocations, for which there is nothing to do.
++	 *
++	 * First, check whether rq has nothing to do with an elevator.
++	 */
++	if (unlikely(!(rq->rq_flags & RQF_ELVPRIV)))
 +		return;
 +
-+	bfqq = RQ_BFQQ(rq);
-+	BUG_ON(!bfqq);
++	/*
++	 * rq either is not associated with any icq, or is an already
++	 * requeued request that has not (yet) been re-inserted into
++	 * a bfq_queue.
++	 */
++	if (!rq->elv.icq || !bfqq)
++		return;
 +
 +	bic = RQ_BIC(rq);
 +	BUG_ON(!bic);
@@ -8564,7 +8748,6 @@ index 0000000000000000..63fdd16dec3c175a
 +		BUG();
 +	}
 +	BUG_ON(rq->rq_flags & RQF_QUEUED);
-+	BUG_ON(!(rq->rq_flags & RQF_ELVPRIV));
 +
 +	bfq_log_bfqq(bfqd, bfqq,
 +		     "putting rq %p with %u sects left, STARTED %d",
@@ -8585,13 +8768,14 @@ index 0000000000000000..63fdd16dec3c175a
 +		spin_lock_irqsave(&bfqd->lock, flags);
 +
 +		bfq_completed_request(bfqq, bfqd);
-+		bfq_finish_request_body(bfqq);
++		bfq_finish_requeue_request_body(bfqq);
 +
 +		spin_unlock_irqrestore(&bfqd->lock, flags);
 +	} else {
 +		/*
 +		 * Request rq may be still/already in the scheduler,
-+		 * in which case we need to remove it. And we cannot
++		 * in which case we need to remove it (this should
++		 * never happen in case of requeue). And we cannot
 +		 * defer such a check and removal, to avoid
 +		 * inconsistencies in the time interval from the end
 +		 * of this function to the start of the deferred work.
@@ -8608,9 +8792,26 @@ index 0000000000000000..63fdd16dec3c175a
 +			bfqg_stats_update_io_remove(bfqq_group(bfqq),
 +						    rq->cmd_flags);
 +		}
-+		bfq_finish_request_body(bfqq);
++		bfq_finish_requeue_request_body(bfqq);
 +	}
 +
++	/*
++	 * Reset private fields. In case of a requeue, this allows
++	 * this function to correctly do nothing if it is spuriously
++	 * invoked again on this same request (see the check at the
++	 * beginning of the function). Probably, a better general
++	 * design would be to prevent blk-mq from invoking the requeue
++	 * or finish hooks of an elevator, for a request that is not
++	 * referred by that elevator.
++	 *
++	 * Resetting the following fields would break the
++	 * request-insertion logic if rq is re-inserted into a bfq
++	 * internal queue, without a re-preparation. Here we assume
++	 * that re-insertions of requeued requests, without
++	 * re-preparation, can happen only for pass_through or at_head
++	 * requests (which are not re-inserted into bfq internal
++	 * queues).
++	 */
 +	rq->elv.priv[0] = NULL;
 +	rq->elv.priv[1] = NULL;
 +}
@@ -8928,6 +9129,9 @@ index 0000000000000000..63fdd16dec3c175a
 +	BUG_ON(hrtimer_active(&bfqd->idle_slice_timer));
 +
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
++	/* release oom-queue reference to root group */
++	bfqg_and_blkg_put(bfqd->root_group);
++
 +	blkcg_deactivate_policy(bfqd->queue, &blkcg_policy_bfq);
 +#else
 +	spin_lock_irq(&bfqd->lock);
@@ -9376,7 +9580,8 @@ index 0000000000000000..63fdd16dec3c175a
 +	.ops.mq = {
 +		.limit_depth		= bfq_limit_depth,
 +		.prepare_request        = bfq_prepare_request,
-+		.finish_request         = bfq_finish_request,
++		.requeue_request	= bfq_finish_requeue_request,
++		.finish_request         = bfq_finish_requeue_request,
 +		.exit_icq		= bfq_exit_icq,
 +		.insert_requests	= bfq_insert_requests,
 +		.dispatch_request	= bfq_dispatch_request,
@@ -9501,7 +9706,7 @@ index 0000000000000000..63fdd16dec3c175a
 +MODULE_DESCRIPTION("MQ Budget Fair Queueing I/O Scheduler");
 diff --git a/block/bfq-mq.h b/block/bfq-mq.h
 new file mode 100644
-index 0000000000000000..9a5ce1168ff5a67c
+index 000000000000..9a5ce1168ff5
 --- /dev/null
 +++ b/block/bfq-mq.h
 @@ -0,0 +1,1005 @@
@@ -10512,7 +10717,7 @@ index 0000000000000000..9a5ce1168ff5a67c
 +#endif /* _BFQ_H */
 diff --git a/block/bfq-sched.c b/block/bfq-sched.c
 new file mode 100644
-index 0000000000000000..4e6c5232e2fb6ac9
+index 000000000000..4e6c5232e2fb
 --- /dev/null
 +++ b/block/bfq-sched.c
 @@ -0,0 +1,2066 @@
@@ -12584,10 +12789,10 @@ index 0000000000000000..4e6c5232e2fb6ac9
 +}
 diff --git a/block/bfq-sq-iosched.c b/block/bfq-sq-iosched.c
 new file mode 100644
-index 0000000000000000..486493aafaf8d559
+index 000000000000..c4df156b1fb4
 --- /dev/null
 +++ b/block/bfq-sq-iosched.c
-@@ -0,0 +1,5615 @@
+@@ -0,0 +1,5618 @@
 +/*
 + * Budget Fair Queueing (BFQ) I/O scheduler.
 + *
@@ -17643,6 +17848,9 @@ index 0000000000000000..486493aafaf8d559
 +	BUG_ON(hrtimer_active(&bfqd->idle_slice_timer));
 +
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
++	/* release oom-queue reference to root group */
++	bfqg_put(bfqd->root_group);
++
 +	blkcg_deactivate_policy(q, &blkcg_policy_bfq);
 +#else
 +	bfq_put_async_queues(bfqd, bfqd->root_group);
@@ -18205,7 +18413,7 @@ index 0000000000000000..486493aafaf8d559
 +MODULE_LICENSE("GPL");
 diff --git a/block/bfq.h b/block/bfq.h
 new file mode 100644
-index 0000000000000000..0cd7a3f251a753a6
+index 000000000000..0cd7a3f251a7
 --- /dev/null
 +++ b/block/bfq.h
 @@ -0,0 +1,996 @@
@@ -19206,23 +19414,23 @@ index 0000000000000000..0cd7a3f251a753a6
 +
 +#endif /* _BFQ_H */
 diff --git a/block/elevator.c b/block/elevator.c
-index 153926a909011e5f..bd29d18010670712 100644
+index 7bda083d5968..f1f364f6b219 100644
 --- a/block/elevator.c
 +++ b/block/elevator.c
-@@ -229,7 +229,11 @@ int elevator_init(struct request_queue *q, char *name)
+@@ -246,7 +246,11 @@ int elevator_init(struct request_queue *q, char *name)
  		 */
  		if (q->mq_ops) {
  			if (q->nr_hw_queues == 1)
-+				#if defined(CONFIG_ZEN_INTERACTIVE) && defined(CONFIG_IOSCHED_BFQ)
-+				e = elevator_get("bfq", false);
-+				#else
- 				e = elevator_get("mq-deadline", false);
-+				#endif
++#if defined(CONFIG_ZEN_INTERACTIVE) && defined(CONFIG_IOSCHED_BFQ)
++				e = elevator_get(q, "bfq", false);
++#else
+ 				e = elevator_get(q, "mq-deadline", false);
++#endif
  			if (!e)
  				return 0;
  		} else
 diff --git a/drivers/cpufreq/cpufreq_ondemand.c b/drivers/cpufreq/cpufreq_ondemand.c
-index 6b423eebfd5dbefc..9824216839a3ef65 100644
+index 6b423eebfd5d..9824216839a3 100644
 --- a/drivers/cpufreq/cpufreq_ondemand.c
 +++ b/drivers/cpufreq/cpufreq_ondemand.c
 @@ -21,10 +21,18 @@
@@ -19246,11 +19454,24 @@ index 6b423eebfd5dbefc..9824216839a3ef65 100644
  #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
  #define MIN_FREQUENCY_UP_THRESHOLD		(1)
  #define MAX_FREQUENCY_UP_THRESHOLD		(100)
+diff --git a/drivers/gpu/drm/amd/display/dc/basics/logger.c b/drivers/gpu/drm/amd/display/dc/basics/logger.c
+index e04e8ecd4874..b890213f81ee 100644
+--- a/drivers/gpu/drm/amd/display/dc/basics/logger.c
++++ b/drivers/gpu/drm/amd/display/dc/basics/logger.c
+@@ -337,7 +337,7 @@ void dm_logger_append(
+ 		if (size < LOG_MAX_LINE_SIZE - 1) {
+ 			append_entry(entry, buffer, size);
+ 		} else {
+-			append_entry(entry, "LOG_ERROR, line too long\n", 27);
++			append_entry(entry, "LOG_ERROR, line too long\n", 25);
+ 		}
+ 
+ 		va_end(args);
 diff --git a/drivers/gpu/drm/i915/intel_dp.c b/drivers/gpu/drm/i915/intel_dp.c
-index 09f274419eea1c74..838cee312e8e6978 100644
+index add4b2434aa3..14a8bef9fdfe 100644
 --- a/drivers/gpu/drm/i915/intel_dp.c
 +++ b/drivers/gpu/drm/i915/intel_dp.c
-@@ -1632,7 +1632,8 @@ static bool intel_edp_compare_alt_mode(struct drm_display_mode *m1,
+@@ -1616,7 +1616,8 @@ static bool intel_edp_compare_alt_mode(struct drm_display_mode *m1,
  			m1->vdisplay == m2->vdisplay &&
  			m1->vsync_start == m2->vsync_start &&
  			m1->vsync_end == m2->vsync_end &&
@@ -19260,11 +19481,23 @@ index 09f274419eea1c74..838cee312e8e6978 100644
  	return bres;
  }
  
+diff --git a/drivers/infiniband/core/addr.c b/drivers/infiniband/core/addr.c
+index f4e8185bccd3..7886362510cf 100644
+--- a/drivers/infiniband/core/addr.c
++++ b/drivers/infiniband/core/addr.c
+@@ -773,6 +773,7 @@ int rdma_addr_find_l2_eth_by_grh(const union ib_gid *sgid,
+ 		struct sockaddr     _sockaddr;
+ 		struct sockaddr_in  _sockaddr_in;
+ 		struct sockaddr_in6 _sockaddr_in6;
++		struct sockaddr_ib  _sockaddr_ib;
+ 	} sgid_addr, dgid_addr;
+ 
+ 
 diff --git a/drivers/input/mouse/synaptics.c b/drivers/input/mouse/synaptics.c
-index ee5466a374bf0f37..4fce7aa591b4f20d 100644
+index cd9f61cb3fc6..16f64324d068 100644
 --- a/drivers/input/mouse/synaptics.c
 +++ b/drivers/input/mouse/synaptics.c
-@@ -1315,7 +1315,9 @@ static void set_input_params(struct psmouse *psmouse,
+@@ -1316,7 +1316,9 @@ static void set_input_params(struct psmouse *psmouse,
  		/* Clickpads report only left button */
  		__clear_bit(BTN_RIGHT, dev->keybit);
  		__clear_bit(BTN_MIDDLE, dev->keybit);
@@ -19276,7 +19509,7 @@ index ee5466a374bf0f37..4fce7aa591b4f20d 100644
  
  static ssize_t synaptics_show_disable_gesture(struct psmouse *psmouse,
 diff --git a/drivers/input/mouse/synaptics.h b/drivers/input/mouse/synaptics.h
-index fc00e005c611c2b0..4cfbeec3ae4cbe5b 100644
+index fc00e005c611..4cfbeec3ae4c 100644
 --- a/drivers/input/mouse/synaptics.h
 +++ b/drivers/input/mouse/synaptics.h
 @@ -86,6 +86,7 @@
@@ -19288,7 +19521,7 @@ index fc00e005c611c2b0..4cfbeec3ae4cbe5b 100644
  #define SYN_CAP_MIN_DIMENSIONS(ex0c)	((ex0c) & BIT(13))
  #define SYN_CAP_ADV_GESTURE(ex0c)	((ex0c) & BIT(19))
 diff --git a/drivers/macintosh/Kconfig b/drivers/macintosh/Kconfig
-index 97a420c11eed59b1..c8621e9b2e4ae6f6 100644
+index 97a420c11eed..c8621e9b2e4a 100644
 --- a/drivers/macintosh/Kconfig
 +++ b/drivers/macintosh/Kconfig
 @@ -159,6 +159,13 @@ config INPUT_ADBHID
@@ -19306,7 +19539,7 @@ index 97a420c11eed59b1..c8621e9b2e4ae6f6 100644
  	tristate "Support for mouse button 2+3 emulation"
  	depends on SYSCTL && INPUT
 diff --git a/drivers/macintosh/adbhid.c b/drivers/macintosh/adbhid.c
-index e091193104f741b7..19b9a363eda31f40 100644
+index e091193104f7..19b9a363eda3 100644
 --- a/drivers/macintosh/adbhid.c
 +++ b/drivers/macintosh/adbhid.c
 @@ -262,6 +262,15 @@ static struct adb_ids buttons_ids;
@@ -19480,57 +19713,11 @@ index e091193104f741b7..19b9a363eda31f40 100644
  	            r1_buffer[7]);
  
  	    /* Without this flush, the trackpad may be locked up */
-diff --git a/drivers/net/ethernet/intel/e1000e/ich8lan.c b/drivers/net/ethernet/intel/e1000e/ich8lan.c
-index d6d4ed7acf031172..31277d3bb7dc1241 100644
---- a/drivers/net/ethernet/intel/e1000e/ich8lan.c
-+++ b/drivers/net/ethernet/intel/e1000e/ich8lan.c
-@@ -1367,22 +1367,25 @@ static s32 e1000_disable_ulp_lpt_lp(struct e1000_hw *hw, bool force)
-  *  Checks to see of the link status of the hardware has changed.  If a
-  *  change in link status has been detected, then we read the PHY registers
-  *  to get the current speed/duplex if link exists.
-+ *
-+ *  Returns a negative error code (-E1000_ERR_*) or 0 (link down) or 1 (link
-+ *  up).
-  **/
- static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
- {
- 	struct e1000_mac_info *mac = &hw->mac;
- 	s32 ret_val, tipg_reg = 0;
- 	u16 emi_addr, emi_val = 0;
- 	bool link;
- 	u16 phy_reg;
- 
- 	/* We only want to go out to the PHY registers to see if Auto-Neg
- 	 * has completed and/or if our link status has changed.  The
- 	 * get_link_status flag is set upon receiving a Link Status
- 	 * Change or Rx Sequence Error interrupt.
- 	 */
- 	if (!mac->get_link_status)
--		return 0;
-+		return 1;
- 
- 	/* First we want to see if the MII Status Register reports
- 	 * link.  If so, then we want to get the current speed/duplex
-@@ -1613,10 +1616,12 @@ static s32 e1000_check_for_copper_link_ich8lan(struct e1000_hw *hw)
- 	 * different link partner.
- 	 */
- 	ret_val = e1000e_config_fc_after_link_up(hw);
--	if (ret_val)
-+	if (ret_val) {
- 		e_dbg("Error configuring flow control\n");
-+		return ret_val;
-+	}
- 
--	return ret_val;
-+	return 1;
- }
- 
- static s32 e1000_get_variants_ich8lan(struct e1000_adapter *adapter)
 diff --git a/drivers/platform/x86/Kconfig b/drivers/platform/x86/Kconfig
-index 80b87954f6ddf686..6685d384fb573e83 100644
+index 2c745e8ccad6..62f07abcca0b 100644
 --- a/drivers/platform/x86/Kconfig
 +++ b/drivers/platform/x86/Kconfig
-@@ -511,9 +511,28 @@ config THINKPAD_ACPI_HOTKEY_POLL
+@@ -532,9 +532,28 @@ config THINKPAD_ACPI_HOTKEY_POLL
  	  If you are not sure, say Y here.  The driver enables polling only if
  	  it is strictly necessary to do so.
  
@@ -19557,13 +19744,13 @@ index 80b87954f6ddf686..6685d384fb573e83 100644
  	depends on INPUT
 +	select THINKPAD_EC
  	select INPUT_POLLDEV
- 	default n
  	help
+ 	  This driver provides support for the IBM Hard Drive Active Protection
 diff --git a/drivers/platform/x86/Makefile b/drivers/platform/x86/Makefile
-index f9e3ae683bbe3729..8a95be6c309c552c 100644
+index c32b34a72467..369e31fb2966 100644
 --- a/drivers/platform/x86/Makefile
 +++ b/drivers/platform/x86/Makefile
-@@ -29,6 +29,8 @@ obj-$(CONFIG_TC1100_WMI)	+= tc1100-wmi.o
+@@ -32,6 +32,8 @@ obj-$(CONFIG_TC1100_WMI)	+= tc1100-wmi.o
  obj-$(CONFIG_SONY_LAPTOP)	+= sony-laptop.o
  obj-$(CONFIG_IDEAPAD_LAPTOP)	+= ideapad-laptop.o
  obj-$(CONFIG_THINKPAD_ACPI)	+= thinkpad_acpi.o
@@ -19573,7 +19760,7 @@ index f9e3ae683bbe3729..8a95be6c309c552c 100644
  obj-$(CONFIG_FUJITSU_LAPTOP)	+= fujitsu-laptop.o
  obj-$(CONFIG_FUJITSU_TABLET)	+= fujitsu-tablet.o
 diff --git a/drivers/platform/x86/hdaps.c b/drivers/platform/x86/hdaps.c
-index c26baf77938eaba1..0c1974b6334f2fc7 100644
+index c26baf77938e..1814614f240c 100644
 --- a/drivers/platform/x86/hdaps.c
 +++ b/drivers/platform/x86/hdaps.c
 @@ -2,7 +2,7 @@
@@ -19585,7 +19772,7 @@ index c26baf77938eaba1..0c1974b6334f2fc7 100644
   *
   * The HardDisk Active Protection System (hdaps) is present in IBM ThinkPads
   * starting with the R40, T41, and X40.  It provides a basic two-axis
-@@ -30,611 +30,864 @@
+@@ -30,611 +30,872 @@
  
  #include <linux/delay.h>
  #include <linux/platform_device.h>
@@ -20238,7 +20425,11 @@ index c26baf77938eaba1..0c1974b6334f2fc7 100644
 +/* Timer handler for updating the input device. Runs in softirq context,
 + * so avoid lenghty or blocking operations.
 + */
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 +static void hdaps_mousedev_poll(unsigned long unused)
++#else
++static void hdaps_mousedev_poll(struct timer_list *unused)
++#endif
  {
 -	struct input_dev *input_dev = dev->input;
 -	int x, y;
@@ -20657,8 +20848,12 @@ index c26baf77938eaba1..0c1974b6334f2fc7 100644
 +			hdaps_invert = 0; /* default */
  
 +	/* Init timer before platform_driver_register, in case of suspend */
++#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
 +	init_timer(&hdaps_timer);
 +	hdaps_timer.function = hdaps_mousedev_poll;
++#else
++	timer_setup(&hdaps_timer, hdaps_mousedev_poll, 0);
++#endif
  	ret = platform_driver_register(&hdaps_driver);
  	if (ret)
 -		goto out_region;
@@ -20799,7 +20994,7 @@ index c26baf77938eaba1..0c1974b6334f2fc7 100644
  MODULE_DESCRIPTION("IBM Hard Drive Active Protection System (HDAPS) driver");
 diff --git a/drivers/platform/x86/thinkpad_ec.c b/drivers/platform/x86/thinkpad_ec.c
 new file mode 100644
-index 0000000000000000..597614bc17e6c70b
+index 000000000000..597614bc17e6
 --- /dev/null
 +++ b/drivers/platform/x86/thinkpad_ec.c
 @@ -0,0 +1,513 @@
@@ -21318,7 +21513,7 @@ index 0000000000000000..597614bc17e6c70b
 +module_exit(thinkpad_ec_exit);
 diff --git a/drivers/platform/x86/tp_smapi.c b/drivers/platform/x86/tp_smapi.c
 new file mode 100644
-index 0000000000000000..209cb6487e241324
+index 000000000000..209cb6487e24
 --- /dev/null
 +++ b/drivers/platform/x86/tp_smapi.c
 @@ -0,0 +1,1493 @@
@@ -22816,10 +23011,10 @@ index 0000000000000000..209cb6487e241324
 +module_init(tp_init);
 +module_exit(tp_exit);
 diff --git a/drivers/scsi/Kconfig b/drivers/scsi/Kconfig
-index 41366339b95015c2..ea75f8f41b1e6199 100644
+index 8a739b74cfb7..58ec7834a458 100644
 --- a/drivers/scsi/Kconfig
 +++ b/drivers/scsi/Kconfig
-@@ -1613,4 +1613,6 @@ source "drivers/scsi/device_handler/Kconfig"
+@@ -1614,4 +1614,6 @@ source "drivers/scsi/device_handler/Kconfig"
  
  source "drivers/scsi/osd/Kconfig"
  
@@ -22827,7 +23022,7 @@ index 41366339b95015c2..ea75f8f41b1e6199 100644
 +
  endmenu
 diff --git a/drivers/scsi/Makefile b/drivers/scsi/Makefile
-index 1639bf8b1ab66775..9ec0dfae7e3227a5 100644
+index fcfd28d2884c..06ddd83fafd6 100644
 --- a/drivers/scsi/Makefile
 +++ b/drivers/scsi/Makefile
 @@ -155,6 +155,7 @@ obj-$(CONFIG_SCSI_ENCLOSURE)	+= ses.o
@@ -22840,7 +23035,7 @@ index 1639bf8b1ab66775..9ec0dfae7e3227a5 100644
  obj-$(CONFIG_SCSI_DEBUG)	+= scsi_debug.o
 diff --git a/drivers/scsi/vhba/Kconfig b/drivers/scsi/vhba/Kconfig
 new file mode 100644
-index 0000000000000000..7ccb7d8dc25c8d65
+index 000000000000..7ccb7d8dc25c
 --- /dev/null
 +++ b/drivers/scsi/vhba/Kconfig
 @@ -0,0 +1,9 @@
@@ -22855,7 +23050,7 @@ index 0000000000000000..7ccb7d8dc25c8d65
 +	will be called vhba.
 diff --git a/drivers/scsi/vhba/Makefile b/drivers/scsi/vhba/Makefile
 new file mode 100644
-index 0000000000000000..a2a3f9d9c7c3814b
+index 000000000000..a2a3f9d9c7c3
 --- /dev/null
 +++ b/drivers/scsi/vhba/Makefile
 @@ -0,0 +1,4 @@
@@ -22865,7 +23060,7 @@ index 0000000000000000..a2a3f9d9c7c3814b
 +ccflags-y := -DVHBA_VERSION=\"$(VHBA_VERSION)\" -Werror
 diff --git a/drivers/scsi/vhba/vhba.c b/drivers/scsi/vhba/vhba.c
 new file mode 100644
-index 0000000000000000..ff30e4cb51b61ec6
+index 000000000000..ff30e4cb51b6
 --- /dev/null
 +++ b/drivers/scsi/vhba/vhba.c
 @@ -0,0 +1,1076 @@
@@ -23946,7 +24141,7 @@ index 0000000000000000..ff30e4cb51b61ec6
 +module_exit(vhba_exit);
 +
 diff --git a/drivers/tty/Kconfig b/drivers/tty/Kconfig
-index cc2b4d9433ed2ccf..79b8b549668521f2 100644
+index cc2b4d9433ed..79b8b5496685 100644
 --- a/drivers/tty/Kconfig
 +++ b/drivers/tty/Kconfig
 @@ -75,6 +75,19 @@ config VT_CONSOLE_SLEEP
@@ -23970,7 +24165,7 @@ index cc2b4d9433ed2ccf..79b8b549668521f2 100644
  	bool
  	depends on VT && !UML
 diff --git a/drivers/video/logo/Kconfig b/drivers/video/logo/Kconfig
-index 0037104d66ac320f..2dae13136fbd2c00 100644
+index 0037104d66ac..2dae13136fbd 100644
 --- a/drivers/video/logo/Kconfig
 +++ b/drivers/video/logo/Kconfig
 @@ -15,71 +15,138 @@ config FB_LOGO_EXTRA
@@ -24127,7 +24322,7 @@ index 0037104d66ac320f..2dae13136fbd2c00 100644
  
  endif # LOGO
 diff --git a/drivers/video/logo/Makefile b/drivers/video/logo/Makefile
-index 6194373ee4240456..f700edd4696dd4ee 100644
+index 6194373ee424..f700edd4696d 100644
 --- a/drivers/video/logo/Makefile
 +++ b/drivers/video/logo/Makefile
 @@ -7,6 +7,18 @@ obj-$(CONFIG_LOGO_LINUX_VGA16)		+= logo_linux_vga16.o
@@ -24150,7 +24345,7 @@ index 6194373ee4240456..f700edd4696dd4ee 100644
  obj-$(CONFIG_LOGO_MAC_CLUT224)		+= logo_mac_clut224.o
  obj-$(CONFIG_LOGO_PARISC_CLUT224)	+= logo_parisc_clut224.o
 diff --git a/drivers/video/logo/logo.c b/drivers/video/logo/logo.c
-index 4d50bfd13e7c9f58..7f5a6fe5a701f251 100644
+index 4d50bfd13e7c..7f5a6fe5a701 100644
 --- a/drivers/video/logo/logo.c
 +++ b/drivers/video/logo/logo.c
 @@ -1,117 +1,173 @@
@@ -24396,7 +24591,7 @@ index 4d50bfd13e7c9f58..7f5a6fe5a701f251 100644
  EXPORT_SYMBOL_GPL(fb_find_logo);
 diff --git a/drivers/video/logo/logo_arch_clut224.ppm b/drivers/video/logo/logo_arch_clut224.ppm
 new file mode 100644
-index 0000000000000000..e4d8daa69d28fe10
+index 000000000000..e4d8daa69d28
 --- /dev/null
 +++ b/drivers/video/logo/logo_arch_clut224.ppm
 @@ -0,0 +1,43204 @@
@@ -67606,7 +67801,7 @@ index 0000000000000000..e4d8daa69d28fe10
 +167
 diff --git a/drivers/video/logo/logo_bsd_clut224.ppm b/drivers/video/logo/logo_bsd_clut224.ppm
 new file mode 100644
-index 0000000000000000..408f0282aa9e92e8
+index 000000000000..408f0282aa9e
 --- /dev/null
 +++ b/drivers/video/logo/logo_bsd_clut224.ppm
 @@ -0,0 +1,2403 @@
@@ -70015,7 +70210,7 @@ index 0000000000000000..408f0282aa9e92e8
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 diff --git a/drivers/video/logo/logo_debian_clut224.ppm b/drivers/video/logo/logo_debian_clut224.ppm
 new file mode 100644
-index 0000000000000000..0daf7736ab587689
+index 000000000000..0daf7736ab58
 --- /dev/null
 +++ b/drivers/video/logo/logo_debian_clut224.ppm
 @@ -0,0 +1,883 @@
@@ -70904,7 +71099,7 @@ index 0000000000000000..0daf7736ab587689
 +0 0 0  0 0 0  0 0 0  0 0 0
 diff --git a/drivers/video/logo/logo_exherbo_clut224.ppm b/drivers/video/logo/logo_exherbo_clut224.ppm
 new file mode 100644
-index 0000000000000000..e9cedd26756f9fe6
+index 000000000000..e9cedd26756f
 --- /dev/null
 +++ b/drivers/video/logo/logo_exherbo_clut224.ppm
 @@ -0,0 +1,963 @@
@@ -71873,7 +72068,7 @@ index 0000000000000000..e9cedd26756f9fe6
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 diff --git a/drivers/video/logo/logo_fbsd_clut224.ppm b/drivers/video/logo/logo_fbsd_clut224.ppm
 new file mode 100644
-index 0000000000000000..4387aa0456f4c5b1
+index 000000000000..4387aa0456f4
 --- /dev/null
 +++ b/drivers/video/logo/logo_fbsd_clut224.ppm
 @@ -0,0 +1,2403 @@
@@ -74282,7 +74477,7 @@ index 0000000000000000..4387aa0456f4c5b1
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 diff --git a/drivers/video/logo/logo_fedoraglossy_clut224.ppm b/drivers/video/logo/logo_fedoraglossy_clut224.ppm
 new file mode 100644
-index 0000000000000000..276afb7eda071f40
+index 000000000000..276afb7eda07
 --- /dev/null
 +++ b/drivers/video/logo/logo_fedoraglossy_clut224.ppm
 @@ -0,0 +1,1123 @@
@@ -75411,7 +75606,7 @@ index 0000000000000000..276afb7eda071f40
 +0 0 0  0 0 0
 diff --git a/drivers/video/logo/logo_fedorasimple_clut224.ppm b/drivers/video/logo/logo_fedorasimple_clut224.ppm
 new file mode 100644
-index 0000000000000000..b9ba699fc9d848b4
+index 000000000000..b9ba699fc9d8
 --- /dev/null
 +++ b/drivers/video/logo/logo_fedorasimple_clut224.ppm
 @@ -0,0 +1,1123 @@
@@ -76540,7 +76735,7 @@ index 0000000000000000..b9ba699fc9d848b4
 +0 0 0  0 0 0
 diff --git a/drivers/video/logo/logo_gentoo_clut224.ppm b/drivers/video/logo/logo_gentoo_clut224.ppm
 new file mode 100644
-index 0000000000000000..6163d9fcc4c8b087
+index 000000000000..6163d9fcc4c8
 --- /dev/null
 +++ b/drivers/video/logo/logo_gentoo_clut224.ppm
 @@ -0,0 +1,803 @@
@@ -77349,7 +77544,7 @@ index 0000000000000000..6163d9fcc4c8b087
 +0 0 0 0 0 0 0 0 0 0 0 0
 diff --git a/drivers/video/logo/logo_oldzen_clut224.ppm b/drivers/video/logo/logo_oldzen_clut224.ppm
 new file mode 100644
-index 0000000000000000..d16b347e32975895
+index 000000000000..d16b347e3297
 --- /dev/null
 +++ b/drivers/video/logo/logo_oldzen_clut224.ppm
 @@ -0,0 +1,882 @@
@@ -78237,7 +78432,7 @@ index 0000000000000000..d16b347e32975895
 +0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 diff --git a/drivers/video/logo/logo_slackware_clut224.ppm b/drivers/video/logo/logo_slackware_clut224.ppm
 new file mode 100644
-index 0000000000000000..fbf39203bdd0038a
+index 000000000000..fbf39203bdd0
 --- /dev/null
 +++ b/drivers/video/logo/logo_slackware_clut224.ppm
 @@ -0,0 +1,1123 @@
@@ -79366,7 +79561,7 @@ index 0000000000000000..fbf39203bdd0038a
 +0 0 0
 diff --git a/drivers/video/logo/logo_tits_clut224.ppm b/drivers/video/logo/logo_tits_clut224.ppm
 new file mode 100644
-index 0000000000000000..7504a3a2c2166475
+index 000000000000..7504a3a2c216
 --- /dev/null
 +++ b/drivers/video/logo/logo_tits_clut224.ppm
 @@ -0,0 +1,1443 @@
@@ -80815,7 +81010,7 @@ index 0000000000000000..7504a3a2c2166475
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 diff --git a/drivers/video/logo/logo_zen_clut224.ppm b/drivers/video/logo/logo_zen_clut224.ppm
 new file mode 100644
-index 0000000000000000..f4c78972fe583fd1
+index 000000000000..f4c78972fe58
 --- /dev/null
 +++ b/drivers/video/logo/logo_zen_clut224.ppm
 @@ -0,0 +1,2043 @@
@@ -82863,7 +83058,7 @@ index 0000000000000000..f4c78972fe583fd1
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 diff --git a/fs/Kconfig b/fs/Kconfig
-index 7aee6d699fd6b389..53731da06f66ccbb 100644
+index 7aee6d699fd6..53731da06f66 100644
 --- a/fs/Kconfig
 +++ b/fs/Kconfig
 @@ -125,6 +125,7 @@ if BLOCK
@@ -82875,7 +83070,7 @@ index 7aee6d699fd6b389..53731da06f66ccbb 100644
  
  endmenu
 diff --git a/fs/Makefile b/fs/Makefile
-index ef772f1eaff80ade..dc12c6b6e643db41 100644
+index ef772f1eaff8..dc12c6b6e643 100644
 --- a/fs/Makefile
 +++ b/fs/Makefile
 @@ -79,6 +79,7 @@ obj-$(CONFIG_HUGETLBFS)		+= hugetlbfs/
@@ -82887,7 +83082,7 @@ index ef772f1eaff80ade..dc12c6b6e643db41 100644
  obj-$(CONFIG_ISO9660_FS)	+= isofs/
  obj-$(CONFIG_HFSPLUS_FS)	+= hfsplus/ # Before hfs to find wrapped HFS+
 diff --git a/fs/exec.c b/fs/exec.c
-index acec119fcc3141f8..44a85a6f8088c7f9 100644
+index 7eb8d21bcab9..2070187d1a76 100644
 --- a/fs/exec.c
 +++ b/fs/exec.c
 @@ -63,6 +63,8 @@
@@ -82913,7 +83108,7 @@ index acec119fcc3141f8..44a85a6f8088c7f9 100644
  	return file;
 diff --git a/fs/exfat/Kconfig b/fs/exfat/Kconfig
 new file mode 100644
-index 0000000000000000..78b32aa2ca196521
+index 000000000000..78b32aa2ca19
 --- /dev/null
 +++ b/fs/exfat/Kconfig
 @@ -0,0 +1,39 @@
@@ -82958,7 +83153,7 @@ index 0000000000000000..78b32aa2ca196521
 +	  Set this to the default input/output character set you'd like exFAT to use.
 diff --git a/fs/exfat/LICENSE b/fs/exfat/LICENSE
 new file mode 100644
-index 0000000000000000..d159169d1050894d
+index 000000000000..d159169d1050
 --- /dev/null
 +++ b/fs/exfat/LICENSE
 @@ -0,0 +1,339 @@
@@ -83303,7 +83498,7 @@ index 0000000000000000..d159169d1050894d
 +Public License instead of this License.
 diff --git a/fs/exfat/Makefile b/fs/exfat/Makefile
 new file mode 100644
-index 0000000000000000..711ed87f991b4c03
+index 000000000000..711ed87f991b
 --- /dev/null
 +++ b/fs/exfat/Makefile
 @@ -0,0 +1,54 @@
@@ -83363,7 +83558,7 @@ index 0000000000000000..711ed87f991b4c03
 +.PHONY : all clean install uninstall
 diff --git a/fs/exfat/README.md b/fs/exfat/README.md
 new file mode 100644
-index 0000000000000000..feab40038352cf71
+index 000000000000..feab40038352
 --- /dev/null
 +++ b/fs/exfat/README.md
 @@ -0,0 +1,98 @@
@@ -83467,7 +83662,7 @@ index 0000000000000000..feab40038352cf71
 +=================================
 diff --git a/fs/exfat/dkms.conf b/fs/exfat/dkms.conf
 new file mode 100644
-index 0000000000000000..d873c0aef4faae41
+index 000000000000..d873c0aef4fa
 --- /dev/null
 +++ b/fs/exfat/dkms.conf
 @@ -0,0 +1,7 @@
@@ -83480,7 +83675,7 @@ index 0000000000000000..d873c0aef4faae41
 +DEST_MODULE_LOCATION="/extra"
 diff --git a/fs/exfat/exfat-km.mk b/fs/exfat/exfat-km.mk
 new file mode 100644
-index 0000000000000000..4e3ef07b36ece539
+index 000000000000..4e3ef07b36ec
 --- /dev/null
 +++ b/fs/exfat/exfat-km.mk
 @@ -0,0 +1,11 @@
@@ -83497,7 +83692,7 @@ index 0000000000000000..4e3ef07b36ece539
 +TARGET_KERNEL_MODULES += EXFAT_MODULE
 diff --git a/fs/exfat/exfat_api.c b/fs/exfat/exfat_api.c
 new file mode 100644
-index 0000000000000000..32b29f0dd8d949b6
+index 000000000000..32b29f0dd8d9
 --- /dev/null
 +++ b/fs/exfat/exfat_api.c
 @@ -0,0 +1,528 @@
@@ -84031,7 +84226,7 @@ index 0000000000000000..32b29f0dd8d949b6
 +/*======================================================================*/
 diff --git a/fs/exfat/exfat_api.h b/fs/exfat/exfat_api.h
 new file mode 100644
-index 0000000000000000..84bdf612a1e66cda
+index 000000000000..84bdf612a1e6
 --- /dev/null
 +++ b/fs/exfat/exfat_api.h
 @@ -0,0 +1,206 @@
@@ -84243,7 +84438,7 @@ index 0000000000000000..84bdf612a1e66cda
 +#endif /* _EXFAT_API_H */
 diff --git a/fs/exfat/exfat_bitmap.c b/fs/exfat/exfat_bitmap.c
 new file mode 100644
-index 0000000000000000..b0672dd073fcfddb
+index 000000000000..b0672dd073fc
 --- /dev/null
 +++ b/fs/exfat/exfat_bitmap.c
 @@ -0,0 +1,63 @@
@@ -84312,7 +84507,7 @@ index 0000000000000000..b0672dd073fcfddb
 +} /* end of Bitmap_clear */
 diff --git a/fs/exfat/exfat_bitmap.h b/fs/exfat/exfat_bitmap.h
 new file mode 100644
-index 0000000000000000..4f482c7b28ccc6ab
+index 000000000000..4f482c7b28cc
 --- /dev/null
 +++ b/fs/exfat/exfat_bitmap.h
 @@ -0,0 +1,55 @@
@@ -84373,7 +84568,7 @@ index 0000000000000000..4f482c7b28ccc6ab
 +#endif /* _EXFAT_BITMAP_H */
 diff --git a/fs/exfat/exfat_blkdev.c b/fs/exfat/exfat_blkdev.c
 new file mode 100644
-index 0000000000000000..eaccfd84e9f9bf12
+index 000000000000..eaccfd84e9f9
 --- /dev/null
 +++ b/fs/exfat/exfat_blkdev.c
 @@ -0,0 +1,197 @@
@@ -84576,7 +84771,7 @@ index 0000000000000000..eaccfd84e9f9bf12
 +}
 diff --git a/fs/exfat/exfat_blkdev.h b/fs/exfat/exfat_blkdev.h
 new file mode 100644
-index 0000000000000000..3363b591caebca46
+index 000000000000..3363b591caeb
 --- /dev/null
 +++ b/fs/exfat/exfat_blkdev.h
 @@ -0,0 +1,73 @@
@@ -84655,7 +84850,7 @@ index 0000000000000000..3363b591caebca46
 +#endif /* _EXFAT_BLKDEV_H */
 diff --git a/fs/exfat/exfat_cache.c b/fs/exfat/exfat_cache.c
 new file mode 100644
-index 0000000000000000..4130102e373929de
+index 000000000000..4130102e3739
 --- /dev/null
 +++ b/fs/exfat/exfat_cache.c
 @@ -0,0 +1,784 @@
@@ -85445,7 +85640,7 @@ index 0000000000000000..4130102e373929de
 +} /* end of buf_cache_move_to_lru */
 diff --git a/fs/exfat/exfat_cache.h b/fs/exfat/exfat_cache.h
 new file mode 100644
-index 0000000000000000..540e31681d047078
+index 000000000000..540e31681d04
 --- /dev/null
 +++ b/fs/exfat/exfat_cache.h
 @@ -0,0 +1,85 @@
@@ -85536,7 +85731,7 @@ index 0000000000000000..540e31681d047078
 +#endif /* _EXFAT_CACHE_H */
 diff --git a/fs/exfat/exfat_config.h b/fs/exfat/exfat_config.h
 new file mode 100644
-index 0000000000000000..33c6525e449bdf05
+index 000000000000..33c6525e449b
 --- /dev/null
 +++ b/fs/exfat/exfat_config.h
 @@ -0,0 +1,69 @@
@@ -85611,7 +85806,7 @@ index 0000000000000000..33c6525e449bdf05
 +#endif /* _EXFAT_CONFIG_H */
 diff --git a/fs/exfat/exfat_core.c b/fs/exfat/exfat_core.c
 new file mode 100644
-index 0000000000000000..143b72155ef9e075
+index 000000000000..143b72155ef9
 --- /dev/null
 +++ b/fs/exfat/exfat_core.c
 @@ -0,0 +1,5138 @@
@@ -90755,7 +90950,7 @@ index 0000000000000000..143b72155ef9e075
 +} /* end of multi_sector_write */
 diff --git a/fs/exfat/exfat_core.h b/fs/exfat/exfat_core.h
 new file mode 100644
-index 0000000000000000..52d05c7007d32d34
+index 000000000000..52d05c7007d3
 --- /dev/null
 +++ b/fs/exfat/exfat_core.h
 @@ -0,0 +1,671 @@
@@ -91432,7 +91627,7 @@ index 0000000000000000..52d05c7007d32d34
 +#endif /* _EXFAT_H */
 diff --git a/fs/exfat/exfat_data.c b/fs/exfat/exfat_data.c
 new file mode 100644
-index 0000000000000000..65da07aff547a2dd
+index 000000000000..65da07aff547
 --- /dev/null
 +++ b/fs/exfat/exfat_data.c
 @@ -0,0 +1,77 @@
@@ -91515,7 +91710,7 @@ index 0000000000000000..65da07aff547a2dd
 +BUF_CACHE_T buf_cache_hash_list[BUF_CACHE_HASH_SIZE];
 diff --git a/fs/exfat/exfat_data.h b/fs/exfat/exfat_data.h
 new file mode 100644
-index 0000000000000000..53b0e39397fa114c
+index 000000000000..53b0e39397fa
 --- /dev/null
 +++ b/fs/exfat/exfat_data.h
 @@ -0,0 +1,58 @@
@@ -91579,7 +91774,7 @@ index 0000000000000000..53b0e39397fa114c
 +#endif /* _EXFAT_DATA_H */
 diff --git a/fs/exfat/exfat_nls.c b/fs/exfat/exfat_nls.c
 new file mode 100644
-index 0000000000000000..a48b3d05a7c4bcad
+index 000000000000..a48b3d05a7c4
 --- /dev/null
 +++ b/fs/exfat/exfat_nls.c
 @@ -0,0 +1,448 @@
@@ -92033,7 +92228,7 @@ index 0000000000000000..a48b3d05a7c4bcad
 +} /* end of convert_uni_to_ch */
 diff --git a/fs/exfat/exfat_nls.h b/fs/exfat/exfat_nls.h
 new file mode 100644
-index 0000000000000000..bc516d762e903bed
+index 000000000000..bc516d762e90
 --- /dev/null
 +++ b/fs/exfat/exfat_nls.h
 @@ -0,0 +1,91 @@
@@ -92130,7 +92325,7 @@ index 0000000000000000..bc516d762e903bed
 +#endif /* _EXFAT_NLS_H */
 diff --git a/fs/exfat/exfat_oal.c b/fs/exfat/exfat_oal.c
 new file mode 100644
-index 0000000000000000..743544244ca899d8
+index 000000000000..743544244ca8
 --- /dev/null
 +++ b/fs/exfat/exfat_oal.c
 @@ -0,0 +1,196 @@
@@ -92332,7 +92527,7 @@ index 0000000000000000..743544244ca899d8
 +} /* end of tm_current */
 diff --git a/fs/exfat/exfat_oal.h b/fs/exfat/exfat_oal.h
 new file mode 100644
-index 0000000000000000..b6dd7897ab6e2f3f
+index 000000000000..b6dd7897ab6e
 --- /dev/null
 +++ b/fs/exfat/exfat_oal.h
 @@ -0,0 +1,74 @@
@@ -92412,7 +92607,7 @@ index 0000000000000000..b6dd7897ab6e2f3f
 +#endif /* _EXFAT_OAL_H */
 diff --git a/fs/exfat/exfat_super.c b/fs/exfat/exfat_super.c
 new file mode 100644
-index 0000000000000000..104ec4455fcc0caa
+index 000000000000..104ec4455fcc
 --- /dev/null
 +++ b/fs/exfat/exfat_super.c
 @@ -0,0 +1,2697 @@
@@ -95116,7 +95311,7 @@ index 0000000000000000..104ec4455fcc0caa
 \ No newline at end of file
 diff --git a/fs/exfat/exfat_super.h b/fs/exfat/exfat_super.h
 new file mode 100644
-index 0000000000000000..916811e3d31e24f8
+index 000000000000..916811e3d31e
 --- /dev/null
 +++ b/fs/exfat/exfat_super.h
 @@ -0,0 +1,171 @@
@@ -95293,7 +95488,7 @@ index 0000000000000000..916811e3d31e24f8
 +#endif /* _EXFAT_LINUX_H */
 diff --git a/fs/exfat/exfat_upcase.c b/fs/exfat/exfat_upcase.c
 new file mode 100644
-index 0000000000000000..3807f37caacb5a56
+index 000000000000..3807f37caacb
 --- /dev/null
 +++ b/fs/exfat/exfat_upcase.c
 @@ -0,0 +1,405 @@
@@ -95704,7 +95899,7 @@ index 0000000000000000..3807f37caacb5a56
 +};
 diff --git a/fs/exfat/exfat_version.h b/fs/exfat/exfat_version.h
 new file mode 100644
-index 0000000000000000..a93fa46be04e8d6a
+index 000000000000..a93fa46be04e
 --- /dev/null
 +++ b/fs/exfat/exfat_version.h
 @@ -0,0 +1,19 @@
@@ -95728,7 +95923,7 @@ index 0000000000000000..a93fa46be04e8d6a
 +
 +#define EXFAT_VERSION  "1.2.9"
 diff --git a/fs/open.c b/fs/open.c
-index 7ea118471dce5999..8cd3f3660e3766b3 100644
+index 7ea118471dce..8cd3f3660e37 100644
 --- a/fs/open.c
 +++ b/fs/open.c
 @@ -34,6 +34,9 @@
@@ -95750,10 +95945,10 @@ index 7ea118471dce5999..8cd3f3660e3766b3 100644
  	}
  	putname(tmp);
 diff --git a/fs/proc/base.c b/fs/proc/base.c
-index 9d357b2ea6cb59af..7572cc59ec3b5a93 100644
+index 60316b52d659..f79f714b7d20 100644
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -465,7 +465,7 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
+@@ -464,7 +464,7 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
  		seq_printf(m, "0 0 0\n");
  	else
  		seq_printf(m, "%llu %llu %lu\n",
@@ -95763,7 +95958,7 @@ index 9d357b2ea6cb59af..7572cc59ec3b5a93 100644
  		   task->sched_info.pcount);
  
 diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 6362e3606aa50948..901b0bf8f101803a 100644
+index 0ce8a372d506..7a33a91abc0e 100644
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
 @@ -45,16 +45,20 @@ struct blk_queue_stats;
@@ -95800,10 +95995,10 @@ index 6362e3606aa50948..901b0bf8f101803a 100644
  /* flags that prevent us from merging requests: */
  #define RQF_NOMERGE_FLAGS \
 diff --git a/include/linux/init_task.h b/include/linux/init_task.h
-index 8062e6cc607c8207..afe9887aced118b4 100644
+index 6a532629c983..6c1006e47dfc 100644
 --- a/include/linux/init_task.h
 +++ b/include/linux/init_task.h
-@@ -172,8 +172,6 @@ extern struct cred init_cred;
+@@ -171,8 +171,6 @@ extern struct cred init_cred;
  # define INIT_VTIME(tsk)
  #endif
  
@@ -95812,7 +96007,7 @@ index 8062e6cc607c8207..afe9887aced118b4 100644
  #ifdef CONFIG_RT_MUTEXES
  # define INIT_RT_MUTEXES(tsk)						\
  	.pi_waiters = RB_ROOT_CACHED,					\
-@@ -223,6 +221,80 @@ extern struct cred init_cred;
+@@ -222,6 +220,80 @@ extern struct cred init_cred;
   *  INIT_TASK is used to set up the first task table, touch at
   * your own risk!. Base=0, limit=0x1fffff (=2MB)
   */
@@ -95893,7 +96088,7 @@ index 8062e6cc607c8207..afe9887aced118b4 100644
  #define INIT_TASK(tsk)	\
  {									\
  	INIT_TASK_TI(tsk)						\
-@@ -300,7 +372,7 @@ extern struct cred init_cred;
+@@ -299,7 +371,7 @@ extern struct cred init_cred;
  	INIT_LIVEPATCH(tsk)						\
  	INIT_TASK_SECURITY						\
  }
@@ -95903,10 +96098,10 @@ index 8062e6cc607c8207..afe9887aced118b4 100644
  /* Attach to the init_task data structure for proper alignment */
  #define __init_task_data __attribute__((__section__(".data..init_task")))
 diff --git a/include/linux/ioprio.h b/include/linux/ioprio.h
-index 2cdd7480989962c6..0448fc17cd93cf01 100644
+index 627efac73e6d..e25a094c2f81 100644
 --- a/include/linux/ioprio.h
 +++ b/include/linux/ioprio.h
-@@ -52,6 +52,8 @@ enum {
+@@ -53,6 +53,8 @@ enum {
   */
  static inline int task_nice_ioprio(struct task_struct *task)
  {
@@ -95916,7 +96111,7 @@ index 2cdd7480989962c6..0448fc17cd93cf01 100644
  }
  
 diff --git a/include/linux/linux_logo.h b/include/linux/linux_logo.h
-index 5e3581d76c7f466d..dbdf85ce007fb2d5 100644
+index 5e3581d76c7f..dbdf85ce007f 100644
 --- a/include/linux/linux_logo.h
 +++ b/include/linux/linux_logo.h
 @@ -38,6 +38,18 @@ extern const struct linux_logo logo_linux_vga16;
@@ -95939,7 +96134,7 @@ index 5e3581d76c7f466d..dbdf85ce007fb2d5 100644
  extern const struct linux_logo logo_mac_clut224;
  extern const struct linux_logo logo_parisc_clut224;
 diff --git a/include/linux/sched.h b/include/linux/sched.h
-index fdf74f27acf1e980..35dc91a0e2edc630 100644
+index d2588263a989..e110fa878908 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
 @@ -27,6 +27,9 @@
@@ -95952,7 +96147,7 @@ index fdf74f27acf1e980..35dc91a0e2edc630 100644
  
  /* task_struct member predeclarations (sorted alphabetically): */
  struct audit_context;
-@@ -539,29 +542,46 @@ struct task_struct {
+@@ -540,29 +543,46 @@ struct task_struct {
  	unsigned int			flags;
  	unsigned int			ptrace;
  
@@ -96000,7 +96195,7 @@ index fdf74f27acf1e980..35dc91a0e2edc630 100644
  #ifdef CONFIG_CGROUP_SCHED
  	struct task_group		*sched_task_group;
  #endif
-@@ -710,6 +730,10 @@ struct task_struct {
+@@ -711,6 +731,10 @@ struct task_struct {
  #ifdef CONFIG_ARCH_HAS_SCALED_CPUTIME
  	u64				utimescaled;
  	u64				stimescaled;
@@ -96011,7 +96206,7 @@ index fdf74f27acf1e980..35dc91a0e2edc630 100644
  #endif
  	u64				gtime;
  	struct prev_cputime		prev_cputime;
-@@ -1115,6 +1139,40 @@ struct task_struct {
+@@ -1105,6 +1129,40 @@ struct task_struct {
  	 */
  };
  
@@ -96053,7 +96248,7 @@ index fdf74f27acf1e980..35dc91a0e2edc630 100644
  {
  	return task->pids[PIDTYPE_PID].pid;
 diff --git a/include/linux/sched/nohz.h b/include/linux/sched/nohz.h
-index 3d3a97d9399d8925..b03197d355240c57 100644
+index 3d3a97d9399d..b03197d35524 100644
 --- a/include/linux/sched/nohz.h
 +++ b/include/linux/sched/nohz.h
 @@ -6,24 +6,24 @@
@@ -96084,7 +96279,7 @@ index 3d3a97d9399d8925..b03197d355240c57 100644
  void calc_load_nohz_stop(void);
  #else
 diff --git a/include/linux/sched/prio.h b/include/linux/sched/prio.h
-index 7d64feafc408e109..43c9d9e50c0941f3 100644
+index 7d64feafc408..43c9d9e50c09 100644
 --- a/include/linux/sched/prio.h
 +++ b/include/linux/sched/prio.h
 @@ -20,8 +20,20 @@
@@ -96108,8 +96303,23 @@ index 7d64feafc408e109..43c9d9e50c0941f3 100644
  #define MAX_PRIO		(MAX_RT_PRIO + NICE_WIDTH)
  #define DEFAULT_PRIO		(MAX_RT_PRIO + NICE_WIDTH / 2)
  
+diff --git a/include/linux/sched/rt.h b/include/linux/sched/rt.h
+index e5af028c08b4..010b2244e0b6 100644
+--- a/include/linux/sched/rt.h
++++ b/include/linux/sched/rt.h
+@@ -24,8 +24,10 @@ static inline bool task_is_realtime(struct task_struct *tsk)
+ 
+ 	if (policy == SCHED_FIFO || policy == SCHED_RR)
+ 		return true;
++#ifndef CONFIG_SCHED_MUQSS
+ 	if (policy == SCHED_DEADLINE)
+ 		return true;
++#endif
+ 	return false;
+ }
+ 
 diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
-index 05b8650f06f5334a..27e880d5534c8a38 100644
+index 05b8650f06f5..27e880d5534c 100644
 --- a/include/linux/sched/task.h
 +++ b/include/linux/sched/task.h
 @@ -80,7 +80,7 @@ extern long kernel_wait4(pid_t, int *, int, struct rusage *);
@@ -96123,7 +96333,7 @@ index 05b8650f06f5334a..27e880d5534c8a38 100644
  #define sched_exec()   {}
 diff --git a/include/linux/skip_list.h b/include/linux/skip_list.h
 new file mode 100644
-index 0000000000000000..d4be84ba273b6dbd
+index 000000000000..d4be84ba273b
 --- /dev/null
 +++ b/include/linux/skip_list.h
 @@ -0,0 +1,33 @@
@@ -96162,7 +96372,7 @@ index 0000000000000000..d4be84ba273b6dbd
 +#endif /* _LINUX_SKIP_LISTS_H */
 diff --git a/include/linux/thinkpad_ec.h b/include/linux/thinkpad_ec.h
 new file mode 100644
-index 0000000000000000..1b80d7ee549359ab
+index 000000000000..1b80d7ee5493
 --- /dev/null
 +++ b/include/linux/thinkpad_ec.h
 @@ -0,0 +1,47 @@
@@ -96215,7 +96425,7 @@ index 0000000000000000..1b80d7ee549359ab
 +#endif /* _THINKPAD_EC_H */
 diff --git a/include/trace/events/fs.h b/include/trace/events/fs.h
 new file mode 100644
-index 0000000000000000..fb634b74adf3fb7f
+index 000000000000..fb634b74adf3
 --- /dev/null
 +++ b/include/trace/events/fs.h
 @@ -0,0 +1,53 @@
@@ -96273,7 +96483,7 @@ index 0000000000000000..fb634b74adf3fb7f
 +/* This part must be outside protection */
 +#include <trace/define_trace.h>
 diff --git a/include/uapi/linux/sched.h b/include/uapi/linux/sched.h
-index 30a9e51bbb1e583f..0178fd277aaaa3d3 100644
+index 30a9e51bbb1e..0178fd277aaa 100644
 --- a/include/uapi/linux/sched.h
 +++ b/include/uapi/linux/sched.h
 @@ -37,9 +37,16 @@
@@ -96295,7 +96505,7 @@ index 30a9e51bbb1e583f..0178fd277aaaa3d3 100644
  /* Can be ORed in to make sure the process is reverted back to SCHED_NORMAL on fork */
  #define SCHED_RESET_ON_FORK     0x40000000
 diff --git a/include/uapi/linux/vt.h b/include/uapi/linux/vt.h
-index e9d39c48520af18b..3bceead8da40b3e2 100644
+index e9d39c48520a..3bceead8da40 100644
 --- a/include/uapi/linux/vt.h
 +++ b/include/uapi/linux/vt.h
 @@ -3,12 +3,25 @@
@@ -96326,7 +96536,7 @@ index e9d39c48520af18b..3bceead8da40b3e2 100644
  		   consoles 16 and higher (since it returns a short) */
  
 diff --git a/init/Kconfig b/init/Kconfig
-index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
+index a9a2e2c86671..df55f1ce58ed 100644
 --- a/init/Kconfig
 +++ b/init/Kconfig
 @@ -38,6 +38,47 @@ config THREAD_INFO_IN_TASK
@@ -96346,10 +96556,10 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
 +
 +	  --- Block Layer ----------------------------------------
 +
-+	    Block Layer Queue Depth........: 128    -> 512
++	    Queue depth...............:      128    -> 512
 +	    Default MQ scheduler......: mq-deadline -> bfq
 +
-+	  --- CPU Scheduler (CFS) --------------------------------
++	  --- CFS CPU Scheduler ----------------------------------
 +
 +	    Scheduling latency.............:   6    ->   3    ms
 +	    Minimal granularity............:   0.75 ->   0.3  ms
@@ -96358,7 +96568,7 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
 +	    Bandwidth slice size...........:   5    ->   3    ms
 +	    Ondemand fine upscaling limit..:  95 %  ->  85 %
 +
-+	  --- CPU Scheduler (MuQSS) ------------------------------
++	  --- MuQSS CPU Scheduler --------------------------------
 +
 +	    Scheduling interval............:   6    ->   3    ms
 +	    ISO task max realtime use......:  70 %  ->  25 %
@@ -96377,7 +96587,7 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
  config BROKEN
  	bool
  
-@@ -620,6 +661,7 @@ config NUMA_BALANCING
+@@ -619,6 +660,7 @@ config NUMA_BALANCING
  	depends on ARCH_SUPPORTS_NUMA_BALANCING
  	depends on !ARCH_WANT_NUMA_VARIABLE_LOCALITY
  	depends on SMP && NUMA && MIGRATION
@@ -96385,7 +96595,7 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
  	help
  	  This option adds support for automatic NUMA aware memory/task placement.
  	  The mechanism is quite primitive and is based on migrating memory when
-@@ -722,9 +764,13 @@ menuconfig CGROUP_SCHED
+@@ -721,9 +763,13 @@ menuconfig CGROUP_SCHED
  	help
  	  This feature lets CPU scheduler recognize task groups and control CPU
  	  bandwidth allocation to such task groups. It uses cgroups to group
@@ -96401,7 +96611,7 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
  config FAIR_GROUP_SCHED
  	bool "Group scheduling for SCHED_OTHER"
  	depends on CGROUP_SCHED
-@@ -831,6 +877,7 @@ config CGROUP_DEVICE
+@@ -830,6 +876,7 @@ config CGROUP_DEVICE
  
  config CGROUP_CPUACCT
  	bool "Simple CPU accounting controller"
@@ -96409,7 +96619,7 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
  	help
  	  Provides a simple controller for monitoring the
  	  total CPU consumed by the tasks in a cgroup.
-@@ -929,26 +976,43 @@ config USER_NS
+@@ -916,26 +963,43 @@ config USER_NS
  
  	  If unsure, say N.
  
@@ -96453,7 +96663,7 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
  	select CGROUPS
  	select CGROUP_SCHED
  	select FAIR_GROUP_SCHED
-@@ -1042,6 +1106,13 @@ config CC_OPTIMIZE_FOR_PERFORMANCE
+@@ -1029,6 +1093,13 @@ config CC_OPTIMIZE_FOR_PERFORMANCE
  	  with the "-O2" compiler flag for best performance and most
  	  helpful compile-time warnings.
  
@@ -96468,10 +96678,10 @@ index 3c1faaa2af4aad76..90219c22e5e0cf8b 100644
  	bool "Optimize for size"
  	help
 diff --git a/init/main.c b/init/main.c
-index b32ec72cdf3dd873..7d9d60d2111e3a2f 100644
+index a8100b954839..0cd1dbbbb12d 100644
 --- a/init/main.c
 +++ b/init/main.c
-@@ -842,7 +842,6 @@ int __init_or_module do_one_initcall(initcall_t fn)
+@@ -847,7 +847,6 @@ int __init_or_module do_one_initcall(initcall_t fn)
  	return ret;
  }
  
@@ -96479,7 +96689,7 @@ index b32ec72cdf3dd873..7d9d60d2111e3a2f 100644
  extern initcall_t __initcall_start[];
  extern initcall_t __initcall0_start[];
  extern initcall_t __initcall1_start[];
-@@ -1002,6 +1001,8 @@ static int __ref kernel_init(void *unused)
+@@ -1007,6 +1006,8 @@ static int __ref kernel_init(void *unused)
  
  	rcu_end_inkernel_boot();
  
@@ -96489,7 +96699,7 @@ index b32ec72cdf3dd873..7d9d60d2111e3a2f 100644
  		ret = run_init_process(ramdisk_execute_command);
  		if (!ret)
 diff --git a/kernel/Makefile b/kernel/Makefile
-index 172d151d429caeb3..38b9a81ddffc73f6 100644
+index 172d151d429c..38b9a81ddffc 100644
 --- a/kernel/Makefile
 +++ b/kernel/Makefile
 @@ -10,7 +10,7 @@ obj-y     = fork.o exec_domain.o panic.o \
@@ -96501,48 +96711,11 @@ index 172d151d429caeb3..38b9a81ddffc73f6 100644
  
  obj-$(CONFIG_MODULES) += kmod.o
  obj-$(CONFIG_MULTIUSER) += groups.o
-diff --git a/kernel/cgroup/cgroup.c b/kernel/cgroup/cgroup.c
-index 44857278eb8aa6a2..030e4286f14c715e 100644
---- a/kernel/cgroup/cgroup.c
-+++ b/kernel/cgroup/cgroup.c
-@@ -4059,26 +4059,24 @@ static void css_task_iter_advance_css_set(struct css_task_iter *it)
- 
- static void css_task_iter_advance(struct css_task_iter *it)
- {
--	struct list_head *l = it->task_pos;
-+	struct list_head *next;
- 
- 	lockdep_assert_held(&css_set_lock);
--	WARN_ON_ONCE(!l);
--
- repeat:
- 	/*
- 	 * Advance iterator to find next entry.  cset->tasks is consumed
- 	 * first and then ->mg_tasks.  After ->mg_tasks, we move onto the
- 	 * next cset.
- 	 */
--	l = l->next;
-+	next = it->task_pos->next;
- 
--	if (l == it->tasks_head)
--		l = it->mg_tasks_head->next;
-+	if (next == it->tasks_head)
-+		next = it->mg_tasks_head->next;
- 
--	if (l == it->mg_tasks_head)
-+	if (next == it->mg_tasks_head)
- 		css_task_iter_advance_css_set(it);
- 	else
--		it->task_pos = l;
-+		it->task_pos = next;
- 
- 	/* if PROCS, skip over tasks which aren't group leaders */
- 	if ((it->flags & CSS_TASK_ITER_PROCS) && it->task_pos &&
 diff --git a/kernel/delayacct.c b/kernel/delayacct.c
-index 4a1c33416b6a2daa..e9ffeea9d4684a25 100644
+index e2764d767f18..2f85428d22b9 100644
 --- a/kernel/delayacct.c
 +++ b/kernel/delayacct.c
-@@ -106,7 +106,7 @@ int __delayacct_add_tsk(struct taskstats *d, struct task_struct *tsk)
+@@ -114,7 +114,7 @@ int __delayacct_add_tsk(struct taskstats *d, struct task_struct *tsk)
  	 */
  	t1 = tsk->sched_info.pcount;
  	t2 = tsk->sched_info.run_delay;
@@ -96552,7 +96725,7 @@ index 4a1c33416b6a2daa..e9ffeea9d4684a25 100644
  	d->cpu_count += t1;
  
 diff --git a/kernel/exit.c b/kernel/exit.c
-index f6cad39f35dfbe44..ef1bcbd8526d06c6 100644
+index 995453d9fb55..6156f0cac1c7 100644
 --- a/kernel/exit.c
 +++ b/kernel/exit.c
 @@ -129,28 +129,28 @@ static void __exit_signal(struct task_struct *tsk)
@@ -96587,7 +96760,7 @@ index f6cad39f35dfbe44..ef1bcbd8526d06c6 100644
  	__unhash_process(tsk, group_dead);
  	write_sequnlock(&sig->stats_lock);
 diff --git a/kernel/fork.c b/kernel/fork.c
-index 500ce64517d93e68..35f5860958b40e9b 100644
+index 2295fc69717f..6f320a216e7d 100644
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
 @@ -102,6 +102,11 @@
@@ -96602,7 +96775,7 @@ index 500ce64517d93e68..35f5860958b40e9b 100644
  
  /*
   * Minimum number of threads to boot the kernel
-@@ -1554,6 +1559,10 @@ static __latent_entropy struct task_struct *copy_process(
+@@ -1550,6 +1555,10 @@ static __latent_entropy struct task_struct *copy_process(
  	if ((clone_flags & (CLONE_NEWUSER|CLONE_FS)) == (CLONE_NEWUSER|CLONE_FS))
  		return ERR_PTR(-EINVAL);
  
@@ -96613,7 +96786,7 @@ index 500ce64517d93e68..35f5860958b40e9b 100644
  	/*
  	 * Thread groups must share signals as well, and detached threads
  	 * can only be started up within the thread group.
-@@ -2347,6 +2356,12 @@ SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
+@@ -2343,6 +2352,12 @@ SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
  	if (unshare_flags & CLONE_NEWNS)
  		unshare_flags |= CLONE_FS;
  
@@ -96627,10 +96800,10 @@ index 500ce64517d93e68..35f5860958b40e9b 100644
  	if (err)
  		goto bad_unshare_out;
 diff --git a/kernel/kthread.c b/kernel/kthread.c
-index 1c19edf824272db4..a0f227768dfc09e3 100644
+index cd50e99202b0..0a2deebdfbfa 100644
 --- a/kernel/kthread.c
 +++ b/kernel/kthread.c
-@@ -403,28 +403,56 @@ void kthread_bind(struct task_struct *p, unsigned int cpu)
+@@ -410,28 +410,56 @@ void kthread_bind(struct task_struct *p, unsigned int cpu)
  }
  EXPORT_SYMBOL(kthread_bind);
  
@@ -96689,10 +96862,10 @@ index 1c19edf824272db4..a0f227768dfc09e3 100644
  	set_bit(KTHREAD_IS_PER_CPU, &to_kthread(p)->flags);
  	to_kthread(p)->cpu = cpu;
 diff --git a/kernel/livepatch/transition.c b/kernel/livepatch/transition.c
-index b004a1fb603236f3..48fdad9e1f140a3f 100644
+index 56add6327736..dfed6ec06bf6 100644
 --- a/kernel/livepatch/transition.c
 +++ b/kernel/livepatch/transition.c
-@@ -277,15 +277,21 @@ static int klp_check_stack(struct task_struct *task, char *err_buf)
+@@ -302,15 +302,21 @@ static int klp_check_stack(struct task_struct *task, char *err_buf)
  	return 0;
  }
  
@@ -96716,7 +96889,7 @@ index b004a1fb603236f3..48fdad9e1f140a3f 100644
  	bool success = false;
  	char err_buf[STACK_ERR_BUF_SIZE];
 diff --git a/kernel/rcu/Kconfig b/kernel/rcu/Kconfig
-index 9210379c0353676b..2dd2f03843cc3507 100644
+index 9210379c0353..2dd2f03843cc 100644
 --- a/kernel/rcu/Kconfig
 +++ b/kernel/rcu/Kconfig
 @@ -93,7 +93,7 @@ config CONTEXT_TRACKING
@@ -96729,7 +96902,7 @@ index 9210379c0353676b..2dd2f03843cc3507 100644
  	  The major pre-requirement for full dynticks to work is to
  	  support the context tracking subsystem. But there are also
 diff --git a/kernel/sched/Makefile b/kernel/sched/Makefile
-index a9ee16bbc6931a6e..edb7560bbb39c15d 100644
+index e2f9d4feff40..c8197dc6b904 100644
 --- a/kernel/sched/Makefile
 +++ b/kernel/sched/Makefile
 @@ -16,14 +16,20 @@ ifneq ($(CONFIG_SCHED_OMIT_FRAME_POINTER),y)
@@ -96759,10 +96932,10 @@ index a9ee16bbc6931a6e..edb7560bbb39c15d 100644
  obj-$(CONFIG_MEMBARRIER) += membarrier.o
 diff --git a/kernel/sched/MuQSS.c b/kernel/sched/MuQSS.c
 new file mode 100644
-index 0000000000000000..06cee920b162c39c
+index 000000000000..9397e8939454
 --- /dev/null
 +++ b/kernel/sched/MuQSS.c
-@@ -0,0 +1,6931 @@
+@@ -0,0 +1,7187 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + *  kernel/sched/MuQSS.c, was kernel/sched.c
@@ -96808,6 +96981,7 @@ index 0000000000000000..06cee920b162c39c
 +#include <linux/binfmts.h>
 +#include <linux/context_tracking.h>
 +#include <linux/rcupdate_wait.h>
++#include <linux/compat.h>
 +#include <linux/skip_list.h>
 +
 +#include <linux/blkdev.h>
@@ -96819,6 +96993,7 @@ index 0000000000000000..06cee920b162c39c
 +#include <linux/profile.h>
 +#include <linux/security.h>
 +#include <linux/syscalls.h>
++#include <linux/sched/isolation.h>
 +#include <linux/tick.h>
 +
 +#include <asm/switch_to.h>
@@ -96876,8 +97051,41 @@ index 0000000000000000..06cee920b162c39c
 +
 +void print_scheduler_version(void)
 +{
-+	printk(KERN_INFO "MuQSS CPU scheduler v0.162 by Con Kolivas.\n");
++	printk(KERN_INFO "MuQSS CPU scheduler v0.170 by Con Kolivas.\n");
 +}
++
++#define RQSHARE_NONE 0
++#define RQSHARE_SMT 1
++#define RQSHARE_MC 2
++#define RQSHARE_SMP 3
++
++/*
++ * This determines what level of runqueue sharing will be done and is
++ * configurable at boot time with the bootparam rqshare =
++ */
++static int rqshare __read_mostly = CONFIG_SHARERQ; /* Default RQSHARE_MC */
++
++static int __init set_rqshare(char *str)
++{
++	if (!strncmp(str, "none", 4)) {
++		rqshare = RQSHARE_NONE;
++		return 0;
++	}
++	if (!strncmp(str, "smt", 3)) {
++		rqshare = RQSHARE_SMT;
++		return 0;
++	}
++	if (!strncmp(str, "mc", 2)) {
++		rqshare = RQSHARE_MC;
++		return 0;
++	}
++	if (!strncmp(str, "smp", 2)) {
++		rqshare = RQSHARE_SMP;
++		return 0;
++	}
++	return 1;
++}
++__setup("rqshare=", set_rqshare);
 +
 +/*
 + * This is the time all tasks within the same priority round robin.
@@ -96920,6 +97128,7 @@ index 0000000000000000..06cee920b162c39c
 + */
 +static int prio_ratios[NICE_WIDTH] __read_mostly;
 +
++
 +/*
 + * The quota handed out to tasks of all priority levels when refilling their
 + * time_slice.
@@ -96929,15 +97138,17 @@ index 0000000000000000..06cee920b162c39c
 +	return MS_TO_US(rr_interval);
 +}
 +
-+#ifdef CONFIG_SMP
-+static cpumask_t cpu_idle_map ____cacheline_aligned_in_smp;
-+#endif
-+
-+/* CPUs with isolated domains */
-+cpumask_var_t cpu_isolated_map;
-+
 +DEFINE_PER_CPU_SHARED_ALIGNED(struct rq, runqueues);
++
 +#ifdef CONFIG_SMP
++/*
++ * Total number of runqueues. Equals number of CPUs when there is no runqueue
++ * sharing but is usually less with SMT/MC sharing of runqueues.
++ */
++static int total_runqueues __read_mostly = 1;
++
++static cpumask_t cpu_idle_map ____cacheline_aligned_in_smp;
++
 +struct rq *cpu_rq(int cpu)
 +{
 +	return &per_cpu(runqueues, (cpu));
@@ -97080,12 +97291,6 @@ index 0000000000000000..06cee920b162c39c
 +	return p->on_rq == TASK_ON_RQ_MIGRATING;
 +}
 +
-+static inline int rq_trylock(struct rq *rq)
-+	__acquires(rq->lock)
-+{
-+	return raw_spin_trylock(&rq->lock);
-+}
-+
 +/*
 + * Any time we have two runqueues locked we use that as an opportunity to
 + * synchronise niffies to the highest value as idle ticks may have artificially
@@ -97112,11 +97317,11 @@ index 0000000000000000..06cee920b162c39c
 +	__acquires(rq2->lock)
 +{
 +	if (rq1 < rq2) {
-+		raw_spin_lock(&rq1->lock);
-+		raw_spin_lock_nested(&rq2->lock, SINGLE_DEPTH_NESTING);
++		raw_spin_lock(rq1->lock);
++		raw_spin_lock_nested(rq2->lock, SINGLE_DEPTH_NESTING);
 +	} else {
-+		raw_spin_lock(&rq2->lock);
-+		raw_spin_lock_nested(&rq1->lock, SINGLE_DEPTH_NESTING);
++		raw_spin_lock(rq2->lock);
++		raw_spin_lock_nested(rq1->lock, SINGLE_DEPTH_NESTING);
 +	}
 +}
 +
@@ -97125,8 +97330,8 @@ index 0000000000000000..06cee920b162c39c
 +	__acquires(rq2->lock)
 +{
 +	BUG_ON(!irqs_disabled());
-+	if (rq1 == rq2) {
-+		raw_spin_lock(&rq1->lock);
++	if (rq1->lock == rq2->lock) {
++		raw_spin_lock(rq1->lock);
 +		__acquire(rq2->lock);	/* Fake it out ;) */
 +	} else
 +		__double_rq_lock(rq1, rq2);
@@ -97143,9 +97348,9 @@ index 0000000000000000..06cee920b162c39c
 +	__releases(rq1->lock)
 +	__releases(rq2->lock)
 +{
-+	raw_spin_unlock(&rq1->lock);
-+	if (rq1 != rq2)
-+		raw_spin_unlock(&rq2->lock);
++	raw_spin_unlock(rq1->lock);
++	if (rq1->lock != rq2->lock)
++		raw_spin_unlock(rq2->lock);
 +	else
 +		__release(rq2->lock);
 +}
@@ -97158,7 +97363,7 @@ index 0000000000000000..06cee920b162c39c
 +	for_each_possible_cpu(cpu) {
 +		struct rq *rq = cpu_rq(cpu);
 +
-+		do_raw_spin_lock(&rq->lock);
++		do_raw_spin_lock(rq->lock);
 +	}
 +}
 +
@@ -97169,7 +97374,7 @@ index 0000000000000000..06cee920b162c39c
 +	for_each_possible_cpu(cpu) {
 +		struct rq *rq = cpu_rq(cpu);
 +
-+		do_raw_spin_unlock(&rq->lock);
++		do_raw_spin_unlock(rq->lock);
 +	}
 +	preempt_enable();
 +}
@@ -97177,9 +97382,9 @@ index 0000000000000000..06cee920b162c39c
 +/* Specially nest trylock an rq */
 +static inline bool trylock_rq(struct rq *this_rq, struct rq *rq)
 +{
-+	if (unlikely(!do_raw_spin_trylock(&rq->lock)))
++	if (unlikely(!do_raw_spin_trylock(rq->lock)))
 +		return false;
-+	spin_acquire(&rq->lock.dep_map, SINGLE_DEPTH_NESTING, 1, _RET_IP_);
++	spin_acquire(rq->lock.dep_map, SINGLE_DEPTH_NESTING, 1, _RET_IP_);
 +	synchronise_niffies(this_rq, rq);
 +	return true;
 +}
@@ -97187,8 +97392,8 @@ index 0000000000000000..06cee920b162c39c
 +/* Unlock a specially nested trylocked rq */
 +static inline void unlock_rq(struct rq *rq)
 +{
-+	spin_release(&rq->lock.dep_map, 1, _RET_IP_);
-+	do_raw_spin_unlock(&rq->lock);
++	spin_release(rq->lock.dep_map, 1, _RET_IP_);
++	do_raw_spin_unlock(rq->lock);
 +}
 +
 +/*
@@ -97333,7 +97538,7 @@ index 0000000000000000..06cee920b162c39c
 +	if (!(p->flags & PF_KTHREAD)) {
 +		struct rq *rq = task_rq(p);
 +
-+		lockdep_assert_held(&rq->lock);
++		lockdep_assert_held(rq->lock);
 +	}
 +#endif
 +	if (test_tsk_need_resched(p))
@@ -97396,7 +97601,7 @@ index 0000000000000000..06cee920b162c39c
 +	 * fix up the runqueue lock - which gets 'carried over' from
 +	 * prev into current:
 +	 */
-+	spin_acquire(&rq->lock.dep_map, 0, 0, _THIS_IP_);
++	spin_acquire(rq->lock.dep_map, 0, 0, _THIS_IP_);
 +
 +#ifdef CONFIG_SMP
 +	/*
@@ -97416,7 +97621,7 @@ index 0000000000000000..06cee920b162c39c
 +#else
 +		task_thread_info(prev)->cpu = prev->wake_cpu;
 +#endif
-+		raw_spin_unlock(&rq->lock);
++		raw_spin_unlock(rq->lock);
 +
 +		raw_spin_lock(&prev->pi_lock);
 +		rq = __task_rq_lock(prev);
@@ -97430,8 +97635,6 @@ index 0000000000000000..06cee920b162c39c
 +		raw_spin_unlock(&prev->pi_lock);
 +	}
 +#endif
-+	/* Accurately set nr_running here for load average calculations */
-+	rq->nr_running = rq->sl->entries + !rq_idle(rq);
 +	rq_unlock(rq);
 +
 +	do_pending_softirq(rq, current);
@@ -97526,11 +97729,12 @@ index 0000000000000000..06cee920b162c39c
 +static void dequeue_task(struct rq *rq, struct task_struct *p, int flags)
 +{
 +	skiplist_delete(rq->sl, &p->node);
-+	rq->best_key = rq->node.next[0]->key;
++	rq->best_key = rq->node->next[0]->key;
 +	update_clocks(rq);
 +
 +	if (!(flags & DEQUEUE_SAVE))
 +		sched_info_dequeued(task_rq(p), p);
++	rq->nr_running--;
 +	update_load_avg(rq, flags);
 +}
 +
@@ -97611,9 +97815,10 @@ index 0000000000000000..06cee920b162c39c
 +		sched_info_queued(rq, p);
 +	randseed = (rq->niffies >> 10) & 0xFFFFFFFF;
 +	skiplist_insert(rq->sl, &p->node, sl_id, p, randseed);
-+	rq->best_key = rq->node.next[0]->key;
++	rq->best_key = rq->node->next[0]->key;
 +	if (p->in_iowait)
 +		cflags |= SCHED_CPUFREQ_IOWAIT;
++	rq->nr_running++;
 +	update_load_avg(rq, cflags);
 +}
 +
@@ -98040,7 +98245,7 @@ index 0000000000000000..06cee920b162c39c
 +	 * task_rq_lock().
 +	 */
 +	WARN_ON_ONCE(debug_locks && !(lockdep_is_held(&p->pi_lock) ||
-+				      lockdep_is_held(&rq->lock)));
++				      lockdep_is_held(rq->lock)));
 +#endif
 +
 +	trace_sched_migrate_task(p, new_cpu);
@@ -98060,7 +98265,7 @@ index 0000000000000000..06cee920b162c39c
 +		 * We should only be calling this on a running task if we're
 +		 * holding rq lock.
 +		 */
-+		lockdep_assert_held(&rq->lock);
++		lockdep_assert_held(rq->lock);
 +
 +		/*
 +		 * We can't change the task_thread_info CPU on a running task
@@ -98294,14 +98499,30 @@ index 0000000000000000..06cee920b162c39c
 +#ifdef CONFIG_SMP
 +/*
 + * Check to see if p can run on cpu, and if not, whether there are any online
-+ * CPUs it can run on instead.
++ * CPUs it can run on instead. This only happens with the hotplug threads that
++ * bring up the CPUs.
 + */
++static inline bool sched_other_cpu(struct task_struct *p, int cpu)
++{
++	if (likely(cpumask_test_cpu(cpu, &p->cpus_allowed)))
++		return false;
++	if (p->nr_cpus_allowed == 1) {
++		cpumask_t valid_mask;
++
++		cpumask_and(&valid_mask, &p->cpus_allowed, cpu_online_mask);
++		if (unlikely(cpumask_empty(&valid_mask)))
++			return false;
++	}
++	return true;
++}
++
 +static inline bool needs_other_cpu(struct task_struct *p, int cpu)
 +{
-+	if (unlikely(!cpumask_test_cpu(cpu, &p->cpus_allowed)))
-+		return true;
-+	return false;
++	if (cpumask_test_cpu(cpu, &p->cpus_allowed))
++		return false;
++	return true;
 +}
++
 +#define cpu_online_map		(*(cpumask_t *)cpu_online_mask)
 +
 +static void try_preempt(struct task_struct *p, struct rq *this_rq)
@@ -98319,7 +98540,7 @@ index 0000000000000000..06cee920b162c39c
 +	cpumask_and(&tmp, &cpu_online_map, &p->cpus_allowed);
 +
 +	for (i = 0; i < num_possible_cpus(); i++) {
-+		struct rq *rq = this_rq->rq_order[i];
++		struct rq *rq = this_rq->cpu_order[i];
 +
 +		if (!cpumask_test_cpu(rq->cpu, &tmp))
 +			continue;
@@ -98427,7 +98648,7 @@ index 0000000000000000..06cee920b162c39c
 +static void
 +ttwu_do_activate(struct rq *rq, struct task_struct *p, int wake_flags)
 +{
-+	lockdep_assert_held(&rq->lock);
++	lockdep_assert_held(rq->lock);
 +
 +#ifdef CONFIG_SMP
 +	if (p->sched_contributes_to_load)
@@ -98549,13 +98770,14 @@ index 0000000000000000..06cee920b162c39c
 +	cpumask_t valid_mask;
 +
 +	if (p->flags & PF_KTHREAD)
-+		cpumask_and(&valid_mask, &p->cpus_allowed, cpu_online_mask);
++		cpumask_and(&valid_mask, &p->cpus_allowed, cpu_all_mask);
 +	else
 +		cpumask_and(&valid_mask, &p->cpus_allowed, cpu_active_mask);
 +
 +	if (unlikely(!cpumask_weight(&valid_mask))) {
-+		/* Hotplug boot threads do this before the CPU is up */
-+		printk(KERN_INFO "SCHED: No cpumask for %s/%d weight %d\n", p->comm, p->pid, cpumask_weight(&p->cpus_allowed));
++		/* We shouldn't be hitting this any more */
++		printk(KERN_WARNING "SCHED: No cpumask for %s/%d weight %d\n", p->comm,
++		       p->pid, cpumask_weight(&p->cpus_allowed));
 +		return cpumask_any(&p->cpus_allowed);
 +	}
 +	return cpumask_any(&valid_mask);
@@ -98583,7 +98805,7 @@ index 0000000000000000..06cee920b162c39c
 +	}
 +
 +	for (i = 0; i < num_possible_cpus(); i++) {
-+		struct rq *other_rq = task_rq(p)->rq_order[i];
++		struct rq *other_rq = task_rq(p)->cpu_order[i];
 +		int entries;
 +
 +		if (!other_rq->online)
@@ -98732,7 +98954,7 @@ index 0000000000000000..06cee920b162c39c
 +	p->state = TASK_WAKING;
 +
 +	if (p->in_iowait) {
-+		delayacct_blkio_end();
++		delayacct_blkio_end(p);
 +		atomic_dec(&task_rq(p)->nr_iowait);
 +	}
 +
@@ -98743,7 +98965,7 @@ index 0000000000000000..06cee920b162c39c
 +#else /* CONFIG_SMP */
 +
 +	if (p->in_iowait) {
-+		delayacct_blkio_end();
++		delayacct_blkio_end(p);
 +		atomic_dec(&task_rq(p)->nr_iowait);
 +	}
 +
@@ -98774,7 +98996,7 @@ index 0000000000000000..06cee920b162c39c
 +	    WARN_ON_ONCE(p == current))
 +		return;
 +
-+	lockdep_assert_held(&rq->lock);
++	lockdep_assert_held(rq->lock);
 +
 +	if (!raw_spin_trylock(&p->pi_lock)) {
 +		/*
@@ -98795,7 +99017,7 @@ index 0000000000000000..06cee920b162c39c
 +
 +	if (!task_on_rq_queued(p)) {
 +		if (p->in_iowait) {
-+			delayacct_blkio_end();
++			delayacct_blkio_end(p);
 +			atomic_dec(&rq->nr_iowait);
 +		}
 +		ttwu_activate(rq, p);
@@ -99295,7 +99517,7 @@ index 0000000000000000..06cee920b162c39c
 +	 *	schedule()
 +	 *	  preempt_disable();			// 1
 +	 *	  __schedule()
-+	 *	    raw_spin_lock_irq(&rq->lock)	// 2
++	 *	    raw_spin_lock_irq(rq->lock)	// 2
 +	 *
 +	 * Also, see FORK_PREEMPT_COUNT.
 +	 */
@@ -99409,7 +99631,7 @@ index 0000000000000000..06cee920b162c39c
 +	 * of the scheduler it's an obvious special-case), so we
 +	 * do an early lockdep release here:
 +	 */
-+	spin_release(&rq->lock.dep_map, 1, _THIS_IP_);
++	spin_release(rq->lock.dep_map, 1, _THIS_IP_);
 +
 +	/* Here we just switch the register state and the stack. */
 +	switch_to(prev, next, prev);
@@ -100154,11 +100376,12 @@ index 0000000000000000..06cee920b162c39c
 +	int i, best_entries = 0;
 +	u64 best_key = ~0ULL;
 +
-+	for (i = 0; i < num_possible_cpus(); i++) {
++	for (i = 0; i < total_runqueues; i++) {
 +		struct rq *other_rq = rq_order(rq, i);
-+		int entries = other_rq->sl->entries;
 +		skiplist_node *next;
++		int entries;
 +
++		entries = other_rq->sl->entries;
 +		/*
 +		 * Check for queued entres lockless first. The local runqueue
 +		 * is locked so entries will always be accurate.
@@ -100192,13 +100415,13 @@ index 0000000000000000..06cee920b162c39c
 +			}
 +		}
 +
-+		next = &other_rq->node;
++		next = other_rq->node;
 +		/*
 +		 * In interactive mode we check beyond the best entry on other
 +		 * runqueues if we can't get the best for smt or affinity
 +		 * reasons.
 +		 */
-+		while ((next = next->next[0]) != &other_rq->node) {
++		while ((next = next->next[0]) != other_rq->node) {
 +			struct task_struct *p;
 +			u64 key = next->key;
 +
@@ -100213,13 +100436,13 @@ index 0000000000000000..06cee920b162c39c
 +				continue;
 +			}
 +
++			if (sched_other_cpu(p, cpu)) {
++				if (sched_interactive || !i)
++					continue;
++				break;
++			}
 +			/* Make sure affinity is ok */
 +			if (i) {
-+				if (needs_other_cpu(p, cpu)) {
-+					if (sched_interactive)
-+						continue;
-+					break;
-+				}
 +				/* From this point on p is the best so far */
 +				if (locked)
 +					unlock_rq(locked);
@@ -100257,7 +100480,7 @@ index 0000000000000000..06cee920b162c39c
 +
 +	if (unlikely(!rq->sl->entries))
 +		return idle;
-+	edt = rq->node.next[0]->value;
++	edt = rq->node->next[0]->value;
 +	take_task(rq, cpu, edt);
 +	return edt;
 +}
@@ -100521,12 +100744,15 @@ index 0000000000000000..06cee920b162c39c
 +		/*
 +		 * Don't reschedule an idle task or deactivated tasks
 +		 */
-+		if (prev != idle && !deactivate)
++		if (prev == idle)
++			rq->nr_running++;
++		else if (!deactivate)
 +			resched_suitable_idle(prev);
-+		if (next != idle)
-+			check_siblings(rq);
-+		else
++		if (unlikely(next == idle)) {
++			rq->nr_running--;
 +			wake_siblings(rq);
++		} else
++			check_siblings(rq);
 +		rq->nr_switches++;
 +		rq->curr = next;
 +		/*
@@ -101858,6 +102084,7 @@ index 0000000000000000..06cee920b162c39c
 +		preempt_schedule_common();
 +		return 1;
 +	}
++	rcu_all_qs();
 +	return 0;
 +}
 +EXPORT_SYMBOL(_cond_resched);
@@ -102097,22 +102324,11 @@ index 0000000000000000..06cee920b162c39c
 +	return ret;
 +}
 +
-+/**
-+ * sys_sched_rr_get_interval - return the default timeslice of a process.
-+ * @pid: pid of the process.
-+ * @interval: userspace pointer to the timeslice value.
-+ *
-+ *
-+ * Return: On success, 0 and the timeslice is in @interval. Otherwise,
-+ * an error code.
-+ */
-+SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
-+		struct timespec __user *, interval)
++static int sched_rr_get_interval(pid_t pid, struct timespec64 *t)
 +{
 +	struct task_struct *p;
 +	unsigned int time_slice;
 +	unsigned long flags;
-+	struct timespec t;
 +	struct rq *rq;
 +	int retval;
 +
@@ -102134,14 +102350,50 @@ index 0000000000000000..06cee920b162c39c
 +	task_rq_unlock(rq, p, &flags);
 +
 +	rcu_read_unlock();
-+	t = ns_to_timespec(time_slice);
-+	retval = copy_to_user(interval, &t, sizeof(t)) ? -EFAULT : 0;
-+	return retval;
++	*t = ns_to_timespec64(time_slice);
++	return 0;
 +
 +out_unlock:
 +	rcu_read_unlock();
 +	return retval;
 +}
++
++/**
++ * sys_sched_rr_get_interval - return the default timeslice of a process.
++ * @pid: pid of the process.
++ * @interval: userspace pointer to the timeslice value.
++ *
++ * this syscall writes the default timeslice value of a given process
++ * into the user-space timespec buffer. A value of '0' means infinity.
++ *
++ * Return: On success, 0 and the timeslice is in @interval. Otherwise,
++ * an error code.
++ */
++SYSCALL_DEFINE2(sched_rr_get_interval, pid_t, pid,
++		struct timespec __user *, interval)
++{
++	struct timespec64 t;
++	int retval = sched_rr_get_interval(pid, &t);
++
++	if (retval == 0)
++		retval = put_timespec64(&t, interval);
++
++	return retval;
++}
++
++#ifdef CONFIG_COMPAT
++COMPAT_SYSCALL_DEFINE2(sched_rr_get_interval,
++		       compat_pid_t, pid,
++		       struct compat_timespec __user *, interval)
++{
++	struct timespec64 t;
++	int retval = sched_rr_get_interval(pid, &t);
++
++	if (retval == 0)
++		retval = compat_put_timespec64(&t, interval);
++	return retval;
++}
++#endif
 +
 +void sched_show_task(struct task_struct *p)
 +{
@@ -102171,6 +102423,7 @@ index 0000000000000000..06cee920b162c39c
 +	show_stack(p, NULL);
 +	put_task_stack(p);
 +}
++EXPORT_SYMBOL_GPL(sched_show_task);
 +
 +static inline bool
 +state_filter_match(unsigned long state_filter, struct task_struct *p)
@@ -102253,7 +102506,7 @@ index 0000000000000000..06cee920b162c39c
 +		 * Because __kthread_bind() calls this on blocked tasks without
 +		 * holding rq->lock.
 +		 */
-+		lockdep_assert_held(&rq->lock);
++		lockdep_assert_held(rq->lock);
 +	}
 +}
 +
@@ -102289,7 +102542,7 @@ index 0000000000000000..06cee920b162c39c
 +	unsigned long flags;
 +
 +	raw_spin_lock_irqsave(&idle->pi_lock, flags);
-+	raw_spin_lock(&rq->lock);
++	raw_spin_lock(rq->lock);
 +	idle->last_ran = rq->niffies;
 +	time_slice_expired(idle, rq);
 +	idle->state = TASK_RUNNING;
@@ -102319,7 +102572,7 @@ index 0000000000000000..06cee920b162c39c
 +
 +	rq->curr = rq->idle = idle;
 +	idle->on_rq = TASK_ON_RQ_QUEUED;
-+	raw_spin_unlock(&rq->lock);
++	raw_spin_unlock(rq->lock);
 +	raw_spin_unlock_irqrestore(&idle->pi_lock, flags);
 +
 +	/* Set the preempt count _outside_ the spinlocks! */
@@ -102393,7 +102646,7 @@ index 0000000000000000..06cee920b162c39c
 +	int i, cpu = smp_processor_id();
 +	struct sched_domain *sd;
 +
-+	if (!idle_cpu(cpu) && is_housekeeping_cpu(cpu))
++	if (!idle_cpu(cpu) && housekeeping_cpu(cpu, HK_FLAG_TIMER))
 +		return cpu;
 +
 +	rcu_read_lock();
@@ -102402,7 +102655,7 @@ index 0000000000000000..06cee920b162c39c
 +			if (cpu == i)
 +				continue;
 +
-+			if (!idle_cpu(i) && is_housekeeping_cpu(i)) {
++			if (!idle_cpu(i) && housekeeping_cpu(i, HK_FLAG_TIMER)) {
 + 				cpu = i;
 +				cpu = i;
 +				goto unlock;
@@ -102410,8 +102663,8 @@ index 0000000000000000..06cee920b162c39c
 +		}
 +	}
 +
-+	if (!is_housekeeping_cpu(cpu))
-+		cpu = housekeeping_any_cpu();
++	if (!housekeeping_cpu(cpu, HK_FLAG_TIMER))
++		cpu = housekeeping_any_cpu(HK_FLAG_TIMER);
 +unlock:
 +	rcu_read_unlock();
 +	return cpu;
@@ -103121,16 +103374,12 @@ index 0000000000000000..06cee920b162c39c
 +
 +void __init sched_init_smp(void)
 +{
++	struct rq *rq, *other_rq, *leader;
 +	struct sched_domain *sd;
-+	int cpu, other_cpu;
++	int cpu, other_cpu, i;
 +#ifdef CONFIG_SCHED_SMT
 +	bool smt_threads = false;
 +#endif
-+	cpumask_var_t non_isolated_cpus;
-+	struct rq *rq;
-+
-+	alloc_cpumask_var(&non_isolated_cpus, GFP_KERNEL);
-+
 +	sched_init_numa();
 +
 +	/*
@@ -103140,15 +103389,11 @@ index 0000000000000000..06cee920b162c39c
 +	 */
 +	mutex_lock(&sched_domains_mutex);
 +	sched_init_domains(cpu_active_mask);
-+	cpumask_andnot(non_isolated_cpus, cpu_possible_mask, cpu_isolated_map);
-+	if (cpumask_empty(non_isolated_cpus))
-+		cpumask_set_cpu(smp_processor_id(), non_isolated_cpus);
 +	mutex_unlock(&sched_domains_mutex);
 +
 +	/* Move init over to a non-isolated CPU */
-+	if (set_cpus_allowed_ptr(current, non_isolated_cpus) < 0)
++	if (set_cpus_allowed_ptr(current, housekeeping_cpumask(HK_FLAG_DOMAIN)) < 0)
 +		BUG();
-+	free_cpumask_var(non_isolated_cpus);
 +
 +	mutex_lock(&sched_domains_mutex);
 +	local_irq_disable();
@@ -103169,8 +103414,18 @@ index 0000000000000000..06cee920b162c39c
 +		for_each_domain(cpu, sd) {
 +			if (sd->level > SD_LV_MC)
 +				continue;
++			leader = NULL;
 +			/* Set locality to local node if not already found lower */
 +			for_each_cpu(other_cpu, sched_domain_span(sd)) {
++				if (rqshare == RQSHARE_SMP) {
++					other_rq = cpu_rq(other_cpu);
++
++					/* Set the smp_leader to the first CPU */
++					if (!leader)
++						leader = rq;
++					other_rq->smp_leader = leader;
++				}
++
 +				if (rq->cpu_locality[other_cpu] > 3)
 +					rq->cpu_locality[other_cpu] = 3;
 +			}
@@ -103181,38 +103436,48 @@ index 0000000000000000..06cee920b162c39c
 +		 * siblings of its own allowing mixed topologies.
 +		 */
 +#ifdef CONFIG_SCHED_MC
-+		for_each_cpu(other_cpu, core_cpumask(cpu)) {
-+			if (rq->cpu_locality[other_cpu] > 2)
-+				rq->cpu_locality[other_cpu] = 2;
-+		}
++		leader = NULL;
 +		if (cpumask_weight(core_cpumask(cpu)) > 1) {
 +			cpumask_copy(&rq->core_mask, core_cpumask(cpu));
 +			cpumask_clear_cpu(cpu, &rq->core_mask);
++			for_each_cpu(other_cpu, core_cpumask(cpu)) {
++				if (rqshare == RQSHARE_MC) {
++					other_rq = cpu_rq(other_cpu);
++
++					/* Set the mc_leader to the first CPU */
++					if (!leader)
++						leader = rq;
++					other_rq->mc_leader = leader;
++				}
++				if (rq->cpu_locality[other_cpu] > 2)
++					rq->cpu_locality[other_cpu] = 2;
++			}
 +			rq->cache_idle = cache_cpu_idle;
 +		}
 +#endif
 +#ifdef CONFIG_SCHED_SMT
++		leader = NULL;
 +		if (cpumask_weight(thread_cpumask(cpu)) > 1) {
 +			cpumask_copy(&rq->thread_mask, thread_cpumask(cpu));
 +			cpumask_clear_cpu(cpu, &rq->thread_mask);
-+			for_each_cpu(other_cpu, thread_cpumask(cpu))
-+				rq->cpu_locality[other_cpu] = 1;
++			for_each_cpu(other_cpu, thread_cpumask(cpu)) {
++				if (rqshare == RQSHARE_SMT) {
++					other_rq = cpu_rq(other_cpu);
++
++					/* Set the smt_leader to the first CPU */
++					if (!leader)
++						leader = rq;
++					other_rq->smt_leader = leader;
++				}
++				if (rq->cpu_locality[other_cpu] > 1)
++					rq->cpu_locality[other_cpu] = 1;
++			}
 +			rq->siblings_idle = siblings_cpu_idle;
 +			smt_threads = true;
 +		}
 +#endif
 +	}
-+	for_each_possible_cpu(cpu) {
-+		int total_cpus = 1, locality;
 +
-+		rq = cpu_rq(cpu);
-+		for (locality = 1; locality <= 4; locality++) {
-+			for_each_possible_cpu(other_cpu) {
-+				if (rq->cpu_locality[other_cpu] == locality)
-+					rq->rq_order[total_cpus++] = cpu_rq(other_cpu);
-+			}
-+		}
-+	}
 +#ifdef CONFIG_SMT_NICE
 +	if (smt_threads) {
 +		check_siblings = &check_smt_siblings;
@@ -103232,6 +103497,149 @@ index 0000000000000000..06cee920b162c39c
 +				continue;
 +			printk(KERN_DEBUG "MuQSS locality CPU %d to %d: %d\n", cpu, other_cpu, rq->cpu_locality[other_cpu]);
 +		}
++	}
++
++	for_each_online_cpu(cpu) {
++		rq = cpu_rq(cpu);
++		leader = rq->smp_leader;
++
++		rq_lock(rq);
++		if (leader && rq != leader) {
++			printk(KERN_INFO "Sharing SMP runqueue from CPU %d to CPU %d\n",
++			       leader->cpu, rq->cpu);
++			kfree(rq->node);
++			kfree(rq->sl);
++			kfree(rq->lock);
++			rq->node = leader->node;
++			rq->sl = leader->sl;
++			rq->lock = leader->lock;
++			barrier();
++			/* To make up for not unlocking the freed runlock */
++			preempt_enable();
++		} else
++			rq_unlock(rq);
++	}
++
++#ifdef CONFIG_SCHED_MC
++	for_each_online_cpu(cpu) {
++		rq = cpu_rq(cpu);
++		leader = rq->mc_leader;
++
++		rq_lock(rq);
++		if (leader && rq != leader) {
++			printk(KERN_INFO "Sharing MC runqueue from CPU %d to CPU %d\n",
++			       leader->cpu, rq->cpu);
++			kfree(rq->node);
++			kfree(rq->sl);
++			kfree(rq->lock);
++			rq->node = leader->node;
++			rq->sl = leader->sl;
++			rq->lock = leader->lock;
++			barrier();
++			/* To make up for not unlocking the freed runlock */
++			preempt_enable();
++		} else
++			rq_unlock(rq);
++	}
++#endif /* CONFIG_SCHED_MC */
++
++#ifdef CONFIG_SCHED_SMT
++	for_each_online_cpu(cpu) {
++		rq = cpu_rq(cpu);
++
++		leader = rq->smt_leader;
++
++		rq_lock(rq);
++		if (leader && rq != leader) {
++			printk(KERN_INFO "Sharing SMT runqueue from CPU %d to CPU %d\n",
++			       leader->cpu, rq->cpu);
++			kfree(rq->node);
++			kfree(rq->sl);
++			kfree(rq->lock);
++			rq->node = leader->node;
++			rq->sl = leader->sl;
++			rq->lock = leader->lock;
++			barrier();
++			/* To make up for not unlocking the freed runlock */
++			preempt_enable();
++		} else
++			rq_unlock(rq);
++	}
++#endif /* CONFIG_SCHED_SMT */
++
++	total_runqueues = 0;
++	for_each_possible_cpu(cpu) {
++		int locality, total_rqs = 0, total_cpus = 0;
++
++		rq = cpu_rq(cpu);
++		if (
++#ifdef CONFIG_SCHED_MC
++		    (rq->mc_leader == rq) &&
++#endif
++#ifdef CONFIG_SCHED_SMT
++		    (rq->smt_leader == rq) &&
++#endif
++	            (rq->smp_leader == rq))
++			total_runqueues++;
++
++		for (locality = 0; locality <= 4; locality++) {
++			int test_cpu;
++
++			for_each_possible_cpu(test_cpu) {
++				/* Work from each CPU up instead of every rq
++				 * starting at CPU 0 */
++				other_cpu = test_cpu + cpu;
++				other_cpu %= num_possible_cpus();
++				other_rq = cpu_rq(other_cpu);
++
++				if (rq->cpu_locality[other_cpu] == locality) {
++					rq->cpu_order[total_cpus++] = other_rq;
++					if (
++
++#ifdef CONFIG_SCHED_MC
++					    (other_rq->mc_leader == other_rq) &&
++#endif
++#ifdef CONFIG_SCHED_SMT
++					    (other_rq->smt_leader == other_rq) &&
++#endif
++					    (other_rq->smp_leader == other_rq))
++						rq->rq_order[total_rqs++] = other_rq;
++				}
++			}
++		}
++	}
++
++	for_each_possible_cpu(cpu) {
++		rq = cpu_rq(cpu);
++		for (i = 0; i < total_runqueues; i++) {
++			printk(KERN_DEBUG "CPU %d RQ order %d RQ %d\n", cpu, i,
++			       rq->rq_order[i]->cpu);
++		}
++	}
++	for_each_possible_cpu(cpu) {
++		rq = cpu_rq(cpu);
++		for (i = 0; i < num_possible_cpus(); i++) {
++			printk(KERN_DEBUG "CPU %d CPU order %d RQ %d\n", cpu, i,
++			       rq->cpu_order[i]->cpu);
++		}
++	}
++	switch (rqshare) {
++		case RQSHARE_SMP:
++			printk(KERN_INFO "MuQSS runqueue share type SMP total runqueues: %d\n",
++				total_runqueues);
++			break;
++		case RQSHARE_MC:
++			printk(KERN_INFO "MuQSS runqueue share type MC total runqueues: %d\n",
++				total_runqueues);
++			break;
++		case RQSHARE_SMT:
++			printk(KERN_INFO "MuQSS runqueue share type SMT total runqueues: %d\n",
++				total_runqueues);
++			break;
++		case RQSHARE_NONE:
++			printk(KERN_INFO "MuQSS runqueue share type none total runqueues: %d\n",
++				total_runqueues);
++			break;
 +	}
 +
 +	sched_smp_initialized = true;
@@ -103308,9 +103716,11 @@ index 0000000000000000..06cee920b162c39c
 +#endif /* CONFIG_CGROUP_SCHED */
 +	for_each_possible_cpu(i) {
 +		rq = cpu_rq(i);
-+		skiplist_init(&rq->node);
-+		rq->sl = new_skiplist(&rq->node);
-+		raw_spin_lock_init(&rq->lock);
++		rq->node = kmalloc(sizeof(skiplist_node), GFP_ATOMIC);
++		skiplist_init(rq->node);
++		rq->sl = new_skiplist(rq->node);
++		rq->lock = kmalloc(sizeof(raw_spinlock_t), GFP_ATOMIC);
++		raw_spin_lock_init(rq->lock);
 +		rq->nr_running = 0;
 +		rq->nr_uninterruptible = 0;
 +		rq->nr_switches = 0;
@@ -103323,6 +103733,13 @@ index 0000000000000000..06cee920b162c39c
 +		rq->iso_ticks = 0;
 +		rq->iso_refractory = false;
 +#ifdef CONFIG_SMP
++		rq->smp_leader = rq;
++#ifdef CONFIG_SCHED_MC
++		rq->mc_leader = rq;
++#endif
++#ifdef CONFIG_SCHED_SMT
++		rq->smt_leader = rq;
++#endif
 +		rq->sd = NULL;
 +		rq->rd = NULL;
 +		rq->online = false;
@@ -103357,9 +103774,10 @@ index 0000000000000000..06cee920b162c39c
 +				rq->cpu_locality[j] = 4;
 +		}
 +		rq->rq_order = kmalloc(cpu_ids * sizeof(struct rq *), GFP_ATOMIC);
-+		rq->rq_order[0] = rq;
++		rq->cpu_order = kmalloc(cpu_ids * sizeof(struct rq *), GFP_ATOMIC);
++		rq->rq_order[0] = rq->cpu_order[0] = rq;
 +		for (j = 1; j < cpu_ids; j++)
-+			rq->rq_order[j] = cpu_rq(j);
++			rq->rq_order[j] = rq->cpu_order[j] = cpu_rq(j);
 +	}
 +#endif
 +
@@ -103378,9 +103796,6 @@ index 0000000000000000..06cee920b162c39c
 +	init_idle(current, smp_processor_id());
 +
 +#ifdef CONFIG_SMP
-+	/* May be allocated at isolcpus cmdline parse time */
-+	if (cpu_isolated_map == NULL)
-+		zalloc_cpumask_var(&cpu_isolated_map, GFP_NOWAIT);
 +	idle_thread_set_boot_cpu();
 +#endif /* SMP */
 +
@@ -103678,29 +104093,46 @@ index 0000000000000000..06cee920b162c39c
 +{
 +}
 +
-+static struct cftype cpu_files[] = {
++static struct cftype cpu_legacy_files[] = {
 +	{ }	/* Terminate */
 +};
++
++static struct cftype cpu_files[] = {
++	{ }	/* terminate */
++};
++
++static int cpu_extra_stat_show(struct seq_file *sf,
++			       struct cgroup_subsys_state *css)
++{
++	return 0;
++}
 +
 +struct cgroup_subsys cpu_cgrp_subsys = {
 +	.css_alloc	= cpu_cgroup_css_alloc,
 +	.css_online	= cpu_cgroup_css_online,
 +	.css_released	= cpu_cgroup_css_released,
 +	.css_free	= cpu_cgroup_css_free,
++	.css_extra_stat_show = cpu_extra_stat_show,
 +	.fork		= cpu_cgroup_fork,
 +	.can_attach	= cpu_cgroup_can_attach,
 +	.attach		= cpu_cgroup_attach,
 +	.legacy_cftypes	= cpu_files,
++	.legacy_cftypes	= cpu_legacy_files,
++	.dfl_cftypes	= cpu_files,
 +	.early_init	= true,
++	.threaded	= true,
 +};
 +#endif	/* CONFIG_CGROUP_SCHED */
 diff --git a/kernel/sched/MuQSS.h b/kernel/sched/MuQSS.h
 new file mode 100644
-index 0000000000000000..29b05efbcd2b36e6
+index 000000000000..fc8f1f47f7db
 --- /dev/null
 +++ b/kernel/sched/MuQSS.h
-@@ -0,0 +1,725 @@
+@@ -0,0 +1,729 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
++#ifndef MUQSS_SCHED_H
++#define MUQSS_SCHED_H
++
 +#include <linux/sched.h>
 +#include <linux/cpuidle.h>
 +#include <linux/freezer.h>
@@ -103728,15 +104160,11 @@ index 0000000000000000..29b05efbcd2b36e6
 +#include <linux/kernel_stat.h>
 +#include <linux/tick.h>
 +#include <linux/slab.h>
++#include <linux/cgroup.h>
 +
 +#ifdef CONFIG_PARAVIRT
 +#include <asm/paravirt.h>
 +#endif
-+
-+#include "cpuacct.h"
-+
-+#ifndef MUQSS_SCHED_H
-+#define MUQSS_SCHED_H
 +
 +#ifdef CONFIG_SCHED_DEBUG
 +# define SCHED_WARN_ON(x)	WARN_ONCE(x, #x)
@@ -103833,7 +104261,8 @@ index 0000000000000000..29b05efbcd2b36e6
 + * This data should only be modified by the local cpu.
 + */
 +struct rq {
-+	raw_spinlock_t lock;
++	raw_spinlock_t *lock;
++	raw_spinlock_t *orig_lock;
 +
 +	struct task_struct *curr, *idle, *stop;
 +	struct mm_struct *prev_mm;
@@ -103872,7 +104301,7 @@ index 0000000000000000..29b05efbcd2b36e6
 +		iowait_ns, idle_ns;
 +	atomic_t nr_iowait;
 +
-+	skiplist_node node;
++	skiplist_node *node;
 +	skiplist *sl;
 +#ifdef CONFIG_SMP
 +	struct task_struct *preempt; /* Preempt triggered on this task */
@@ -103887,14 +104316,18 @@ index 0000000000000000..29b05efbcd2b36e6
 +	unsigned long cpu_capacity_orig;
 +
 +	int *cpu_locality; /* CPU relative cache distance */
-+	struct rq **rq_order; /* RQs ordered by relative cache distance */
++	struct rq **rq_order; /* Shared RQs ordered by relative cache distance */
++	struct rq **cpu_order; /* RQs of discrete CPUs ordered by distance */
 +
++	struct rq *smp_leader; /* First physical CPU per node */
 +#ifdef CONFIG_SCHED_SMT
++	struct rq *smt_leader; /* First logical CPU in SMT siblings */
 +	cpumask_t thread_mask;
 +	bool (*siblings_idle)(struct rq *rq);
 +	/* See if all smt siblings are idle */
 +#endif /* CONFIG_SCHED_SMT */
 +#ifdef CONFIG_SCHED_MC
++	struct rq *mc_leader; /* First logical CPU in MC siblings */
 +	cpumask_t core_mask;
 +	bool (*cache_idle)(struct rq *rq);
 +	/* See if all cache siblings are idle */
@@ -103986,37 +104419,37 @@ index 0000000000000000..29b05efbcd2b36e6
 +static inline void rq_lock(struct rq *rq)
 +	__acquires(rq->lock)
 +{
-+	raw_spin_lock(&rq->lock);
++	raw_spin_lock(rq->lock);
 +}
 +
 +static inline void rq_unlock(struct rq *rq)
 +	__releases(rq->lock)
 +{
-+	raw_spin_unlock(&rq->lock);
++	raw_spin_unlock(rq->lock);
 +}
 +
 +static inline void rq_lock_irq(struct rq *rq)
 +	__acquires(rq->lock)
 +{
-+	raw_spin_lock_irq(&rq->lock);
++	raw_spin_lock_irq(rq->lock);
 +}
 +
 +static inline void rq_unlock_irq(struct rq *rq)
 +	__releases(rq->lock)
 +{
-+	raw_spin_unlock_irq(&rq->lock);
++	raw_spin_unlock_irq(rq->lock);
 +}
 +
 +static inline void rq_lock_irqsave(struct rq *rq, unsigned long *flags)
 +	__acquires(rq->lock)
 +{
-+	raw_spin_lock_irqsave(&rq->lock, *flags);
++	raw_spin_lock_irqsave(rq->lock, *flags);
 +}
 +
 +static inline void rq_unlock_irqrestore(struct rq *rq, unsigned long *flags)
 +	__releases(rq->lock)
 +{
-+	raw_spin_unlock_irqrestore(&rq->lock, *flags);
++	raw_spin_unlock_irqrestore(rq->lock, *flags);
 +}
 +
 +static inline struct rq *task_rq_lock(struct task_struct *p, unsigned long *flags)
@@ -104028,10 +104461,10 @@ index 0000000000000000..29b05efbcd2b36e6
 +	while (42) {
 +		raw_spin_lock_irqsave(&p->pi_lock, *flags);
 +		rq = task_rq(p);
-+		raw_spin_lock(&rq->lock);
++		raw_spin_lock(rq->lock);
 +		if (likely(rq == task_rq(p)))
 +			break;
-+		raw_spin_unlock(&rq->lock);
++		raw_spin_unlock(rq->lock);
 +		raw_spin_unlock_irqrestore(&p->pi_lock, *flags);
 +	}
 +	return rq;
@@ -104054,10 +104487,10 @@ index 0000000000000000..29b05efbcd2b36e6
 +
 +	while (42) {
 +		rq = task_rq(p);
-+		raw_spin_lock(&rq->lock);
++		raw_spin_lock(rq->lock);
 +		if (likely(rq == task_rq(p)))
 +			break;
-+		raw_spin_unlock(&rq->lock);
++		raw_spin_unlock(rq->lock);
 +	}
 +	return rq;
 +}
@@ -104097,14 +104530,14 @@ index 0000000000000000..29b05efbcd2b36e6
 +
 +static inline u64 rq_clock(struct rq *rq)
 +{
-+	lockdep_assert_held(&rq->lock);
++	lockdep_assert_held(rq->lock);
 +
 +	return rq->clock;
 +}
 +
 +static inline u64 rq_clock_task(struct rq *rq)
 +{
-+	lockdep_assert_held(&rq->lock);
++	lockdep_assert_held(rq->lock);
 +
 +	return rq->clock_task;
 +}
@@ -104426,7 +104859,7 @@ index 0000000000000000..29b05efbcd2b36e6
 +
 +#endif /* MUQSS_SCHED_H */
 diff --git a/kernel/sched/cpufreq_schedutil.c b/kernel/sched/cpufreq_schedutil.c
-index d6717a3331a1b21b..b129dc0649196b07 100644
+index d6717a3331a1..b129dc064919 100644
 --- a/kernel/sched/cpufreq_schedutil.c
 +++ b/kernel/sched/cpufreq_schedutil.c
 @@ -176,16 +176,28 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
@@ -104459,10 +104892,10 @@ index d6717a3331a1b21b..b129dc0649196b07 100644
  static void sugov_set_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
  				   unsigned int flags)
 diff --git a/kernel/sched/cputime.c b/kernel/sched/cputime.c
-index 14d2dbf97c531db0..9217632f44c706aa 100644
+index bac6ac9a4ec7..e3153ba66834 100644
 --- a/kernel/sched/cputime.c
 +++ b/kernel/sched/cputime.c
-@@ -270,26 +270,6 @@ static inline u64 account_other_time(u64 max)
+@@ -269,26 +269,6 @@ static inline u64 account_other_time(u64 max)
  	return accounted;
  }
  
@@ -104489,7 +104922,7 @@ index 14d2dbf97c531db0..9217632f44c706aa 100644
  /*
   * Accumulate raw cputime values of dead tasks (sig->[us]time) and live
   * tasks (sum on group iteration) belonging to @tsk's group.
-@@ -661,7 +641,7 @@ static void cputime_adjust(struct task_cputime *curr,
+@@ -666,7 +646,7 @@ void cputime_adjust(struct task_cputime *curr, struct prev_cputime *prev,
  void task_cputime_adjusted(struct task_struct *p, u64 *ut, u64 *st)
  {
  	struct task_cputime cputime = {
@@ -104499,10 +104932,10 @@ index 14d2dbf97c531db0..9217632f44c706aa 100644
  
  	task_cputime(p, &cputime.utime, &cputime.stime);
 diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
-index 5c09ddf8c8321ca1..237337a23fc6acff 100644
+index 26a71ebcd3c2..0a2978d7048d 100644
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
-@@ -51,78 +51,103 @@
+@@ -52,78 +52,103 @@
   *
   * (default: 6ms * (1 + ilog(ncpus)), units: nanoseconds)
   */
@@ -104607,14 +105040,13 @@ index 5c09ddf8c8321ca1..237337a23fc6acff 100644
  /*
   * The margin used when comparing utilization with CPU capacity:
 diff --git a/kernel/sched/idle.c b/kernel/sched/idle.c
-index 257f4f0b4532b042..34833f395cb501d1 100644
+index 7dae9eb8c042..0a374d84c2ef 100644
 --- a/kernel/sched/idle.c
 +++ b/kernel/sched/idle.c
-@@ -209,24 +209,30 @@ static void cpuidle_idle_call(void)
-  */
+@@ -210,17 +210,22 @@ static void cpuidle_idle_call(void)
  static void do_idle(void)
  {
-+	int cpu = smp_processor_id();
+ 	int cpu = smp_processor_id();
 +	bool pending = false;
 +
  	/*
@@ -104627,7 +105059,6 @@ index 257f4f0b4532b042..34833f395cb501d1 100644
  	 */
  
  	__current_set_polling();
- 	quiet_vmstat();
 -	tick_nohz_idle_enter();
 +	if (unlikely(softirq_pending(cpu)))
 +		pending = true;
@@ -104636,14 +105067,7 @@ index 257f4f0b4532b042..34833f395cb501d1 100644
  
  	while (!need_resched()) {
  		check_pgt_cache();
- 		rmb();
- 
--		if (cpu_is_offline(smp_processor_id())) {
-+		if (cpu_is_offline(cpu)) {
- 			cpuhp_report_idle_dead();
- 			arch_cpu_idle_dead();
- 		}
-@@ -255,7 +261,8 @@ static void do_idle(void)
+@@ -255,7 +260,8 @@ static void do_idle(void)
  	 * an IPI to fold the state for us.
  	 */
  	preempt_set_need_resched();
@@ -104654,7 +105078,7 @@ index 257f4f0b4532b042..34833f395cb501d1 100644
  
  	/*
 diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
-index b732e779fe7d55d6..2aac3a13dfc64aa5 100644
+index 74b57279e3ff..e204fc54f42b 100644
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
 @@ -1,5 +1,8 @@
@@ -104666,7 +105090,7 @@ index b732e779fe7d55d6..2aac3a13dfc64aa5 100644
  #include <linux/sched.h>
  #include <linux/sched/autogroup.h>
  #include <linux/sched/sysctl.h>
-@@ -2100,3 +2103,29 @@ static inline void cpufreq_update_util(struct rq *rq, unsigned int flags) {}
+@@ -2127,3 +2130,29 @@ static inline void cpufreq_update_util(struct rq *rq, unsigned int flags) {}
  #else /* arch_scale_freq_capacity */
  #define arch_scale_freq_invariant()	(false)
  #endif
@@ -104696,9 +105120,55 @@ index b732e779fe7d55d6..2aac3a13dfc64aa5 100644
 +}
 +#endif
 +#endif /* CONFIG_SCHED_MUQSS */
+diff --git a/kernel/sched/topology.c b/kernel/sched/topology.c
+index 519b024f4e94..de9852460fd6 100644
+--- a/kernel/sched/topology.c
++++ b/kernel/sched/topology.c
+@@ -227,33 +227,41 @@ void rq_attach_root(struct rq *rq, struct root_domain *rd)
+ 	struct root_domain *old_rd = NULL;
+ 	unsigned long flags;
+ 
++#ifdef CONFIG_SCHED_MUQSS
++	raw_spin_lock_irqsave(rq->lock, flags);
++#else
+ 	raw_spin_lock_irqsave(&rq->lock, flags);
++#endif
+ 
+ 	if (rq->rd) {
+ 		old_rd = rq->rd;
+ 
+ 		if (cpumask_test_cpu(rq->cpu, old_rd->online))
+ 			set_rq_offline(rq);
+ 
+ 		cpumask_clear_cpu(rq->cpu, old_rd->span);
+ 
+ 		/*
+ 		 * If we dont want to free the old_rd yet then
+ 		 * set old_rd to NULL to skip the freeing later
+ 		 * in this function:
+ 		 */
+ 		if (!atomic_dec_and_test(&old_rd->refcount))
+ 			old_rd = NULL;
+ 	}
+ 
+ 	atomic_inc(&rd->refcount);
+ 	rq->rd = rd;
+ 
+ 	cpumask_set_cpu(rq->cpu, rd->span);
+ 	if (cpumask_test_cpu(rq->cpu, cpu_active_mask))
+ 		set_rq_online(rq);
+ 
++#ifdef CONFIG_SCHED_MUQSS
++	raw_spin_unlock_irqrestore(rq->lock, flags);
++#else
+ 	raw_spin_unlock_irqrestore(&rq->lock, flags);
++#endif
+ 
+ 	if (old_rd)
+ 		call_rcu_sched(&old_rd->rcu, free_rootdomain);
 diff --git a/kernel/skip_list.c b/kernel/skip_list.c
 new file mode 100644
-index 0000000000000000..bf5c6e97e1396a74
+index 000000000000..bf5c6e97e139
 --- /dev/null
 +++ b/kernel/skip_list.c
 @@ -0,0 +1,148 @@
@@ -104851,7 +105321,7 @@ index 0000000000000000..bf5c6e97e1396a74
 +	l->entries--;
 +}
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 56aca862c4f584f5..443cc1938b3f1a46 100644
+index 557d46728577..cdda61d13358 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
 @@ -105,29 +105,38 @@ extern int core_uses_pid;
@@ -104991,7 +105461,7 @@ index 56aca862c4f584f5..443cc1938b3f1a46 100644
  	{
  		.procname	= "spin_retry",
 diff --git a/kernel/time/clockevents.c b/kernel/time/clockevents.c
-index 4237e0744e26bd27..4b83ffaba78c99cc 100644
+index 16c027e9cc73..fcc3fe0a1cc0 100644
 --- a/kernel/time/clockevents.c
 +++ b/kernel/time/clockevents.c
 @@ -198,8 +198,13 @@ int clockevents_tick_resume(struct clock_event_device *dev)
@@ -105009,7 +105479,7 @@ index 4237e0744e26bd27..4b83ffaba78c99cc 100644
  /**
   * clockevents_increase_min_delta - raise minimum delta of a clock event device
 diff --git a/kernel/time/posix-cpu-timers.c b/kernel/time/posix-cpu-timers.c
-index 5b117110b55b59af..67d94423acde34b0 100644
+index 1f27887aa194..bfd51c9e3590 100644
 --- a/kernel/time/posix-cpu-timers.c
 +++ b/kernel/time/posix-cpu-timers.c
 @@ -818,29 +818,29 @@ static void check_thread_timers(struct task_struct *tsk,
@@ -105055,10 +105525,10 @@ index 5b117110b55b59af..67d94423acde34b0 100644
  			return 1;
  	}
 diff --git a/kernel/time/timer.c b/kernel/time/timer.c
-index 73e3cdbc61f108cc..1c8ca808cd23e285 100644
+index 0bcf00e3ce48..a820db5cd790 100644
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1434,24 +1434,27 @@ static unsigned long __next_timer_interrupt(struct timer_base *base)
+@@ -1471,24 +1471,27 @@ static unsigned long __next_timer_interrupt(struct timer_base *base)
   * Check, if the next hrtimer event is before the next timer wheel
   * event:
   */
@@ -105087,7 +105557,7 @@ index 73e3cdbc61f108cc..1c8ca808cd23e285 100644
  	/*
  	 * Round up to the next jiffie. High resolution timers are
  	 * off, so the hrtimers are expired in the tick and we need to
-@@ -1521,7 +1524,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
+@@ -1558,7 +1561,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
  	}
  	raw_spin_unlock(&base->lock);
  
@@ -105097,7 +105567,7 @@ index 73e3cdbc61f108cc..1c8ca808cd23e285 100644
  
  /**
 diff --git a/kernel/trace/trace_selftest.c b/kernel/trace/trace_selftest.c
-index cd70eb5df38ecce0..e631657718e5faf8 100644
+index 11e9daa4a568..4c4e1d5bdf42 100644
 --- a/kernel/trace/trace_selftest.c
 +++ b/kernel/trace/trace_selftest.c
 @@ -1041,10 +1041,15 @@ static int trace_wakeup_test_thread(void *data)
@@ -105117,12 +105587,12 @@ index cd70eb5df38ecce0..e631657718e5faf8 100644
  	struct wakeup_test_data *x = data;
  
 diff --git a/kernel/user_namespace.c b/kernel/user_namespace.c
-index c490f1e4313b998a..e242b1047602e8a0 100644
+index 246d4d4ce5c7..4ceada38d166 100644
 --- a/kernel/user_namespace.c
 +++ b/kernel/user_namespace.c
-@@ -24,6 +24,13 @@
- #include <linux/projid.h>
- #include <linux/fs_struct.h>
+@@ -26,6 +26,13 @@
+ #include <linux/bsearch.h>
+ #include <linux/sort.h>
  
 +/* sysctl */
 +#ifdef CONFIG_USER_NS_UNPRIVILEGED
@@ -105135,10 +105605,10 @@ index c490f1e4313b998a..e242b1047602e8a0 100644
  static DEFINE_MUTEX(userns_state_mutex);
  
 diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index ff21b4dbb3922fd2..6182b285e99f84b1 100644
+index f55c15ab6f93..3fcb9a65a851 100644
 --- a/lib/Kconfig.debug
 +++ b/lib/Kconfig.debug
-@@ -980,7 +980,7 @@ config SCHED_INFO
+@@ -987,7 +987,7 @@ config SCHED_INFO
  
  config SCHEDSTATS
  	bool "Collect scheduler statistics"
@@ -105147,7 +105617,7 @@ index ff21b4dbb3922fd2..6182b285e99f84b1 100644
  	select SCHED_INFO
  	help
  	  If you say Y here, additional code will be inserted into the
-@@ -1578,6 +1578,7 @@ config LATENCYTOP
+@@ -1567,6 +1567,7 @@ config LATENCYTOP
  	depends on DEBUG_KERNEL
  	depends on STACKTRACE_SUPPORT
  	depends on PROC_FS
@@ -105156,7 +105626,7 @@ index ff21b4dbb3922fd2..6182b285e99f84b1 100644
  	select KALLSYMS
  	select KALLSYMS_ALL
 diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 0b9c5cbe8eba086b..c9ca12e9a2785c11 100644
+index 586f31261c83..112bcbd38f99 100644
 --- a/mm/page-writeback.c
 +++ b/mm/page-writeback.c
 @@ -71,24 +71,32 @@ static long ratelimit_pages = 32;
@@ -105192,43 +105662,8 @@ index 0b9c5cbe8eba086b..c9ca12e9a2785c11 100644
  
  /*
   * vm_dirty_bytes starts at 0 (disabled) so that it is a function of
-diff --git a/net/dccp/proto.c b/net/dccp/proto.c
-index b68168fcc06aa198..9d43c1f4027408f3 100644
---- a/net/dccp/proto.c
-+++ b/net/dccp/proto.c
-@@ -259,25 +259,30 @@ int dccp_disconnect(struct sock *sk, int flags)
- {
- 	struct inet_connection_sock *icsk = inet_csk(sk);
- 	struct inet_sock *inet = inet_sk(sk);
-+	struct dccp_sock *dp = dccp_sk(sk);
- 	int err = 0;
- 	const int old_state = sk->sk_state;
- 
- 	if (old_state != DCCP_CLOSED)
- 		dccp_set_state(sk, DCCP_CLOSED);
- 
- 	/*
- 	 * This corresponds to the ABORT function of RFC793, sec. 3.8
- 	 * TCP uses a RST segment, DCCP a Reset packet with Code 2, "Aborted".
- 	 */
- 	if (old_state == DCCP_LISTEN) {
- 		inet_csk_listen_stop(sk);
- 	} else if (dccp_need_reset(old_state)) {
- 		dccp_send_reset(sk, DCCP_RESET_CODE_ABORTED);
- 		sk->sk_err = ECONNRESET;
- 	} else if (old_state == DCCP_REQUESTING)
- 		sk->sk_err = ECONNRESET;
- 
- 	dccp_clear_xmit_timers(sk);
-+	ccid_hc_rx_delete(dp->dccps_hc_rx_ccid, sk);
-+	ccid_hc_tx_delete(dp->dccps_hc_tx_ccid, sk);
-+	dp->dccps_hc_rx_ccid = NULL;
-+	dp->dccps_hc_tx_ccid = NULL;
- 
- 	__skb_queue_purge(&sk->sk_receive_queue);
- 	__skb_queue_purge(&sk->sk_write_queue);
 diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
-index f48fe6fc7e8c413d..3c05cb430817f6d2 100644
+index f48fe6fc7e8c..3c05cb430817 100644
 --- a/net/ipv4/Kconfig
 +++ b/net/ipv4/Kconfig
 @@ -697,6 +697,9 @@ choice
@@ -105249,32 +105684,11 @@ index f48fe6fc7e8c413d..3c05cb430817f6d2 100644
  	default "westwood" if DEFAULT_WESTWOOD
  	default "veno" if DEFAULT_VENO
  	default "reno" if DEFAULT_RENO
-diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
-index 6bc16bb61b5533ef..50c5f46b5cca942e 100644
---- a/net/xfrm/xfrm_policy.c
-+++ b/net/xfrm/xfrm_policy.c
-@@ -1169,9 +1169,15 @@ static struct xfrm_policy *xfrm_sk_policy_lookup(const struct sock *sk, int dir,
-  again:
- 	pol = rcu_dereference(sk->sk_policy[dir]);
- 	if (pol != NULL) {
--		bool match = xfrm_selector_match(&pol->selector, fl, family);
-+		bool match;
- 		int err = 0;
- 
-+		if (pol->family != family) {
-+			pol = NULL;
-+			goto out;
-+		}
-+
-+		match = xfrm_selector_match(&pol->selector, fl, family);
- 		if (match) {
- 			if ((sk->sk_mark & pol->mark.m) != pol->mark.v) {
- 				pol = NULL;
 diff --git a/scripts/mkcompile_h b/scripts/mkcompile_h
-index 959199c3147ec79e..be1316aa0739edfe 100755
+index 87f1fc9801d7..92ccd5604f84 100755
 --- a/scripts/mkcompile_h
 +++ b/scripts/mkcompile_h
-@@ -55,8 +55,8 @@ else
+@@ -50,8 +50,8 @@ else
  fi
  
  UTS_VERSION="#$VERSION"
