@@ -1,4 +1,4 @@
-# Featuted Kernels
+# Featured Kernels
 
 ## `linux-kernel-ck`
 
