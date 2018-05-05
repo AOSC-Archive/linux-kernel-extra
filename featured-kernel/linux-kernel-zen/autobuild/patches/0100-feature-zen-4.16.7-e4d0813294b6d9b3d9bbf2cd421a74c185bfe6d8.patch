@@ -7,19 +7,19 @@
  Makefile                                         |     8 +-
  arch/powerpc/platforms/cell/spufs/sched.c        |     5 -
  arch/x86/Kconfig                                 |    91 +-
- arch/x86/Kconfig.cpu                             |   228 +-
- arch/x86/Makefile                                |    33 +-
- arch/x86/Makefile_32.cpu                         |    23 +-
- arch/x86/include/asm/module.h                    |    38 +
+ arch/x86/Kconfig.cpu                             |   235 +-
+ arch/x86/Makefile                                |    35 +-
+ arch/x86/Makefile_32.cpu                         |    24 +-
+ arch/x86/include/asm/module.h                    |    40 +
  block/Kconfig.iosched                            |    50 +
  block/Makefile                                   |     2 +
- block/bfq-cgroup-included.c                      |  1353 +
+ block/bfq-cgroup-included.c                      |  1354 +
  block/bfq-ioc.c                                  |    36 +
- block/bfq-mq-iosched.c                           |  6141 +++
- block/bfq-mq.h                                   |  1005 +
+ block/bfq-mq-iosched.c                           |  6187 +++
+ block/bfq-mq.h                                   |  1011 +
  block/bfq-sched.c                                |  2066 +
- block/bfq-sq-iosched.c                           |  5618 +++
- block/bfq.h                                      |   996 +
+ block/bfq-sq-iosched.c                           |  5647 +++
+ block/bfq.h                                      |  1002 +
  block/elevator.c                                 |     4 +
  drivers/cpufreq/cpufreq_ondemand.c               |    12 +-
  drivers/gpu/drm/amd/display/dc/basics/logger.c   |     2 +-
@@ -81,14 +81,14 @@
  fs/exfat/exfat_nls.h                             |    91 +
  fs/exfat/exfat_oal.c                             |   196 +
  fs/exfat/exfat_oal.h                             |    74 +
- fs/exfat/exfat_super.c                           |  2697 ++
+ fs/exfat/exfat_super.c                           |  2711 ++
  fs/exfat/exfat_super.h                           |   171 +
  fs/exfat/exfat_upcase.c                          |   405 +
  fs/exfat/exfat_version.h                         |    19 +
  fs/open.c                                        |     4 +
  fs/proc/base.c                                   |     2 +-
  include/linux/blkdev.h                           |    10 +-
- include/linux/init_task.h                        |    78 +-
+ include/linux/init_task.h                        |     4 +
  include/linux/ioprio.h                           |     2 +
  include/linux/linux_logo.h                       |    12 +
  include/linux/sched.h                            |    60 +-
@@ -102,6 +102,7 @@
  include/uapi/linux/sched.h                       |     9 +-
  include/uapi/linux/vt.h                          |    15 +-
  init/Kconfig                                     |    75 +-
+ init/init_task.c                                 |    10 +
  init/main.c                                      |     3 +-
  kernel/Makefile                                  |     2 +-
  kernel/delayacct.c                               |     2 +-
@@ -111,13 +112,13 @@
  kernel/livepatch/transition.c                    |     8 +-
  kernel/rcu/Kconfig                               |     2 +-
  kernel/sched/Makefile                            |    14 +-
- kernel/sched/MuQSS.c                             |  7187 ++++
- kernel/sched/MuQSS.h                             |   729 +
- kernel/sched/cpufreq_schedutil.c                 |    12 +
+ kernel/sched/MuQSS.c                             |  7231 ++++
+ kernel/sched/MuQSS.h                             |   768 +
+ kernel/sched/cpufreq_schedutil.c                 |     4 +
  kernel/sched/cputime.c                           |    22 +-
  kernel/sched/fair.c                              |    25 +
  kernel/sched/idle.c                              |    10 +-
- kernel/sched/sched.h                             |    29 +
+ kernel/sched/sched.h                             |    30 +
  kernel/sched/topology.c                          |     8 +
  kernel/skip_list.c                               |   148 +
  kernel/sysctl.c                                  |    64 +-
@@ -127,16 +128,17 @@
  kernel/trace/trace_selftest.c                    |     5 +
  kernel/user_namespace.c                          |     7 +
  lib/Kconfig.debug                                |     3 +-
+ lib/swiotlb.c                                    |     1 +
  mm/page-writeback.c                              |     8 +
  net/ipv4/Kconfig                                 |     4 +
  scripts/mkcompile_h                              |     4 +-
- 132 files changed, 102583 insertions(+), 573 deletions(-)
+ 134 files changed, 102714 insertions(+), 569 deletions(-)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index 1e762c210f1b..5f0a74791f61 100644
+index 1d1d53f85ddd..44a34daedc8a 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -3794,6 +3794,14 @@
+@@ -3812,6 +3812,14 @@
  			Memory area to be used by remote processor image,
  			managed by CMA.
  
@@ -1016,10 +1018,10 @@ index 000000000000..ae28b85c9995
 +
 +Con Kolivas <kernel@kolivas.org> Sat, 29th October 2016
 diff --git a/Documentation/sysctl/kernel.txt b/Documentation/sysctl/kernel.txt
-index 694968c7523c..6c4a94a2245e 100644
+index 412314eebda6..eeb966fc70a8 100644
 --- a/Documentation/sysctl/kernel.txt
 +++ b/Documentation/sysctl/kernel.txt
-@@ -39,6 +39,7 @@ show up in /proc/sys/kernel:
+@@ -40,6 +40,7 @@ show up in /proc/sys/kernel:
  - hung_task_timeout_secs
  - hung_task_warnings
  - kexec_load_disabled
@@ -1027,7 +1029,7 @@ index 694968c7523c..6c4a94a2245e 100644
  - kptr_restrict
  - l2cr                        [ PPC only ]
  - modprobe                    ==> Documentation/debugging-modules.txt
-@@ -73,27 +74,29 @@ show up in /proc/sys/kernel:
+@@ -74,27 +75,29 @@ show up in /proc/sys/kernel:
  - randomize_va_space
  - real-root-dev               ==> Documentation/admin-guide/initrd.rst
  - reboot-cmd                  [ SPARC only ]
@@ -1057,7 +1059,7 @@ index 694968c7523c..6c4a94a2245e 100644
  - version
  
  ==============================================================
-@@ -396,6 +399,16 @@ When kptr_restrict is set to (2), kernel pointers printed using
+@@ -411,6 +414,16 @@ When kptr_restrict is set to (2), kernel pointers printed using
  
  ==============================================================
  
@@ -1074,7 +1076,7 @@ index 694968c7523c..6c4a94a2245e 100644
  l2cr: (PPC only)
  
  This flag controls the L2 cache of G3 processor boards. If
-@@ -822,6 +835,20 @@ rebooting. ???
+@@ -837,6 +850,20 @@ rebooting. ???
  
  ==============================================================
  
@@ -1095,7 +1097,7 @@ index 694968c7523c..6c4a94a2245e 100644
  rtsig-max & rtsig-nr:
  
  The file rtsig-max can be used to tune the maximum number
-@@ -1060,3 +1087,13 @@ The softlockup threshold is (2 * watchdog_thresh). Setting this
+@@ -1075,3 +1102,13 @@ The softlockup threshold is (2 * watchdog_thresh). Setting this
  tunable to zero will disable lockup detection altogether.
  
  ==============================================================
@@ -1391,13 +1393,13 @@ index 000000000000..a249678a8866
 +thinkpad_ec module and the H8S hardware documentation:
 +http://documentation.renesas.com/eng/products/mpumcu/rej09b0300_2140bhm.pdf
 diff --git a/Makefile b/Makefile
-index 28c537fbe328..736bfb0df26a 100644
+index 1c5d5d8c45e2..7c14769abd93 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -2,8 +2,8 @@
  VERSION = 4
- PATCHLEVEL = 15
- SUBLEVEL = 5
+ PATCHLEVEL = 16
+ SUBLEVEL = 7
 -EXTRAVERSION =
 -NAME = Fearless Coyote
 +EXTRAVERSION = -zen
@@ -1405,7 +1407,7 @@ index 28c537fbe328..736bfb0df26a 100644
  
  # *DOCUMENTATION*
  # To see a list of typical targets execute "make help"
-@@ -639,12 +639,16 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+@@ -647,12 +647,16 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
  KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os)
  KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
  else
@@ -1439,10 +1441,10 @@ index 9033c8194eda..a7437387a8de 100644
   * Frequency of the spu scheduler tick.  By default we do one SPU scheduler
   * tick for every 10 CPU scheduler ticks.
 diff --git a/arch/x86/Kconfig b/arch/x86/Kconfig
-index 20da391b5f32..25f624670997 100644
+index 0fa71a78ec99..1a063ea4f358 100644
 --- a/arch/x86/Kconfig
 +++ b/arch/x86/Kconfig
-@@ -961,10 +961,26 @@ config SCHED_SMT
+@@ -1016,10 +1016,26 @@ config SCHED_SMT
  	depends on SMP
  	---help---
  	  SMT scheduler support improves the CPU scheduler's decision making
@@ -1470,7 +1472,7 @@ index 20da391b5f32..25f624670997 100644
  config SCHED_MC
  	def_bool y
  	prompt "Multi-core scheduler support"
-@@ -995,6 +1011,79 @@ config SCHED_MC_PRIO
+@@ -1050,6 +1066,79 @@ config SCHED_MC_PRIO
  
  	  If unsure say Y here.
  
@@ -1551,7 +1553,7 @@ index 20da391b5f32..25f624670997 100644
  
  config UP_LATE_INIT
 diff --git a/arch/x86/Kconfig.cpu b/arch/x86/Kconfig.cpu
-index 65a9a4716e34..86b520bb1bd3 100644
+index 638411f22267..1bbe88a2bfba 100644
 --- a/arch/x86/Kconfig.cpu
 +++ b/arch/x86/Kconfig.cpu
 @@ -116,6 +116,7 @@ config MPENTIUMM
@@ -1667,7 +1669,7 @@ index 65a9a4716e34..86b520bb1bd3 100644
  config MCRUSOE
  	bool "Crusoe"
  	depends on X86_32
-@@ -253,65 +324,155 @@ config MVIAC7
+@@ -253,121 +324,221 @@ config MVIAC7
  
  config MPSC
  	bool "Intel P4 / older Netburst based Xeon"
@@ -1784,6 +1786,15 @@ index 65a9a4716e34..86b520bb1bd3 100644
 +
 +	  Enables -march=skylake
 +
++config MSKYLAKEX
++	bool "Intel Skylake X"
++	select X86_P6_NOP
++	---help---
++
++	  Select this for 6th Gen Core processors in the Skylake X family.
++
++	  Enables -march=skylake-avx512
++
  config GENERIC_CPU
  	bool "Generic-x86-64"
  	depends on X86_64
@@ -1829,21 +1840,31 @@ index 65a9a4716e34..86b520bb1bd3 100644
  	int
  	default "7" if MPENTIUM4 || MPSC
 -	default "6" if MK7 || MK8 || MPENTIUMM || MCORE2 || MATOM || MVIAC7 || X86_GENERIC || GENERIC_CPU
-+	default "6" if MK7 || MK8 || MK8SSE3 || MK10 || MBARCELONA || MBOBCAT || MBULLDOZER || MPILEDRIVER || MSTEAMROLLER || MEXCAVATOR || MZEN || MJAGUAR || MPENTIUMM || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MNATIVE || MATOM || MVIAC7 || X86_GENERIC || GENERIC_CPU
++	default "6" if MK7 || MK8 || MK8SSE3 || MK10 || MBARCELONA || MBOBCAT || MBULLDOZER || MPILEDRIVER || MSTEAMROLLER || MEXCAVATOR || MZEN || MJAGUAR || MPENTIUMM || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MSKYLAKEX || MNATIVE || MATOM || MVIAC7 || X86_GENERIC || GENERIC_CPU
  	default "4" if MELAN || M486 || MGEODEGX1
  	default "5" if MWINCHIP3D || MWINCHIPC6 || MCRUSOE || MEFFICEON || MCYRIXIII || MK6 || MPENTIUMIII || MPENTIUMII || M686 || M586MMX || M586TSC || M586 || MVIAC3_2 || MGEODE_LX
  
-@@ -342,45 +503,46 @@ config X86_ALIGNMENT_16
+ config X86_F00F_BUG
+ 	def_bool y
+ 	depends on M586MMX || M586TSC || M586 || M486
+ 
+ config X86_INVD_BUG
+ 	def_bool y
+ 	depends on M486
+ 
+ config X86_ALIGNMENT_16
+ 	def_bool y
+ 	depends on MWINCHIP3D || MWINCHIPC6 || MCYRIXIII || MELAN || MK6 || M586MMX || M586TSC || M586 || M486 || MVIAC3_2 || MGEODEGX1
  
  config X86_INTEL_USERCOPY
  	def_bool y
 -	depends on MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M586MMX || X86_GENERIC || MK8 || MK7 || MEFFICEON || MCORE2
-+	depends on MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M586MMX || X86_GENERIC || MK8 || MK8SSE3 || MK7 || MEFFICEON || MCORE2 || MK10 || MBARCELONA || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MNATIVE
++	depends on MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M586MMX || X86_GENERIC || MK8 || MK8SSE3 || MK7 || MEFFICEON || MCORE2 || MK10 || MBARCELONA || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MSKYLAKEX || MNATIVE
  
  config X86_USE_PPRO_CHECKSUM
  	def_bool y
 -	depends on MWINCHIP3D || MWINCHIPC6 || MCYRIXIII || MK7 || MK6 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MK8 || MVIAC3_2 || MVIAC7 || MEFFICEON || MGEODE_LX || MCORE2 || MATOM
-+	depends on MWINCHIP3D || MWINCHIPC6 || MCYRIXIII || MK7 || MK6 || MK10 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MK8 || MK8SSE3 || MVIAC3_2 || MVIAC7 || MEFFICEON || MGEODE_LX || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MATOM || MNATIVE
++	depends on MWINCHIP3D || MWINCHIPC6 || MCYRIXIII || MK7 || MK6 || MK10 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MK8 || MK8SSE3 || MVIAC3_2 || MVIAC7 || MEFFICEON || MGEODE_LX || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MSKYLAKEX || MATOM || MNATIVE
  
  config X86_USE_3DNOW
  	def_bool y
@@ -1866,7 +1887,7 @@ index 65a9a4716e34..86b520bb1bd3 100644
 -	depends on (MCORE2 || MPENTIUM4 || MPSC)
 +	default n
 +	bool "Support for P6_NOPs on Intel chips"
-+	depends on (MCORE2 || MPENTIUM4 || MPSC || MATOM || MNEHALEM || MWESTMERE || MSILVERMONT  || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MNATIVE)
++	depends on (MCORE2 || MPENTIUM4 || MPSC || MATOM || MNEHALEM || MWESTMERE || MSILVERMONT  || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MSKYLAKEX || MNATIVE)
 +	---help---
 +	P6_NOPs are a relatively minor optimization that require a family >=
 +	6 processor, except that it is broken on certain VIA chips.
@@ -1883,27 +1904,26 @@ index 65a9a4716e34..86b520bb1bd3 100644
  config X86_TSC
  	def_bool y
 -	depends on (MWINCHIP3D || MCRUSOE || MEFFICEON || MCYRIXIII || MK7 || MK6 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || M586MMX || M586TSC || MK8 || MVIAC3_2 || MVIAC7 || MGEODEGX1 || MGEODE_LX || MCORE2 || MATOM) || X86_64
-+	depends on (MWINCHIP3D || MCRUSOE || MEFFICEON || MCYRIXIII || MK7 || MK6 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || M586MMX || M586TSC || MK8 || MK8SSE3 || MVIAC3_2 || MVIAC7 || MGEODEGX1 || MGEODE_LX || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MNATIVE || MATOM) || X86_64
++	depends on (MWINCHIP3D || MCRUSOE || MEFFICEON || MCYRIXIII || MK7 || MK6 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || M586MMX || M586TSC || MK8 || MK8SSE3 || MVIAC3_2 || MVIAC7 || MGEODEGX1 || MGEODE_LX || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MSKYLAKEX || MNATIVE || MATOM) || X86_64
  
  config X86_CMPXCHG64
  	def_bool y
--	depends on X86_PAE || X86_64 || MCORE2 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MATOM
-+	depends on X86_PAE || X86_64 || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MATOM || MNATIVE
+ 	depends on X86_PAE || X86_64 || MCORE2 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || M586TSC || M586MMX || MATOM || MGEODE_LX || MGEODEGX1 || MK6 || MK7 || MK8
  
  # this should be set for all -march=.. options where the compiler
  # generates cmov.
  config X86_CMOV
  	def_bool y
 -	depends on (MK8 || MK7 || MCORE2 || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MVIAC3_2 || MVIAC7 || MCRUSOE || MEFFICEON || X86_64 || MATOM || MGEODE_LX)
-+	depends on (MK8 || MK8SSE3 || MK10 || MBARCELONA || MBOBCAT || MBULLDOZER || MPILEDRIVER || MSTEAMROLLER || MEXCAVATOR || MZEN || MJAGUAR || MK7 || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MVIAC3_2 || MVIAC7 || MCRUSOE || MEFFICEON || X86_64 || MNATIVE || MATOM || MGEODE_LX)
++	depends on (MK8 || MK8SSE3 || MK10 || MBARCELONA || MBOBCAT || MBULLDOZER || MPILEDRIVER || MSTEAMROLLER || MEXCAVATOR || MZEN || MJAGUAR || MK7 || MCORE2 || MNEHALEM || MWESTMERE || MSILVERMONT || MSANDYBRIDGE || MIVYBRIDGE || MHASWELL || MBROADWELL || MSKYLAKE || MSKYLAKEX || MPENTIUM4 || MPENTIUMM || MPENTIUMIII || MPENTIUMII || M686 || MVIAC3_2 || MVIAC7 || MCRUSOE || MEFFICEON || X86_64 || MNATIVE || MATOM || MGEODE_LX)
  
  config X86_MINIMUM_CPU_FAMILY
  	int
 diff --git a/arch/x86/Makefile b/arch/x86/Makefile
-index fad55160dcb9..157365b220b9 100644
+index 1c4d012550ec..3708476cddc4 100644
 --- a/arch/x86/Makefile
 +++ b/arch/x86/Makefile
-@@ -124,13 +124,40 @@ else
+@@ -124,13 +124,42 @@ else
  	KBUILD_CFLAGS += $(call cc-option,-mskip-rax-setup)
  
          # FIXME - should be integrated in Makefile.cpu (Makefile_32.cpu)
@@ -1942,16 +1962,18 @@ index fad55160dcb9..157365b220b9 100644
 +                $(call cc-option,-march=broadwell,$(call cc-option,-mtune=broadwell))
 +        cflags-$(CONFIG_MSKYLAKE) += \
 +                $(call cc-option,-march=skylake,$(call cc-option,-mtune=skylake))
++        cflags-$(CONFIG_MSKYLAKEX) += \
++                $(call cc-option,-march=skylake-avx512,$(call cc-option,-mtune=skylake-avx512))
 +        cflags-$(CONFIG_MATOM) += $(call cc-option,-march=bonnell) \
 +                $(call cc-option,-mtune=bonnell,$(call cc-option,-mtune=generic))
          cflags-$(CONFIG_GENERIC_CPU) += $(call cc-option,-mtune=generic)
          KBUILD_CFLAGS += $(cflags-y)
  
 diff --git a/arch/x86/Makefile_32.cpu b/arch/x86/Makefile_32.cpu
-index 1f5faf8606b4..a25c0f818b15 100644
+index 1f5faf8606b4..4a3a27cedc75 100644
 --- a/arch/x86/Makefile_32.cpu
 +++ b/arch/x86/Makefile_32.cpu
-@@ -23,17 +23,36 @@ cflags-$(CONFIG_MK6)		+= -march=k6
+@@ -23,17 +23,37 @@ cflags-$(CONFIG_MK6)		+= -march=k6
  # Please note, that patches that add -march=athlon-xp and friends are pointless.
  # They make zero difference whatsosever to performance at this time.
  cflags-$(CONFIG_MK7)		+= -march=athlon
@@ -1985,16 +2007,17 @@ index 1f5faf8606b4..a25c0f818b15 100644
 +cflags-$(CONFIG_MHASWELL)	+= -march=i686 $(call tune,haswell)
 +cflags-$(CONFIG_MBROADWELL)	+= -march=i686 $(call tune,broadwell)
 +cflags-$(CONFIG_MSKYLAKE)	+= -march=i686 $(call tune,skylake)
++cflags-$(CONFIG_MSKYLAKEX)	+= -march=i686 $(call tune,skylake-avx512)
 +cflags-$(CONFIG_MATOM)		+= $(call cc-option,-march=bonnell,$(call cc-option,-march=core2,-march=i686)) \
 +	$(call cc-option,-mtune=bonnell,$(call cc-option,-mtune=generic))
  
  # AMD Elan support
  cflags-$(CONFIG_MELAN)		+= -march=i486
 diff --git a/arch/x86/include/asm/module.h b/arch/x86/include/asm/module.h
-index 7948a17febb4..39c823cfa37e 100644
+index 7948a17febb4..27e64fc1cb13 100644
 --- a/arch/x86/include/asm/module.h
 +++ b/arch/x86/include/asm/module.h
-@@ -25,24 +25,62 @@ struct mod_arch_specific {
+@@ -25,24 +25,64 @@ struct mod_arch_specific {
  #define MODULE_PROC_FAMILY "586MMX "
  #elif defined CONFIG_MCORE2
  #define MODULE_PROC_FAMILY "CORE2 "
@@ -2016,6 +2039,8 @@ index 7948a17febb4..39c823cfa37e 100644
 +#define MODULE_PROC_FAMILY "BROADWELL "
 +#elif defined CONFIG_MSKYLAKE
 +#define MODULE_PROC_FAMILY "SKYLAKE "
++#elif defined CONFIG_MSKYLAKE
++#define MODULE_PROC_FAMILY "SKYLAKEX "
  #elif defined CONFIG_MATOM
  #define MODULE_PROC_FAMILY "ATOM "
  #elif defined CONFIG_M686
@@ -2158,10 +2183,10 @@ index 6a56303b9925..a571329c23f0 100644
  obj-$(CONFIG_BLK_CMDLINE_PARSER)	+= cmdline-parser.o
 diff --git a/block/bfq-cgroup-included.c b/block/bfq-cgroup-included.c
 new file mode 100644
-index 000000000000..a4f8a03edfc9
+index 000000000000..613f154e9da5
 --- /dev/null
 +++ b/block/bfq-cgroup-included.c
-@@ -0,0 +1,1353 @@
+@@ -0,0 +1,1354 @@
 +/*
 + * BFQ: CGROUPS support.
 + *
@@ -2546,7 +2571,8 @@ index 000000000000..a4f8a03edfc9
 +		 * Make sure that bfqg and its associated blkg do not
 +		 * disappear before entity.
 +		 */
-+		bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] getting bfqg %p and blkg\n", __func__, bfqg);
++		bfq_log_bfqq(bfqq->bfqd, bfqq, "getting bfqg %p and blkg\n",
++		bfqg);
 +
 +		bfqg_and_blkg_get(bfqg);
 +#else
@@ -2815,7 +2841,7 @@ index 000000000000..a4f8a03edfc9
 +		bfq_put_idle_entity(bfq_entity_service_tree(entity), entity);
 +	}
 +#ifdef BFQ_MQ
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] putting blkg and bfqg %p\n", __func__, bfqg);
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "putting blkg and bfqg %p\n", bfqg);
 +
 +	bfqg_and_blkg_put(bfqq_group(bfqq));
 +#else
@@ -2825,7 +2851,7 @@ index 000000000000..a4f8a03edfc9
 +	entity->parent = bfqg->my_entity;
 +	entity->sched_data = &bfqg->sched_data;
 +#ifdef BFQ_MQ
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] getting blkg and bfqg %p\n", __func__, bfqg);
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "getting blkg and bfqg %p\n", bfqg);
 +
 +	/* pin down bfqg and its associated blkg  */
 +	bfqg_and_blkg_get(bfqg);
@@ -2885,7 +2911,7 @@ index 000000000000..a4f8a03edfc9
 +		if (entity->sched_data != &bfqg->sched_data) {
 +			bic_set_bfqq(bic, NULL, 0);
 +			bfq_log_bfqq(bfqd, async_bfqq,
-+				     "bic_change_group: %p %d",
++				     "%p %d",
 +				     async_bfqq,
 +				     async_bfqq->ref);
 +			bfq_put_queue(async_bfqq);
@@ -3559,10 +3585,10 @@ index 000000000000..fb7bb8f08b75
 +}
 diff --git a/block/bfq-mq-iosched.c b/block/bfq-mq-iosched.c
 new file mode 100644
-index 000000000000..bb7ccc2f1165
+index 000000000000..03efd90c5d20
 --- /dev/null
 +++ b/block/bfq-mq-iosched.c
-@@ -0,0 +1,6141 @@
+@@ -0,0 +1,6187 @@
 +/*
 + * Budget Fair Queueing (BFQ) I/O scheduler.
 + *
@@ -3698,6 +3724,12 @@ index 000000000000..bb7ccc2f1165
 + */
 +static const unsigned long bfq_merge_time_limit = HZ/10;
 +
++#define MAX_LENGTH_REASON_NAME 25
++
++static const char reason_name[][MAX_LENGTH_REASON_NAME] = {"TOO_IDLE",
++"BUDGET_TIMEOUT", "BUDGET_EXHAUSTED", "NO_MORE_REQUESTS",
++"PREEMPTED"};
++
 +static struct kmem_cache *bfq_pool;
 +
 +/* Below this threshold (in ns), we consider thinktime immediate. */
@@ -3719,7 +3751,20 @@ index 000000000000..bb7ccc2f1165
 +/* Target observation time interval for a peak-rate update (ns) */
 +#define BFQ_RATE_REF_INTERVAL	NSEC_PER_SEC
 +
-+/* Shift used for peak rate fixed precision calculations. */
++/*
++ * Shift used for peak-rate fixed precision calculations.
++ * With
++ * - the current shift: 16 positions
++ * - the current type used to store rate: u32
++ * - the current unit of measure for rate: [sectors/usec], or, more precisely,
++ *   [(sectors/usec) / 2^BFQ_RATE_SHIFT] to take into account the shift,
++ * the range of rates that can be stored is
++ * [1 / 2^BFQ_RATE_SHIFT, 2^(32 - BFQ_RATE_SHIFT)] sectors/usec =
++ * [1 / 2^16, 2^16] sectors/usec = [15e-6, 65536] sectors/usec =
++ * [15, 65G] sectors/sec
++ * Which, assuming a sector size of 512B, corresponds to a range of
++ * [7.5K, 33T] B/sec
++ */
 +#define BFQ_RATE_SHIFT		16
 +
 +/*
@@ -3831,7 +3876,7 @@ index 000000000000..bb7ccc2f1165
 +#define BFQ_SERVICE_TREE_INIT	((struct bfq_service_tree)		\
 +				{ RB_ROOT, RB_ROOT, NULL, NULL, 0, 0 })
 +
-+#define RQ_BIC(rq)		((struct bfq_io_cq *) (rq)->elv.priv[0])
++#define RQ_BIC(rq)		icq_to_bic((rq)->elv.priv[0])
 +#define RQ_BFQQ(rq)		((rq)->elv.priv[1])
 +
 +/**
@@ -3875,7 +3920,7 @@ index 000000000000..bb7ccc2f1165
 +static void bfq_schedule_dispatch(struct bfq_data *bfqd)
 +{
 +	if (bfqd->queued != 0) {
-+		bfq_log(bfqd, "schedule dispatch");
++		bfq_log(bfqd, "");
 +		blk_mq_run_hw_queues(bfqd->queue, true);
 +	}
 +}
@@ -4054,8 +4099,8 @@ index 000000000000..bb7ccc2f1165
 +	data->shallow_depth =
 +		bfqd->word_depths[!!bfqd->wr_busy_queues][op_is_sync(op)];
 +
-+	bfq_log(bfqd, "[%s] wr_busy %d sync %d depth %u",
-+			__func__, bfqd->wr_busy_queues, op_is_sync(op),
++	bfq_log(bfqd, "wr_busy %d sync %d depth %u",
++			bfqd->wr_busy_queues, op_is_sync(op),
 +			data->shallow_depth);
 +}
 +
@@ -4093,7 +4138,7 @@ index 000000000000..bb7ccc2f1165
 +	if (rb_link)
 +		*rb_link = p;
 +
-+	bfq_log(bfqd, "rq_pos_tree_lookup %llu: returning %d",
++	bfq_log(bfqd, "%llu: returning %d",
 +		(unsigned long long) sector,
 +		bfqq ? bfqq->pid : 0);
 +
@@ -4314,7 +4359,7 @@ index 000000000000..bb7ccc2f1165
 +	if (rq == last || ktime_get_ns() < rq->fifo_time)
 +		return NULL;
 +
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "check_fifo: returned %p", rq);
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "returned %p", rq);
 +	BUG_ON(RB_EMPTY_NODE(&rq->rb_node));
 +	return rq;
 +}
@@ -4407,7 +4452,7 @@ index 000000000000..bb7ccc2f1165
 +			   bfq_serv_to_charge(next_rq, bfqq));
 +	if (entity->budget != new_budget) {
 +		entity->budget = new_budget;
-+		bfq_log_bfqq(bfqd, bfqq, "updated next rq: new budget %lu",
++		bfq_log_bfqq(bfqd, bfqq, "new budget %lu",
 +					 new_budget);
 +		bfq_requeue_bfqq(bfqd, bfqq, false);
 +	}
@@ -4480,8 +4525,7 @@ index 000000000000..bb7ccc2f1165
 +	BUG_ON(time_is_after_jiffies(bfqq->last_wr_start_finish));
 +
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "[%s] bic %p wr_coeff %d start_finish %lu max_time %lu",
-+		     __func__,
++		     "bic %p wr_coeff %d start_finish %lu max_time %lu",
 +		     bic, bfqq->wr_coeff, bfqq->last_wr_start_finish,
 +		     bfqq->wr_cur_max_time);
 +
@@ -4494,11 +4538,11 @@ index 000000000000..bb7ccc2f1165
 +					     bfq_wr_duration(bfqd))) {
 +			switch_back_to_interactive_wr(bfqq, bfqd);
 +			bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "resume state: switching back to interactive");
++			     "switching back to interactive");
 +		} else {
 +			bfqq->wr_coeff = 1;
 +			bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "resume state: switching off wr (%lu + %lu < %lu)",
++			     "switching off wr (%lu + %lu < %lu)",
 +			     bfqq->last_wr_start_finish, bfqq->wr_cur_max_time,
 +			     jiffies);
 +		}
@@ -4550,7 +4594,7 @@ index 000000000000..bb7ccc2f1165
 +	/* Increment burst size to take into account also bfqq */
 +	bfqd->burst_size++;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "add_to_burst %d", bfqd->burst_size);
++	bfq_log_bfqq(bfqd, bfqq, "%d", bfqd->burst_size);
 +
 +	BUG_ON(bfqd->burst_size > bfqd->bfq_large_burst_thresh);
 +
@@ -4563,7 +4607,7 @@ index 000000000000..bb7ccc2f1165
 +		 * other to consider this burst as large.
 +		 */
 +		bfqd->large_burst = true;
-+		bfq_log_bfqq(bfqd, bfqq, "add_to_burst: large burst started");
++		bfq_log_bfqq(bfqd, bfqq, "large burst started");
 +
 +		/*
 +		 * We can now mark all queues in the burst list as
@@ -4735,7 +4779,7 @@ index 000000000000..bb7ccc2f1165
 +		bfqd->large_burst = false;
 +		bfq_reset_burst_list(bfqd, bfqq);
 +		bfq_log_bfqq(bfqd, bfqq,
-+			"handle_burst: late activation or different group");
++			"late activation or different group");
 +		goto end;
 +	}
 +
@@ -4745,7 +4789,7 @@ index 000000000000..bb7ccc2f1165
 +	 * bfqq as belonging to this large burst immediately.
 +	 */
 +	if (bfqd->large_burst) {
-+		bfq_log_bfqq(bfqd, bfqq, "handle_burst: marked in burst");
++		bfq_log_bfqq(bfqd, bfqq, "marked in burst");
 +		bfq_mark_bfqq_in_large_burst(bfqq);
 +		goto end;
 +	}
@@ -5251,7 +5295,7 @@ index 000000000000..bb7ccc2f1165
 +	unsigned int old_wr_coeff = bfqq->wr_coeff;
 +	bool interactive = false;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "add_request: size %u %s",
++	bfq_log_bfqq(bfqd, bfqq, "size %u %s",
 +		     blk_rq_sectors(rq), rq_is_sync(rq) ? "S" : "A");
 +
 +	if (bfqq->wr_coeff > 1) /* queue is being weight-raised */
@@ -5517,7 +5561,7 @@ index 000000000000..bb7ccc2f1165
 +	__rq = bfq_find_rq_fmerge(bfqd, bio, q);
 +	if (__rq && elv_bio_merge_ok(__rq, bio)) {
 +		*req = __rq;
-+		bfq_log(bfqd, "request_merge: req %p", __rq);
++		bfq_log(bfqd, "req %p", __rq);
 +
 +		return ELEVATOR_FRONT_MERGE;
 +	}
@@ -5554,7 +5598,7 @@ index 000000000000..bb7ccc2f1165
 +		bfqq->next_rq = next_rq;
 +
 +		bfq_log_bfqq(bfqd, bfqq,
-+			"request_merged: req %p prev %p next_rq %p bfqq %p",
++			"req %p prev %p next_rq %p bfqq %p",
 +			     req, prev, next_rq, bfqq);
 +
 +		/*
@@ -5583,7 +5627,7 @@ index 000000000000..bb7ccc2f1165
 +		goto end;
 +
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "requests_merged: rq %p next %p bfqq %p next_bfqq %p",
++		     "rq %p next %p bfqq %p next_bfqq %p",
 +		     rq, next, bfqq, next_bfqq);
 +
 +	spin_lock_irq(&bfqq->bfqd->lock);
@@ -5634,10 +5678,10 @@ index 000000000000..bb7ccc2f1165
 +	 */
 +	bfqq->entity.prio_changed = 1;
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "end_wr: wrais ending at %lu, rais_max_time %u",
++		     "wrais ending at %lu, rais_max_time %u",
 +		     bfqq->last_wr_start_finish,
 +		     jiffies_to_msecs(bfqq->wr_cur_max_time));
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "end_wr: wr_busy %d",
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "wr_busy %d",
 +		     bfqq->bfqd->wr_busy_queues);
 +}
 +
@@ -5810,8 +5854,8 @@ index 000000000000..bb7ccc2f1165
 +{
 +	if (bfq_too_late_for_merging(new_bfqq)) {
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "[%s] too late for bfq%d to be merged",
-+			     __func__, new_bfqq->pid);
++			     "too late for bfq%d to be merged",
++				new_bfqq->pid);
 +		return false;
 +	}
 +
@@ -5960,8 +6004,7 @@ index 000000000000..bb7ccc2f1165
 +	}
 +	BUG_ON(time_is_after_jiffies(bfqq->last_wr_start_finish));
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "[%s] bic %p wr_coeff %d start_finish %lu max_time %lu",
-+		     __func__,
++		     "bic %p wr_coeff %d start_finish %lu max_time %lu",
 +		     bic, bfqq->wr_coeff, bfqq->last_wr_start_finish,
 +		     bfqq->wr_cur_max_time);
 +}
@@ -6018,7 +6061,7 @@ index 000000000000..bb7ccc2f1165
 +
 +	}
 +
-+	bfq_log_bfqq(bfqd, new_bfqq, "merge_bfqqs: wr_busy %d",
++	bfq_log_bfqq(bfqd, new_bfqq, "wr_busy %d",
 +		     bfqd->wr_busy_queues);
 +
 +	/*
@@ -6119,7 +6162,7 @@ index 000000000000..bb7ccc2f1165
 +	bfqq->budget_timeout = jiffies +
 +		bfqd->bfq_timeout * timeout_coeff;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "set budget_timeout %u",
++	bfq_log_bfqq(bfqd, bfqq, "%u",
 +		jiffies_to_msecs(bfqd->bfq_timeout * timeout_coeff));
 +}
 +
@@ -6185,10 +6228,10 @@ index 000000000000..bb7ccc2f1165
 +
 +		bfq_set_budget_timeout(bfqd, bfqq);
 +		bfq_log_bfqq(bfqd, bfqq,
-+			     "set_in_service_queue, cur-budget = %d",
++			     "cur-budget = %d",
 +			     bfqq->entity.budget);
 +	} else
-+		bfq_log(bfqd, "set_in_service_queue: NULL");
++		bfq_log(bfqd, "NULL");
 +
 +	bfqd->in_service_queue = bfqq;
 +}
@@ -6311,7 +6354,7 @@ index 000000000000..bb7ccc2f1165
 +		bfqd->peak_rate_samples = 0; /* full re-init on next disp. */
 +
 +	bfq_log(bfqd,
-+		"reset_rate_computation at end, sample %u/%u tot_sects %llu",
++		"at end, sample %u/%u tot_sects %llu",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		bfqd->tot_sectors_dispatched);
 +}
@@ -6331,7 +6374,7 @@ index 000000000000..bb7ccc2f1165
 +	if (bfqd->peak_rate_samples < BFQ_RATE_MIN_SAMPLES ||
 +	    bfqd->delta_from_first < BFQ_RATE_MIN_INTERVAL) {
 +		bfq_log(bfqd,
-+	"update_rate_reset: only resetting, delta_first %lluus samples %d",
++	"only resetting, delta_first %lluus samples %d",
 +			bfqd->delta_from_first>>10, bfqd->peak_rate_samples);
 +		goto reset_computation;
 +	}
@@ -6355,7 +6398,7 @@ index 000000000000..bb7ccc2f1165
 +			div_u64(bfqd->delta_from_first, NSEC_PER_USEC));
 +
 +	bfq_log(bfqd,
-+"update_rate_reset: tot_sects %llu delta_first %lluus rate %llu sects/s (%d)",
++"tot_sects %llu delta_first %lluus rate %llu sects/s (%d)",
 +		bfqd->tot_sectors_dispatched, bfqd->delta_from_first>>10,
 +		((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT),
 +		rate > 20<<BFQ_RATE_SHIFT);
@@ -6370,14 +6413,14 @@ index 000000000000..bb7ccc2f1165
 +	     rate <= bfqd->peak_rate) ||
 +		rate > 20<<BFQ_RATE_SHIFT) {
 +		bfq_log(bfqd,
-+		"update_rate_reset: goto reset, samples %u/%u rate/peak %llu/%llu",
++		"goto reset, samples %u/%u rate/peak %llu/%llu",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT),
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT));
 +		goto reset_computation;
 +	} else {
 +		bfq_log(bfqd,
-+		"update_rate_reset: do update, samples %u/%u rate/peak %llu/%llu",
++		"do update, samples %u/%u rate/peak %llu/%llu",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT),
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT));
@@ -6433,7 +6476,7 @@ index 000000000000..bb7ccc2f1165
 +	rate /= divisor; /* smoothing constant alpha = 1/divisor */
 +
 +	bfq_log(bfqd,
-+		"update_rate_reset: divisor %d tmp_peak_rate %llu tmp_rate %u",
++		"divisor %d tmp_peak_rate %llu tmp_rate %u",
 +		divisor,
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT),
 +		(u32)((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT));
@@ -6442,6 +6485,16 @@ index 000000000000..bb7ccc2f1165
 +	BUG_ON(bfqd->peak_rate > 20<<BFQ_RATE_SHIFT);
 +
 +	bfqd->peak_rate += rate;
++
++	/*
++	 * For a very slow device, bfqd->peak_rate can reach 0 (see
++	 * the minimum representable values reported in the comments
++	 * on BFQ_RATE_SHIFT). Push to 1 if this happens, to avoid
++	 * divisions by zero where bfqd->peak_rate is used as a
++	 * divisor.
++	 */
++	bfqd->peak_rate = max_t(u32, 1, bfqd->peak_rate);
++
 +	update_thr_responsiveness_params(bfqd);
 +	BUG_ON(bfqd->peak_rate > 20<<BFQ_RATE_SHIFT);
 +
@@ -6487,7 +6540,7 @@ index 000000000000..bb7ccc2f1165
 +
 +	if (bfqd->peak_rate_samples == 0) { /* first dispatch */
 +		bfq_log(bfqd,
-+		"update_peak_rate: goto reset, samples %d",
++		"goto reset, samples %d",
 +				bfqd->peak_rate_samples) ;
 +		bfq_reset_rate_computation(bfqd, rq);
 +		goto update_last_values; /* will add one sample */
@@ -6508,7 +6561,7 @@ index 000000000000..bb7ccc2f1165
 +	if (now_ns - bfqd->last_dispatch > 100*NSEC_PER_MSEC &&
 +	    bfqd->rq_in_driver == 0) {
 +		bfq_log(bfqd,
-+"update_peak_rate: jumping to updating&resetting delta_last %lluus samples %d",
++"jumping to updating&resetting delta_last %lluus samples %d",
 +			(now_ns - bfqd->last_dispatch)>>10,
 +			bfqd->peak_rate_samples) ;
 +		goto update_rate_and_reset;
@@ -6534,7 +6587,7 @@ index 000000000000..bb7ccc2f1165
 +	bfqd->delta_from_first = now_ns - bfqd->first_dispatch;
 +
 +	bfq_log(bfqd,
-+	"update_peak_rate: added samples %u/%u tot_sects %llu delta_first %lluus",
++	"added samples %u/%u tot_sects %llu delta_first %lluus",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		bfqd->tot_sectors_dispatched,
 +		bfqd->delta_from_first>>10);
@@ -6550,12 +6603,12 @@ index 000000000000..bb7ccc2f1165
 +	bfqd->last_dispatch = now_ns;
 +
 +	bfq_log(bfqd,
-+	"update_peak_rate: delta_first %lluus last_pos %llu peak_rate %llu",
++	"delta_first %lluus last_pos %llu peak_rate %llu",
 +		(now_ns - bfqd->first_dispatch)>>10,
 +		(unsigned long long) bfqd->last_position,
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT));
 +	bfq_log(bfqd,
-+	"update_peak_rate: samples at end %d", bfqd->peak_rate_samples);
++	"samples at end %d", bfqd->peak_rate_samples);
 +}
 +
 +/*
@@ -6653,11 +6706,11 @@ index 000000000000..bb7ccc2f1165
 +	      */
 +		budget = 2 * min_budget;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "recalc_budg: last budg %d, budg left %d",
++	bfq_log_bfqq(bfqd, bfqq, "last budg %d, budg left %d",
 +		bfqq->entity.budget, bfq_bfqq_budget_left(bfqq));
-+	bfq_log_bfqq(bfqd, bfqq, "recalc_budg: last max_budg %d, min budg %d",
++	bfq_log_bfqq(bfqd, bfqq, "last max_budg %d, min budg %d",
 +		budget, bfq_min_budget(bfqd));
-+	bfq_log_bfqq(bfqd, bfqq, "recalc_budg: sync %d, seeky %d",
++	bfq_log_bfqq(bfqd, bfqq, "sync %d, seeky %d",
 +		bfq_bfqq_sync(bfqq), BFQQ_SEEKY(bfqd->in_service_queue));
 +
 +	if (bfq_bfqq_sync(bfqq) && bfqq->wr_coeff == 1) {
@@ -6859,7 +6912,7 @@ index 000000000000..bb7ccc2f1165
 +		else /* charge at least one seek */
 +			*delta_ms = bfq_slice_idle / NSEC_PER_MSEC;
 +
-+		bfq_log(bfqd, "bfq_bfqq_is_slow: too short %u", delta_usecs);
++		bfq_log(bfqd, "too short %u", delta_usecs);
 +
 +		return slow;
 +	}
@@ -6882,11 +6935,11 @@ index 000000000000..bb7ccc2f1165
 +		 * peak rate.
 +		 */
 +		slow = bfqq->entity.service < bfqd->bfq_max_budget / 2;
-+		bfq_log(bfqd, "bfq_bfqq_is_slow: relative rate %d/%d",
++		bfq_log(bfqd, "relative rate %d/%d",
 +			bfqq->entity.service, bfqd->bfq_max_budget);
 +	}
 +
-+	bfq_log_bfqq(bfqd, bfqq, "bfq_bfqq_is_slow: slow %d", slow);
++	bfq_log_bfqq(bfqd, bfqq, "slow %d", slow);
 +
 +	return slow;
 +}
@@ -6988,7 +7041,7 @@ index 000000000000..bb7ccc2f1165
 +						struct bfq_queue *bfqq)
 +{
 +	bfq_log_bfqq(bfqd, bfqq,
-+"softrt_next_start: service_blkg %lu soft_rate %u sects/sec interval %u",
++"service_blkg %lu soft_rate %u sects/sec interval %u",
 +		     bfqq->service_from_backlogged,
 +		     bfqd->bfq_wr_max_softrt_rate,
 +		     jiffies_to_msecs(HZ * bfqq->service_from_backlogged /
@@ -7120,8 +7173,8 @@ index 000000000000..bb7ccc2f1165
 +	}
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		"expire (%d, slow %d, num_disp %d, short_ttime %d, weight %d)",
-+		     reason, slow, bfqq->dispatched,
++		"expire (%s, slow %d, num_disp %d, short_ttime %d, weight %d)",
++		     reason_name[reason], slow, bfqq->dispatched,
 +		     bfq_bfqq_has_short_ttime(bfqq), entity->weight);
 +
 +	/*
@@ -7167,7 +7220,7 @@ index 000000000000..bb7ccc2f1165
 +static bool bfq_may_expire_for_budg_timeout(struct bfq_queue *bfqq)
 +{
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		"may_budget_timeout: wait_request %d left %d timeout %d",
++		"wait_request %d left %d timeout %d",
 +		bfq_bfqq_wait_request(bfqq),
 +			bfq_bfqq_budget_left(bfqq) >=  bfqq->entity.budget / 3,
 +		bfq_bfqq_budget_timeout(bfqq));
@@ -7428,11 +7481,11 @@ index 000000000000..bb7ccc2f1165
 +	 * either boosts the throughput (without issues), or is
 +	 * necessary to preserve service guarantees.
 +	 */
-+	bfq_log_bfqq(bfqd, bfqq, "may_idle: sync %d idling_boosts_thr %d",
++	bfq_log_bfqq(bfqd, bfqq, "sync %d idling_boosts_thr %d",
 +		     bfq_bfqq_sync(bfqq), idling_boosts_thr);
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		     "may_idle: wr_busy %d boosts %d IO-bound %d guar %d",
++		     "wr_busy %d boosts %d IO-bound %d guar %d",
 +		     bfqd->wr_busy_queues,
 +		     idling_boosts_thr_without_issues,
 +		     bfq_bfqq_IO_bound(bfqq),
@@ -7472,7 +7525,7 @@ index 000000000000..bb7ccc2f1165
 +	if (!bfqq)
 +		goto new_queue;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "select_queue: already in-service queue");
++	bfq_log_bfqq(bfqd, bfqq, "already in-service queue");
 +
 +	if (bfq_may_expire_for_budg_timeout(bfqq) &&
 +	    !bfq_bfqq_wait_request(bfqq) &&
@@ -7548,14 +7601,14 @@ index 000000000000..bb7ccc2f1165
 +new_queue:
 +	bfqq = bfq_set_in_service_queue(bfqd);
 +	if (bfqq) {
-+		bfq_log_bfqq(bfqd, bfqq, "select_queue: checking new queue");
++		bfq_log_bfqq(bfqd, bfqq, "checking new queue");
 +		goto check_queue;
 +	}
 +keep_queue:
 +	if (bfqq)
-+		bfq_log_bfqq(bfqd, bfqq, "select_queue: returned this queue");
++		bfq_log_bfqq(bfqd, bfqq, "returned this queue");
 +	else
-+		bfq_log(bfqd, "select_queue: no queue returned");
++		bfq_log(bfqd, "no queue returned");
 +
 +	return bfqq;
 +}
@@ -7608,8 +7661,7 @@ index 000000000000..bb7ccc2f1165
 +			/* see comments on max_service_from_wr */
 +			bfq_bfqq_end_wr(bfqq);
 +			bfq_log_bfqq(bfqd, bfqq,
-+				     "[%s] too much service",
-+				     __func__);
++				     "too much service");
 +		}
 +	}
 +	/*
@@ -7687,7 +7739,7 @@ index 000000000000..bb7ccc2f1165
 +{
 +	struct bfq_data *bfqd = hctx->queue->elevator->elevator_data;
 +
-+	bfq_log(bfqd, "has_work, dispatch_non_empty %d busy_queues %d",
++	bfq_log(bfqd, "dispatch_non_empty %d busy_queues %d",
 +		!list_empty_careful(&bfqd->dispatch), bfqd->busy_queues > 0);
 +
 +	/*
@@ -7711,7 +7763,7 @@ index 000000000000..bb7ccc2f1165
 +		rq->rq_flags &= ~RQF_DISP_LIST;
 +
 +		bfq_log(bfqd,
-+			"dispatch requests: picked %p from dispatch list", rq);
++			"picked %p from dispatch list", rq);
 +		bfqq = RQ_BFQQ(rq);
 +
 +		if (bfqq) {
@@ -7761,7 +7813,7 @@ index 000000000000..bb7ccc2f1165
 +		goto start_rq;
 +	}
 +
-+	bfq_log(bfqd, "dispatch requests: %d busy queues", bfqd->busy_queues);
++	bfq_log(bfqd, "%d busy queues", bfqd->busy_queues);
 +
 +	if (bfqd->busy_queues == 0)
 +		goto exit;
@@ -7801,13 +7853,13 @@ index 000000000000..bb7ccc2f1165
 +		rq->rq_flags |= RQF_STARTED;
 +		if (bfqq)
 +			bfq_log_bfqq(bfqd, bfqq,
-+				"dispatched %s request %p, rq_in_driver %d",
++				"%s request %p, rq_in_driver %d",
 +				     bfq_bfqq_sync(bfqq) ? "sync" : "async",
 +				     rq,
 +				     bfqd->rq_in_driver);
 +		else
 +			bfq_log(bfqd,
-+		"dispatched request %p from dispatch list, rq_in_driver %d",
++		"request %p from dispatch list, rq_in_driver %d",
 +				rq, bfqd->rq_in_driver);
 +	} else
 +		bfq_log(bfqd,
@@ -7818,35 +7870,17 @@ index 000000000000..bb7ccc2f1165
 +	return rq;
 +}
 +
-+static struct request *bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
++
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) && defined(CONFIG_DEBUG_BLK_CGROUP)
++static void bfq_update_dispatch_stats(struct request_queue *q,
++				      struct request *rq,
++				      struct bfq_queue *in_serv_queue,
++				      bool idle_timer_disabled)
 +{
-+	struct bfq_data *bfqd = hctx->queue->elevator->elevator_data;
-+	struct request *rq;
-+#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
-+	struct bfq_queue *in_serv_queue, *bfqq;
-+	bool waiting_rq, idle_timer_disabled;
-+#endif
++	struct bfq_queue *bfqq = rq ? RQ_BFQQ(rq) : NULL;
 +
-+	spin_lock_irq(&bfqd->lock);
-+
-+#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
-+	in_serv_queue = bfqd->in_service_queue;
-+	waiting_rq = in_serv_queue && bfq_bfqq_wait_request(in_serv_queue);
-+
-+	rq = __bfq_dispatch_request(hctx);
-+
-+	idle_timer_disabled =
-+		waiting_rq && !bfq_bfqq_wait_request(in_serv_queue);
-+
-+#else
-+	rq = __bfq_dispatch_request(hctx);
-+#endif
-+	spin_unlock_irq(&bfqd->lock);
-+
-+#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
-+	bfqq = rq ? RQ_BFQQ(rq) : NULL;
 +	if (!idle_timer_disabled && !bfqq)
-+		return rq;
++		return;
 +
 +	/*
 +	 * rq and bfqq are guaranteed to exist until this function
@@ -7861,7 +7895,7 @@ index 000000000000..bb7ccc2f1165
 +	 * In addition, the following queue lock guarantees that
 +	 * bfqq_group(bfqq) exists as well.
 +	 */
-+	spin_lock_irq(hctx->queue->queue_lock);
++	spin_lock_irq(q->queue_lock);
 +	if (idle_timer_disabled)
 +		/*
 +		 * Since the idle timer has been disabled,
@@ -7880,8 +7914,35 @@ index 000000000000..bb7ccc2f1165
 +		bfqg_stats_set_start_empty_time(bfqg);
 +		bfqg_stats_update_io_remove(bfqg, rq->cmd_flags);
 +	}
-+	spin_unlock_irq(hctx->queue->queue_lock);
++	spin_unlock_irq(q->queue_lock);
++}
++#else
++static inline void bfq_update_dispatch_stats(struct request_queue *q,
++					     struct request *rq,
++					     struct bfq_queue *in_serv_queue,
++					     bool idle_timer_disabled) {}
 +#endif
++static struct request *bfq_dispatch_request(struct blk_mq_hw_ctx *hctx)
++{
++	struct bfq_data *bfqd = hctx->queue->elevator->elevator_data;
++	struct request *rq;
++	struct bfq_queue *in_serv_queue;
++	bool waiting_rq, idle_timer_disabled;
++
++	spin_lock_irq(&bfqd->lock);
++
++	in_serv_queue = bfqd->in_service_queue;
++	waiting_rq = in_serv_queue && bfq_bfqq_wait_request(in_serv_queue);
++
++	rq = __bfq_dispatch_request(hctx);
++
++	idle_timer_disabled =
++		waiting_rq && !bfq_bfqq_wait_request(in_serv_queue);
++
++	spin_unlock_irq(&bfqd->lock);
++
++	bfq_update_dispatch_stats(hctx->queue, rq, in_serv_queue,
++				  idle_timer_disabled);
 +
 +	return rq;
 +}
@@ -7904,7 +7965,7 @@ index 000000000000..bb7ccc2f1165
 +	BUG_ON(bfqq->ref <= 0);
 +
 +	if (bfqq->bfqd)
-+		bfq_log_bfqq(bfqq->bfqd, bfqq, "put_queue: %p %d", bfqq, bfqq->ref);
++		bfq_log_bfqq(bfqq->bfqd, bfqq, "%p %d", bfqq, bfqq->ref);
 +
 +	bfqq->ref--;
 +	if (bfqq->ref)
@@ -7948,10 +8009,10 @@ index 000000000000..bb7ccc2f1165
 +	}
 +
 +	if (bfqq->bfqd)
-+		bfq_log_bfqq(bfqq->bfqd, bfqq, "put_queue: %p freed", bfqq);
++		bfq_log_bfqq(bfqq->bfqd, bfqq, "%p freed", bfqq);
 +
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "[%s] putting blkg and bfqg %p\n", __func__, bfqg);
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "putting blkg and bfqg %p\n", bfqg);
 +	bfqg_and_blkg_put(bfqg);
 +#endif
 +	kmem_cache_free(bfq_pool, bfqq);
@@ -7983,7 +8044,7 @@ index 000000000000..bb7ccc2f1165
 +		bfq_schedule_dispatch(bfqd);
 +	}
 +
-+	bfq_log_bfqq(bfqd, bfqq, "exit_bfqq: %p, %d", bfqq, bfqq->ref);
++	bfq_log_bfqq(bfqd, bfqq, "%p, %d", bfqq, bfqq->ref);
 +
 +	bfq_put_cooperator(bfqq);
 +
@@ -8067,7 +8128,7 @@ index 000000000000..bb7ccc2f1165
 +	bfqq->entity.new_weight = bfq_ioprio_to_weight(bfqq->new_ioprio);
 +	bfqq->entity.prio_changed = 1;
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "set_next_ioprio_data: bic_class %d prio %d class %d",
++		     "bic_class %d prio %d class %d",
 +		     ioprio_class, bfqq->new_ioprio, bfqq->new_ioprio_class);
 +}
 +
@@ -8094,7 +8155,7 @@ index 000000000000..bb7ccc2f1165
 +		bfqq = bfq_get_queue(bfqd, bio, BLK_RW_ASYNC, bic);
 +		bic_set_bfqq(bic, bfqq, false);
 +		bfq_log_bfqq(bfqd, bfqq,
-+			     "check_ioprio_change: bfqq %p %d",
++			     "bfqq %p %d",
 +			     bfqq, bfqq->ref);
 +	}
 +
@@ -8232,14 +8293,14 @@ index 000000000000..bb7ccc2f1165
 +			      * guarantee that this queue is not freed
 +			      * until its group goes away.
 +			      */
-+		bfq_log_bfqq(bfqd, bfqq, "get_queue, bfqq not in async: %p, %d",
++		bfq_log_bfqq(bfqd, bfqq, "bfqq not in async: %p, %d",
 +			     bfqq, bfqq->ref);
 +		*async_bfqq = bfqq;
 +	}
 +
 +out:
 +	bfqq->ref++; /* get a process reference to this queue */
-+	bfq_log_bfqq(bfqd, bfqq, "get_queue, at end: %p, %d", bfqq, bfqq->ref);
++	bfq_log_bfqq(bfqd, bfqq, "at end: %p, %d", bfqq, bfqq->ref);
 +	rcu_read_unlock();
 +	return bfqq;
 +}
@@ -8298,7 +8359,7 @@ index 000000000000..bb7ccc2f1165
 +	     bfqq->ttime.ttime_mean > bfqd->bfq_slice_idle))
 +		has_short_ttime = false;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "update_has_short_ttime: has_short_ttime %d",
++	bfq_log_bfqq(bfqd, bfqq, "has_short_ttime %d",
 +		has_short_ttime);
 +
 +	if (has_short_ttime)
@@ -8324,7 +8385,7 @@ index 000000000000..bb7ccc2f1165
 +	bfq_update_io_seektime(bfqd, bfqq, rq);
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		     "rq_enqueued: has_short_ttime=%d (seeky %d)",
++		     "has_short_ttime=%d (seeky %d)",
 +		     bfq_bfqq_has_short_ttime(bfqq), BFQQ_SEEKY(bfqq));
 +
 +	bfqq->last_request_pos = blk_rq_pos(rq) + blk_rq_sectors(rq);
@@ -8383,7 +8444,7 @@ index 000000000000..bb7ccc2f1165
 +
 +	assert_spin_locked(&bfqd->lock);
 +
-+	bfq_log_bfqq(bfqd, bfqq, "__insert_req: rq %p bfqq %p", rq, bfqq);
++	bfq_log_bfqq(bfqd, bfqq, "rq %p bfqq %p", rq, bfqq);
 +
 +	/*
 +	 * An unplug may trigger a requeue of a request from the device
@@ -8402,9 +8463,9 @@ index 000000000000..bb7ccc2f1165
 +			new_bfqq->allocated++;
 +			bfqq->allocated--;
 +			bfq_log_bfqq(bfqd, bfqq,
-+		     "insert_request: new allocated %d", bfqq->allocated);
++		     "new allocated %d", bfqq->allocated);
 +			bfq_log_bfqq(bfqd, new_bfqq,
-+		     "insert_request: new_bfqq new allocated %d",
++		     "new_bfqq new allocated %d",
 +				     bfqq->allocated);
 +
 +			new_bfqq->ref++;
@@ -8443,6 +8504,38 @@ index 000000000000..bb7ccc2f1165
 +	return idle_timer_disabled;
 +}
 +
++#if defined(BFQ_GROUP_IOSCHED_ENABLED) && defined(CONFIG_DEBUG_BLK_CGROUP)
++static void bfq_update_insert_stats(struct request_queue *q,
++				    struct bfq_queue *bfqq,
++				    bool idle_timer_disabled,
++				    unsigned int cmd_flags)
++{
++	if (!bfqq)
++		return;
++
++	/*
++	 * bfqq still exists, because it can disappear only after
++	 * either it is merged with another queue, or the process it
++	 * is associated with exits. But both actions must be taken by
++	 * the same process currently executing this flow of
++	 * instructions.
++	 *
++	 * In addition, the following queue lock guarantees that
++	 * bfqq_group(bfqq) exists as well.
++	 */
++	spin_lock_irq(q->queue_lock);
++	bfqg_stats_update_io_add(bfqq_group(bfqq), bfqq, cmd_flags);
++	if (idle_timer_disabled)
++		bfqg_stats_update_idle_time(bfqq_group(bfqq));
++	spin_unlock_irq(q->queue_lock);
++}
++#else
++static inline void bfq_update_insert_stats(struct request_queue *q,
++					   struct bfq_queue *bfqq,
++					   bool idle_timer_disabled,
++					   unsigned int cmd_flags) {}
++#endif
++
 +static void bfq_prepare_request(struct request *rq, struct bio *bio);
 +
 +static void bfq_insert_request(struct blk_mq_hw_ctx *hctx, struct request *rq,
@@ -8451,10 +8544,8 @@ index 000000000000..bb7ccc2f1165
 +	struct request_queue *q = hctx->queue;
 +	struct bfq_data *bfqd = q->elevator->elevator_data;
 +	struct bfq_queue *bfqq = RQ_BFQQ(rq);
-+#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
 +	bool idle_timer_disabled = false;
 +	unsigned int cmd_flags;
-+#endif
 +
 +	spin_lock_irq(&bfqd->lock);
 +	if (blk_mq_sched_try_insert_merge(q, rq)) {
@@ -8476,11 +8567,11 @@ index 000000000000..bb7ccc2f1165
 +		rq->rq_flags |= RQF_DISP_LIST;
 +		if (bfqq)
 +			bfq_log_bfqq(bfqd, bfqq,
-+				     "insert_request %p in disp: at_head %d",
++				     "%p in disp: at_head %d",
 +				     rq, at_head);
 +		else
 +			bfq_log(bfqd,
-+				"insert_request %p in disp: at_head %d",
++				"%p in disp: at_head %d",
 +				rq, at_head);
 +	} else {
 +		BUG_ON(!(rq->rq_flags & RQF_GOT));
@@ -8500,7 +8591,6 @@ index 000000000000..bb7ccc2f1165
 +			bfqq = RQ_BFQQ(rq);
 +		}
 +
-+#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
 +		idle_timer_disabled = __bfq_insert_request(bfqd, rq);
 +		/*
 +		 * Update bfqq, because, if a queue merge has occurred
@@ -8508,9 +8598,6 @@ index 000000000000..bb7ccc2f1165
 +		 * redirected into a new queue.
 +		 */
 +		bfqq = RQ_BFQQ(rq);
-+#else
-+		__bfq_insert_request(bfqd, rq);
-+#endif
 +
 +		if (rq_mergeable(rq)) {
 +			elv_rqhash_add(q, rq);
@@ -8518,34 +8605,17 @@ index 000000000000..bb7ccc2f1165
 +				q->last_merge = rq;
 +		}
 +	}
-+#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
++
 +	/*
 +	 * Cache cmd_flags before releasing scheduler lock, because rq
 +	 * may disappear afterwards (for example, because of a request
 +	 * merge).
 +	 */
 +	cmd_flags = rq->cmd_flags;
-+#endif
++
 +	spin_unlock_irq(&bfqd->lock);
-+#if defined(BFQ_GROUP_IOSCHED_ENABLED) &&  defined(CONFIG_DEBUG_BLK_CGROUP)
-+	if (!bfqq)
-+		return;
-+	/*
-+	 * bfqq still exists, because it can disappear only after
-+	 * either it is merged with another queue, or the process it
-+	 * is associated with exits. But both actions must be taken by
-+	 * the same process currently executing this flow of
-+	 * instruction.
-+	 *
-+	 * In addition, the following queue lock guarantees that
-+	 * bfqq_group(bfqq) exists as well.
-+	 */
-+	spin_lock_irq(q->queue_lock);
-+	bfqg_stats_update_io_add(bfqq_group(bfqq), bfqq, cmd_flags);
-+	if (idle_timer_disabled)
-+		bfqg_stats_update_idle_time(bfqq_group(bfqq));
-+	spin_unlock_irq(q->queue_lock);
-+#endif
++	bfq_update_insert_stats(q, bfqq, idle_timer_disabled,
++				cmd_flags);
 +}
 +
 +static void bfq_insert_requests(struct blk_mq_hw_ctx *hctx,
@@ -8598,7 +8668,7 @@ index 000000000000..bb7ccc2f1165
 +	bfqq->dispatched--;
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		     "completed_requests: new disp %d, new rq_in_driver %d",
++		     "new disp %d, new rq_in_driver %d",
 +		     bfqq->dispatched, bfqd->rq_in_driver);
 +
 +	if (!bfqq->dispatched && !bfq_bfqq_busy(bfqq)) {
@@ -8626,7 +8696,7 @@ index 000000000000..bb7ccc2f1165
 +	delta_us = div_u64(now_ns - bfqd->last_completion, NSEC_PER_USEC);
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		"rq_completed: delta %uus/%luus max_size %u rate %llu/%llu",
++		"delta %uus/%luus max_size %u rate %llu/%llu",
 +		delta_us, BFQ_MIN_TT/NSEC_PER_USEC, bfqd->last_rq_max_size,
 +		delta_us > 0 ?
 +		(USEC_PER_SEC*
@@ -8694,7 +8764,7 @@ index 000000000000..bb7ccc2f1165
 +static void bfq_finish_requeue_request_body(struct bfq_queue *bfqq)
 +{
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "put_request_body: allocated %d", bfqq->allocated);
++		     "allocated %d", bfqq->allocated);
 +	BUG_ON(!bfqq->allocated);
 +	bfqq->allocated--;
 +
@@ -8971,10 +9041,10 @@ index 000000000000..bb7ccc2f1165
 +
 +	bfqq->allocated++;
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "get_request: new allocated %d", bfqq->allocated);
++		     "new allocated %d", bfqq->allocated);
 +
 +	bfqq->ref++;
-+	bfq_log_bfqq(bfqd, bfqq, "get_request %p: bfqq %p, %d", rq, bfqq, bfqq->ref);
++	bfq_log_bfqq(bfqd, bfqq, "%p: bfqq %p, %d", rq, bfqq, bfqq->ref);
 +
 +	rq->elv.priv[0] = bic;
 +	rq->elv.priv[1] = bfqq;
@@ -9058,7 +9128,7 @@ index 000000000000..bb7ccc2f1165
 +					     idle_slice_timer);
 +	struct bfq_queue *bfqq = bfqd->in_service_queue;
 +
-+	bfq_log(bfqd, "slice_timer expired");
++	bfq_log(bfqd, "expired");
 +
 +	/*
 +	 * Theoretical race here: the in-service queue can be NULL or
@@ -9080,10 +9150,10 @@ index 000000000000..bb7ccc2f1165
 +	struct bfq_group *root_group = bfqd->root_group;
 +	struct bfq_queue *bfqq = *bfqq_ptr;
 +
-+	bfq_log(bfqd, "put_async_bfqq: %p", bfqq);
++	bfq_log(bfqd, "%p", bfqq);
 +	if (bfqq) {
 +		bfq_bfqq_move(bfqd, bfqq, root_group);
-+		bfq_log_bfqq(bfqd, bfqq, "put_async_bfqq: putting %p, %d",
++		bfq_log_bfqq(bfqd, bfqq, "putting %p, %d",
 +			     bfqq, bfqq->ref);
 +		bfq_put_queue(bfqq);
 +		*bfqq_ptr = NULL;
@@ -9112,7 +9182,7 @@ index 000000000000..bb7ccc2f1165
 +	struct bfq_data *bfqd = e->elevator_data;
 +	struct bfq_queue *bfqq, *n;
 +
-+	bfq_log(bfqd, "exit_queue: starting ...");
++	bfq_log(bfqd, "starting ...");
 +
 +	hrtimer_cancel(&bfqd->idle_slice_timer);
 +
@@ -9140,7 +9210,7 @@ index 000000000000..bb7ccc2f1165
 +	spin_unlock_irq(&bfqd->lock);
 +#endif
 +
-+	bfq_log(bfqd, "exit_queue: finished ...");
++	bfq_log(bfqd, "finished ...");
 +	kfree(bfqd);
 +}
 +
@@ -9673,7 +9743,7 @@ index 000000000000..bb7ccc2f1165
 +
 +	ret = elv_register(&iosched_bfq_mq);
 +	if (ret)
-+		goto err_pol_unreg;
++		goto slab_kill;
 +
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	strcat(msg, " (with cgroups support)");
@@ -9682,6 +9752,8 @@ index 000000000000..bb7ccc2f1165
 +
 +	return 0;
 +
++slab_kill:
++	bfq_slab_kill();
 +err_pol_unreg:
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	blkcg_policy_unregister(&blkcg_policy_bfq);
@@ -9706,10 +9778,10 @@ index 000000000000..bb7ccc2f1165
 +MODULE_DESCRIPTION("MQ Budget Fair Queueing I/O Scheduler");
 diff --git a/block/bfq-mq.h b/block/bfq-mq.h
 new file mode 100644
-index 000000000000..9a5ce1168ff5
+index 000000000000..4a54e5076863
 --- /dev/null
 +++ b/block/bfq-mq.h
-@@ -0,0 +1,1005 @@
+@@ -0,0 +1,1011 @@
 +/*
 + * BFQ v8r12 for 4.11.0: data structures and common functions prototypes.
 + *
@@ -10202,7 +10274,12 @@ index 000000000000..9a5ce1168ff5
 +	u32 last_rq_max_size;
 +	/* time elapsed from first dispatch in current observ. interval (us) */
 +	u64 delta_from_first;
-+	/* current estimate of device peak rate */
++	/*
++	 * Current estimate of the device peak rate, measured in
++	 * [(sectors/usec) / 2^BFQ_RATE_SHIFT]. The left-shift by
++	 * BFQ_RATE_SHIFT is performed to increase precision in
++	 * fixed-point calculations.
++	 */
 +	u32 peak_rate;
 +
 +	/* maximum budget allotted to a bfq_queue before rescheduling */
@@ -10424,34 +10501,34 @@ index 000000000000..9a5ce1168ff5
 +static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 +
 +#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	do {			\
-+	pr_crit("%s bfq%d%c %s " fmt "\n", 				\
++	pr_crit("%s bfq%d%c %s [%s] " fmt "\n",				\
 +		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
 +		(bfqq)->pid,						\
 +		bfq_bfqq_sync((bfqq)) ? 'S' : 'A',			\
-+		bfqq_group(bfqq)->blkg_path, ##args);			\
++		bfqq_group(bfqq)->blkg_path, __func__, ##args);		\
 +} while (0)
 +
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)	do {			\
-+	pr_crit("%s %s " fmt "\n",					\
++	pr_crit("%s %s [%s] " fmt "\n",					\
 +	checked_dev_name((bfqd)->queue->backing_dev_info->dev),		\
-+	bfqg->blkg_path, ##args);					\
++	bfqg->blkg_path, __func__, ##args);				\
 +} while (0)
 +
 +#else /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)				\
-+	pr_crit("%s bfq%d%c " fmt "\n",					\
++	pr_crit("%s bfq%d%c [%s] " fmt "\n",				\
 +		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
 +		(bfqq)->pid, bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
-+		##args)
++		__func__, ##args)
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)		do {} while (0)
 +
 +#endif /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log(bfqd, fmt, args...) \
-+	pr_crit("%s bfq " fmt "\n",					\
++	pr_crit("%s bfq [%s] " fmt "\n",				\
 +		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
-+		##args)
++		__func__, ##args)
 +
 +#else /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
 +
@@ -10474,28 +10551,29 @@ index 000000000000..9a5ce1168ff5
 +static struct blkcg_gq *bfqg_to_blkg(struct bfq_group *bfqg);
 +
 +#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	do {			\
-+	blk_add_trace_msg((bfqd)->queue, "bfq%d%c %s " fmt, \
++	blk_add_trace_msg((bfqd)->queue, "bfq%d%c %s [%s] " fmt, \
 +			  (bfqq)->pid,			  \
 +			  bfq_bfqq_sync((bfqq)) ? 'S' : 'A',	\
-+			  bfqq_group(bfqq)->blkg_path, ##args);		\
++			  bfqq_group(bfqq)->blkg_path, __func__, ##args); \
 +} while (0)
 +
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)	do {			\
-+	blk_add_trace_msg((bfqd)->queue, "%s " fmt, bfqg->blkg_path, ##args);\
++	blk_add_trace_msg((bfqd)->queue, "%s [%s] " fmt, bfqg->blkg_path, \
++	__func__, ##args);\
 +} while (0)
 +
 +#else /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	\
-+	blk_add_trace_msg((bfqd)->queue, "bfq%d%c " fmt, (bfqq)->pid,	\
++	blk_add_trace_msg((bfqd)->queue, "bfq%d%c [%s] " fmt, (bfqq)->pid, \
 +			bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
-+				##args)
++				__func__, ##args)
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)		do {} while (0)
 +
 +#endif /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log(bfqd, fmt, args...) \
-+	blk_add_trace_msg((bfqd)->queue, "bfq " fmt, ##args)
++	blk_add_trace_msg((bfqd)->queue, "bfq [%s] " fmt, __func__, ##args)
 +
 +#endif /* CONFIG_BLK_DEV_IO_TRACE */
 +#endif /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
@@ -10650,7 +10728,7 @@ index 000000000000..9a5ce1168ff5
 +
 +	if (bfqq)
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "entity_service_tree %p %d",
++			     "%p %d",
 +			     sched_data->service_tree + idx, idx);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	else {
@@ -10658,7 +10736,7 @@ index 000000000000..9a5ce1168ff5
 +			container_of(entity, struct bfq_group, entity);
 +
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			     "entity_service_tree %p %d",
++			     "%p %d",
 +			     sched_data->service_tree + idx, idx);
 +	}
 +#endif
@@ -10717,7 +10795,7 @@ index 000000000000..9a5ce1168ff5
 +#endif /* _BFQ_H */
 diff --git a/block/bfq-sched.c b/block/bfq-sched.c
 new file mode 100644
-index 000000000000..4e6c5232e2fb
+index 000000000000..ead34c30a7c2
 --- /dev/null
 +++ b/block/bfq-sched.c
 @@ -0,0 +1,2066 @@
@@ -10842,7 +10920,7 @@ index 000000000000..4e6c5232e2fb
 +
 +			if (bfqq)
 +				bfq_log_bfqq(bfqq->bfqd, bfqq,
-+				"update_next_in_service: chose without lookup");
++				"chose without lookup");
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +			else {
 +				struct bfq_group *bfqg =
@@ -10850,7 +10928,7 @@ index 000000000000..4e6c5232e2fb
 +						     struct bfq_group, entity);
 +
 +				bfq_log_bfqg((struct bfq_data*)bfqg->bfqd, bfqg,
-+				"update_next_in_service: chose without lookup");
++				"chose without lookup");
 +			}
 +#endif
 +		}
@@ -10871,7 +10949,7 @@ index 000000000000..4e6c5232e2fb
 +	bfqq = bfq_entity_to_bfqq(next_in_service);
 +	if (bfqq)
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "update_next_in_service: chosen this queue");
++			     "chosen this queue");
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	else {
 +		struct bfq_group *bfqg =
@@ -10879,7 +10957,7 @@ index 000000000000..4e6c5232e2fb
 +				     struct bfq_group, entity);
 +
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			     "update_next_in_service: chosen this entity");
++			     "chosen this entity");
 +	}
 +#endif
 +	return parent_sched_may_change;
@@ -11054,10 +11132,10 @@ index 000000000000..4e6c5232e2fb
 +
 +	if (bfqq) {
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			"calc_finish: serv %lu, w %d",
++			"serv %lu, w %d",
 +			service, entity->weight);
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			"calc_finish: start %llu, finish %llu, delta %llu",
++			"start %llu, finish %llu, delta %llu",
 +			start, finish, delta);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	} else {
@@ -11065,10 +11143,10 @@ index 000000000000..4e6c5232e2fb
 +			container_of(entity, struct bfq_group, entity);
 +
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			"calc_finish group: serv %lu, w %d",
++			"group: serv %lu, w %d",
 +			     service, entity->weight);
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			"calc_finish group: start %llu, finish %llu, delta %llu",
++			"group: start %llu, finish %llu, delta %llu",
 +			start, finish, delta);
 +#endif
 +	}
@@ -11207,7 +11285,7 @@ index 000000000000..4e6c5232e2fb
 +
 +	if (bfqq) {
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "update_active_node: new min_start %llu",
++			     "new min_start %llu",
 +			     ((entity->min_start>>10)*1000)>>12);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	} else {
@@ -11215,7 +11293,7 @@ index 000000000000..4e6c5232e2fb
 +			container_of(entity, struct bfq_group, entity);
 +
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			     "update_active_node: new min_start %llu",
++			     "new min_start %llu",
 +			     ((entity->min_start>>10)*1000)>>12);
 +#endif
 +	}
@@ -11343,7 +11421,7 @@ index 000000000000..4e6c5232e2fb
 +
 +	if (bfqq) {
 +		bfqq->ref++;
-+		bfq_log_bfqq(bfqq->bfqd, bfqq, "get_entity: %p %d",
++		bfq_log_bfqq(bfqq->bfqd, bfqq, "%p %d",
 +			     bfqq, bfqq->ref);
 +	}
 +}
@@ -11471,7 +11549,7 @@ index 000000000000..4e6c5232e2fb
 +	entity->on_st = false;
 +	st->wsum -= entity->weight;
 +	if (bfqq && !is_in_service) {
-+		bfq_log_bfqq(bfqq->bfqd, bfqq, "forget_entity (before): %p %d",
++		bfq_log_bfqq(bfqq->bfqd, bfqq, "(before): %p %d",
 +			     bfqq, bfqq->ref);
 +		bfq_put_queue(bfqq);
 +	}
@@ -11731,7 +11809,7 @@ index 000000000000..4e6c5232e2fb
 +		tot_serv_to_charge = entity->service;
 +
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "charge_time: %lu/%u ms, %d/%d/%d sectors",
++		     "%lu/%u ms, %d/%d/%d sectors",
 +		     time_ms, timeout_ms, entity->service,
 +		     tot_serv_to_charge, entity->budget);
 +
@@ -11803,7 +11881,7 @@ index 000000000000..4e6c5232e2fb
 +
 +		if (bfqq) {
 +			bfq_log_bfqq(bfqq->bfqd, bfqq,
-+				     "update_fin_time_enqueue: new queue finish %llu",
++				     "new queue finish %llu",
 +				     ((entity->finish>>10)*1000)>>12);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +		} else {
@@ -11811,7 +11889,7 @@ index 000000000000..4e6c5232e2fb
 +				container_of(entity, struct bfq_group, entity);
 +
 +			bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+				     "update_fin_time_enqueue: new group finish %llu",
++				     "new group finish %llu",
 +				     ((entity->finish>>10)*1000)>>12);
 +#endif
 +		}
@@ -11821,7 +11899,7 @@ index 000000000000..4e6c5232e2fb
 +
 +	if (bfqq) {
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			"update_fin_time_enqueue: queue %seligible in st %p",
++			"queue %seligible in st %p",
 +			     entity->start <= st->vtime ? "" : "non ", st);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	} else {
@@ -11829,7 +11907,7 @@ index 000000000000..4e6c5232e2fb
 +			container_of(entity, struct bfq_group, entity);
 +
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			"update_fin_time_enqueue: group %seligible in st %p",
++			"group %seligible in st %p",
 +			     entity->start <= st->vtime ? "" : "non ", st);
 +#endif
 +	}
@@ -12273,7 +12351,7 @@ index 000000000000..4e6c5232e2fb
 +
 +		if (bfqq)
 +			bfq_log_bfqq(bfqq->bfqd, bfqq,
-+				     "calc_vtime_jump: new value %llu",
++				     "new value %llu",
 +				     ((root_entity->min_start>>10)*1000)>>12);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +		else {
@@ -12282,7 +12360,7 @@ index 000000000000..4e6c5232e2fb
 +					     entity);
 +
 +			bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+				     "calc_vtime_jump: new value %llu",
++				     "new value %llu",
 +				     ((root_entity->min_start>>10)*1000)>>12);
 +		}
 +#endif
@@ -12400,7 +12478,7 @@ index 000000000000..4e6c5232e2fb
 +	bfqq = bfq_entity_to_bfqq(entity);
 +	if (bfqq)
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "__lookup_next: start %llu vtime %llu st %p",
++			     "start %llu vtime %llu st %p",
 +			     ((entity->start>>10)*1000)>>12,
 +			     ((new_vtime>>10)*1000)>>12, st);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
@@ -12409,7 +12487,7 @@ index 000000000000..4e6c5232e2fb
 +			container_of(entity, struct bfq_group, entity);
 +
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			     "__lookup_next: start %llu vtime %llu (%llu) st %p",
++			     "start %llu vtime %llu (%llu) st %p",
 +			     ((entity->start>>10)*1000)>>12,
 +			     ((st->vtime>>10)*1000)>>12,
 +			     ((new_vtime>>10)*1000)>>12, st);
@@ -12544,14 +12622,14 @@ index 000000000000..4e6c5232e2fb
 +				container_of(entity, struct bfq_group, entity);
 +
 +			bfq_log_bfqg(bfqd, bfqg,
-+				     "get_next_queue: lookup in this group");
++				     "lookup in this group");
 +			if (!sd->next_in_service)
-+				pr_crit("get_next_queue: lookup in this group");
++				pr_crit("lookup in this group");
 +		} else {
 +			bfq_log_bfqg(bfqd, bfqd->root_group,
-+				     "get_next_queue: lookup in root group");
++				     "lookup in root group");
 +			if (!sd->next_in_service)
-+				pr_crit("get_next_queue: lookup in root group");
++				pr_crit("lookup in root group");
 +		}
 +#endif
 +
@@ -12626,7 +12704,7 @@ index 000000000000..4e6c5232e2fb
 +		bfqq = bfq_entity_to_bfqq(entity);
 +		if (bfqq)
 +			bfq_log_bfqq(bfqd, bfqq,
-+			     "get_next_queue: this queue, finish %llu",
++			     "this queue, finish %llu",
 +				(((entity->finish>>10)*1000)>>10)>>2);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +		else {
@@ -12634,7 +12712,7 @@ index 000000000000..4e6c5232e2fb
 +				container_of(entity, struct bfq_group, entity);
 +
 +			bfq_log_bfqg(bfqd, bfqg,
-+			     "get_next_queue: this entity, finish %llu",
++			     "this entity, finish %llu",
 +				(((entity->finish>>10)*1000)>>10)>>2);
 +		}
 +#endif
@@ -12789,10 +12867,10 @@ index 000000000000..4e6c5232e2fb
 +}
 diff --git a/block/bfq-sq-iosched.c b/block/bfq-sq-iosched.c
 new file mode 100644
-index 000000000000..c4df156b1fb4
+index 000000000000..e96213865fc2
 --- /dev/null
 +++ b/block/bfq-sq-iosched.c
-@@ -0,0 +1,5618 @@
+@@ -0,0 +1,5647 @@
 +/*
 + * Budget Fair Queueing (BFQ) I/O scheduler.
 + *
@@ -12922,6 +13000,12 @@ index 000000000000..c4df156b1fb4
 + */
 +static const unsigned long bfq_merge_time_limit = HZ/10;
 +
++#define MAX_LENGTH_REASON_NAME 25
++
++static const char reason_name[][MAX_LENGTH_REASON_NAME] = {"TOO_IDLE",
++"BUDGET_TIMEOUT", "BUDGET_EXHAUSTED", "NO_MORE_REQUESTS",
++"PREEMPTED"};
++
 +static struct kmem_cache *bfq_pool;
 +
 +/* Below this threshold (in ns), we consider thinktime immediate. */
@@ -12943,7 +13027,20 @@ index 000000000000..c4df156b1fb4
 +/* Target observation time interval for a peak-rate update (ns) */
 +#define BFQ_RATE_REF_INTERVAL	NSEC_PER_SEC
 +
-+/* Shift used for peak rate fixed precision calculations. */
++/*
++ * Shift used for peak-rate fixed precision calculations.
++ * With
++ * - the current shift: 16 positions
++ * - the current type used to store rate: u32
++ * - the current unit of measure for rate: [sectors/usec], or, more precisely,
++ *   [(sectors/usec) / 2^BFQ_RATE_SHIFT] to take into account the shift,
++ * the range of rates that can be stored is
++ * [1 / 2^BFQ_RATE_SHIFT, 2^(32 - BFQ_RATE_SHIFT)] sectors/usec =
++ * [1 / 2^16, 2^16] sectors/usec = [15e-6, 65536] sectors/usec =
++ * [15, 65G] sectors/sec
++ * Which, assuming a sector size of 512B, corresponds to a range of
++ * [7.5K, 33T] B/sec
++ */
 +#define BFQ_RATE_SHIFT		16
 +
 +/*
@@ -13055,7 +13152,7 @@ index 000000000000..c4df156b1fb4
 +#define BFQ_SERVICE_TREE_INIT	((struct bfq_service_tree)		\
 +				{ RB_ROOT, RB_ROOT, NULL, NULL, 0, 0 })
 +
-+#define RQ_BIC(rq)		((struct bfq_io_cq *) (rq)->elv.priv[0])
++#define RQ_BIC(rq)		icq_to_bic((rq)->elv.priv[0])
 +#define RQ_BFQQ(rq)		((rq)->elv.priv[1])
 +
 +static void bfq_schedule_dispatch(struct bfq_data *bfqd);
@@ -13076,7 +13173,7 @@ index 000000000000..c4df156b1fb4
 +static void bfq_schedule_dispatch(struct bfq_data *bfqd)
 +{
 +	if (bfqd->queued != 0) {
-+		bfq_log(bfqd, "schedule dispatch");
++		bfq_log(bfqd, "");
 +		kblockd_schedule_work(&bfqd->unplug_work);
 +	}
 +}
@@ -13209,7 +13306,7 @@ index 000000000000..c4df156b1fb4
 +	if (rb_link)
 +		*rb_link = p;
 +
-+	bfq_log(bfqd, "rq_pos_tree_lookup %llu: returning %d",
++	bfq_log(bfqd, "%llu: returning %d",
 +		(unsigned long long) sector,
 +		bfqq ? bfqq->pid : 0);
 +
@@ -13430,7 +13527,7 @@ index 000000000000..c4df156b1fb4
 +	if (rq == last || ktime_get_ns() < rq->fifo_time)
 +		return NULL;
 +
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "check_fifo: returned %p", rq);
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "returned %p", rq);
 +	BUG_ON(RB_EMPTY_NODE(&rq->rb_node));
 +	return rq;
 +}
@@ -13523,7 +13620,7 @@ index 000000000000..c4df156b1fb4
 +			   bfq_serv_to_charge(next_rq, bfqq));
 +	if (entity->budget != new_budget) {
 +		entity->budget = new_budget;
-+		bfq_log_bfqq(bfqd, bfqq, "updated next rq: new budget %lu",
++		bfq_log_bfqq(bfqd, bfqq, "new budget %lu",
 +					 new_budget);
 +		bfq_requeue_bfqq(bfqd, bfqq, false);
 +	}
@@ -13595,8 +13692,7 @@ index 000000000000..c4df156b1fb4
 +	BUG_ON(time_is_after_jiffies(bfqq->last_wr_start_finish));
 +
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "[%s] bic %p wr_coeff %d start_finish %lu max_time %lu",
-+		     __func__,
++		     "bic %p wr_coeff %d start_finish %lu max_time %lu",
 +		     bic, bfqq->wr_coeff, bfqq->last_wr_start_finish,
 +		     bfqq->wr_cur_max_time);
 +
@@ -13609,11 +13705,11 @@ index 000000000000..c4df156b1fb4
 +					     bfq_wr_duration(bfqd))) {
 +			switch_back_to_interactive_wr(bfqq, bfqd);
 +			bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "resume state: switching back to interactive");
++			     "switching back to interactive");
 +		} else {
 +			bfqq->wr_coeff = 1;
 +			bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "resume state: switching off wr (%lu + %lu < %lu)",
++			     "switching off wr (%lu + %lu < %lu)",
 +			     bfqq->last_wr_start_finish, bfqq->wr_cur_max_time,
 +			     jiffies);
 +		}
@@ -13665,7 +13761,7 @@ index 000000000000..c4df156b1fb4
 +	/* Increment burst size to take into account also bfqq */
 +	bfqd->burst_size++;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "add_to_burst %d", bfqd->burst_size);
++	bfq_log_bfqq(bfqd, bfqq, "%d", bfqd->burst_size);
 +
 +	BUG_ON(bfqd->burst_size > bfqd->bfq_large_burst_thresh);
 +
@@ -13678,7 +13774,7 @@ index 000000000000..c4df156b1fb4
 +		 * other to consider this burst as large.
 +		 */
 +		bfqd->large_burst = true;
-+		bfq_log_bfqq(bfqd, bfqq, "add_to_burst: large burst started");
++		bfq_log_bfqq(bfqd, bfqq, "large burst started");
 +
 +		/*
 +		 * We can now mark all queues in the burst list as
@@ -13850,7 +13946,7 @@ index 000000000000..c4df156b1fb4
 +		bfqd->large_burst = false;
 +		bfq_reset_burst_list(bfqd, bfqq);
 +		bfq_log_bfqq(bfqd, bfqq,
-+			"handle_burst: late activation or different group");
++			"late activation or different group");
 +		goto end;
 +	}
 +
@@ -13860,7 +13956,7 @@ index 000000000000..c4df156b1fb4
 +	 * bfqq as belonging to this large burst immediately.
 +	 */
 +	if (bfqd->large_burst) {
-+		bfq_log_bfqq(bfqd, bfqq, "handle_burst: marked in burst");
++		bfq_log_bfqq(bfqd, bfqq, "marked in burst");
 +		bfq_mark_bfqq_in_large_burst(bfqq);
 +		goto end;
 +	}
@@ -14367,7 +14463,7 @@ index 000000000000..c4df156b1fb4
 +	unsigned int old_wr_coeff = bfqq->wr_coeff;
 +	bool interactive = false;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "add_request: size %u %s",
++	bfq_log_bfqq(bfqd, bfqq, "size %u %s",
 +		     blk_rq_sectors(rq), rq_is_sync(rq) ? "S" : "A");
 +
 +	if (bfqq->wr_coeff > 1) /* queue is being weight-raised */
@@ -14665,10 +14761,10 @@ index 000000000000..c4df156b1fb4
 +	 */
 +	bfqq->entity.prio_changed = 1;
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "end_wr: wrais ending at %lu, rais_max_time %u",
++		     "wrais ending at %lu, rais_max_time %u",
 +		     bfqq->last_wr_start_finish,
 +		     jiffies_to_msecs(bfqq->wr_cur_max_time));
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "end_wr: wr_busy %d",
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "wr_busy %d",
 +		     bfqq->bfqd->wr_busy_queues);
 +}
 +
@@ -14843,8 +14939,8 @@ index 000000000000..c4df156b1fb4
 +{
 +	if (bfq_too_late_for_merging(new_bfqq)) {
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "[%s] too late for bfq%d to be merged",
-+			     __func__, new_bfqq->pid);
++			     "too late for bfq%d to be merged",
++				new_bfqq->pid);
 +		return false;
 +	}
 +
@@ -15053,7 +15149,7 @@ index 000000000000..c4df156b1fb4
 +
 +	}
 +
-+	bfq_log_bfqq(bfqd, new_bfqq, "merge_bfqqs: wr_busy %d",
++	bfq_log_bfqq(bfqd, new_bfqq, "wr_busy %d",
 +		     bfqd->wr_busy_queues);
 +
 +	/*
@@ -15154,7 +15250,7 @@ index 000000000000..c4df156b1fb4
 +	bfqq->budget_timeout = jiffies +
 +		bfqd->bfq_timeout * timeout_coeff;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "set budget_timeout %u",
++	bfq_log_bfqq(bfqd, bfqq, "%u",
 +		jiffies_to_msecs(bfqd->bfq_timeout * timeout_coeff));
 +}
 +
@@ -15222,10 +15318,10 @@ index 000000000000..c4df156b1fb4
 +
 +		bfq_set_budget_timeout(bfqd, bfqq);
 +		bfq_log_bfqq(bfqd, bfqq,
-+			     "set_in_service_queue, cur-budget = %d",
++			     "cur-budget = %d",
 +			     bfqq->entity.budget);
 +	} else
-+		bfq_log(bfqd, "set_in_service_queue: NULL");
++		bfq_log(bfqd, "NULL");
 +
 +	bfqd->in_service_queue = bfqq;
 +}
@@ -15354,7 +15450,7 @@ index 000000000000..c4df156b1fb4
 +		bfqd->peak_rate_samples = 0; /* full re-init on next disp. */
 +
 +	bfq_log(bfqd,
-+		"reset_rate_computation at end, sample %u/%u tot_sects %llu",
++		"at end, sample %u/%u tot_sects %llu",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		bfqd->tot_sectors_dispatched);
 +}
@@ -15374,7 +15470,7 @@ index 000000000000..c4df156b1fb4
 +	if (bfqd->peak_rate_samples < BFQ_RATE_MIN_SAMPLES ||
 +	    bfqd->delta_from_first < BFQ_RATE_MIN_INTERVAL) {
 +		bfq_log(bfqd,
-+	"update_rate_reset: only resetting, delta_first %lluus samples %d",
++	"only resetting, delta_first %lluus samples %d",
 +			bfqd->delta_from_first>>10, bfqd->peak_rate_samples);
 +		goto reset_computation;
 +	}
@@ -15398,7 +15494,7 @@ index 000000000000..c4df156b1fb4
 +			div_u64(bfqd->delta_from_first, NSEC_PER_USEC));
 +
 +	bfq_log(bfqd,
-+"update_rate_reset: tot_sects %llu delta_first %lluus rate %llu sects/s (%d)",
++"tot_sects %llu delta_first %lluus rate %llu sects/s (%d)",
 +		bfqd->tot_sectors_dispatched, bfqd->delta_from_first>>10,
 +		((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT),
 +		rate > 20<<BFQ_RATE_SHIFT);
@@ -15413,14 +15509,14 @@ index 000000000000..c4df156b1fb4
 +	     rate <= bfqd->peak_rate) ||
 +		rate > 20<<BFQ_RATE_SHIFT) {
 +		bfq_log(bfqd,
-+		"update_rate_reset: goto reset, samples %u/%u rate/peak %llu/%llu",
++		"goto reset, samples %u/%u rate/peak %llu/%llu",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT),
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT));
 +		goto reset_computation;
 +	} else {
 +		bfq_log(bfqd,
-+		"update_rate_reset: do update, samples %u/%u rate/peak %llu/%llu",
++		"do update, samples %u/%u rate/peak %llu/%llu",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT),
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT));
@@ -15476,7 +15572,7 @@ index 000000000000..c4df156b1fb4
 +	rate /= divisor; /* smoothing constant alpha = 1/divisor */
 +
 +	bfq_log(bfqd,
-+		"update_rate_reset: divisor %d tmp_peak_rate %llu tmp_rate %u",
++		"divisor %d tmp_peak_rate %llu tmp_rate %u",
 +		divisor,
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT),
 +		(u32)((USEC_PER_SEC*(u64)rate)>>BFQ_RATE_SHIFT));
@@ -15485,6 +15581,16 @@ index 000000000000..c4df156b1fb4
 +	BUG_ON(bfqd->peak_rate > 20<<BFQ_RATE_SHIFT);
 +
 +	bfqd->peak_rate += rate;
++
++	/*
++	 * For a very slow device, bfqd->peak_rate can reach 0 (see
++	 * the minimum representable values reported in the comments
++	 * on BFQ_RATE_SHIFT). Push to 1 if this happens, to avoid
++	 * divisions by zero where bfqd->peak_rate is used as a
++	 * divisor.
++	 */
++	bfqd->peak_rate = max_t(u32, 1, bfqd->peak_rate);
++
 +	update_thr_responsiveness_params(bfqd);
 +	BUG_ON(bfqd->peak_rate > 20<<BFQ_RATE_SHIFT);
 +
@@ -15530,7 +15636,7 @@ index 000000000000..c4df156b1fb4
 +
 +	if (bfqd->peak_rate_samples == 0) { /* first dispatch */
 +		bfq_log(bfqd,
-+		"update_peak_rate: goto reset, samples %d",
++		"goto reset, samples %d",
 +				bfqd->peak_rate_samples) ;
 +		bfq_reset_rate_computation(bfqd, rq);
 +		goto update_last_values; /* will add one sample */
@@ -15551,7 +15657,7 @@ index 000000000000..c4df156b1fb4
 +	if (now_ns - bfqd->last_dispatch > 100*NSEC_PER_MSEC &&
 +	    bfqd->rq_in_driver == 0) {
 +		bfq_log(bfqd,
-+"update_peak_rate: jumping to updating&resetting delta_last %lluus samples %d",
++"jumping to updating&resetting delta_last %lluus samples %d",
 +			(now_ns - bfqd->last_dispatch)>>10,
 +			bfqd->peak_rate_samples) ;
 +		goto update_rate_and_reset;
@@ -15577,7 +15683,7 @@ index 000000000000..c4df156b1fb4
 +	bfqd->delta_from_first = now_ns - bfqd->first_dispatch;
 +
 +	bfq_log(bfqd,
-+	"update_peak_rate: added samples %u/%u tot_sects %llu delta_first %lluus",
++	"added samples %u/%u tot_sects %llu delta_first %lluus",
 +		bfqd->peak_rate_samples, bfqd->sequential_samples,
 +		bfqd->tot_sectors_dispatched,
 +		bfqd->delta_from_first>>10);
@@ -15593,12 +15699,12 @@ index 000000000000..c4df156b1fb4
 +	bfqd->last_dispatch = now_ns;
 +
 +	bfq_log(bfqd,
-+	"update_peak_rate: delta_first %lluus last_pos %llu peak_rate %llu",
++	"delta_first %lluus last_pos %llu peak_rate %llu",
 +		(now_ns - bfqd->first_dispatch)>>10,
 +		(unsigned long long) bfqd->last_position,
 +		((USEC_PER_SEC*(u64)bfqd->peak_rate)>>BFQ_RATE_SHIFT));
 +	bfq_log(bfqd,
-+	"update_peak_rate: samples at end %d", bfqd->peak_rate_samples);
++	"samples at end %d", bfqd->peak_rate_samples);
 +}
 +
 +/*
@@ -15695,11 +15801,11 @@ index 000000000000..c4df156b1fb4
 +	      */
 +		budget = 2 * min_budget;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "recalc_budg: last budg %d, budg left %d",
++	bfq_log_bfqq(bfqd, bfqq, "last budg %d, budg left %d",
 +		bfqq->entity.budget, bfq_bfqq_budget_left(bfqq));
-+	bfq_log_bfqq(bfqd, bfqq, "recalc_budg: last max_budg %d, min budg %d",
++	bfq_log_bfqq(bfqd, bfqq, "last max_budg %d, min budg %d",
 +		budget, bfq_min_budget(bfqd));
-+	bfq_log_bfqq(bfqd, bfqq, "recalc_budg: sync %d, seeky %d",
++	bfq_log_bfqq(bfqd, bfqq, "sync %d, seeky %d",
 +		bfq_bfqq_sync(bfqq), BFQQ_SEEKY(bfqd->in_service_queue));
 +
 +	if (bfq_bfqq_sync(bfqq) && bfqq->wr_coeff == 1) {
@@ -15901,7 +16007,7 @@ index 000000000000..c4df156b1fb4
 +		else /* charge at least one seek */
 +			*delta_ms = bfq_slice_idle / NSEC_PER_MSEC;
 +
-+		bfq_log(bfqd, "bfq_bfqq_is_slow: too short %u", delta_usecs);
++		bfq_log(bfqd, "too short %u", delta_usecs);
 +
 +		return slow;
 +	}
@@ -15924,11 +16030,11 @@ index 000000000000..c4df156b1fb4
 +		 * peak rate.
 +		 */
 +		slow = bfqq->entity.service < bfqd->bfq_max_budget / 2;
-+		bfq_log(bfqd, "bfq_bfqq_is_slow: relative rate %d/%d",
++		bfq_log(bfqd, "relative rate %d/%d",
 +			bfqq->entity.service, bfqd->bfq_max_budget);
 +	}
 +
-+	bfq_log_bfqq(bfqd, bfqq, "bfq_bfqq_is_slow: slow %d", slow);
++	bfq_log_bfqq(bfqd, bfqq, "slow %d", slow);
 +
 +	return slow;
 +}
@@ -16030,7 +16136,7 @@ index 000000000000..c4df156b1fb4
 +						struct bfq_queue *bfqq)
 +{
 +	bfq_log_bfqq(bfqd, bfqq,
-+"softrt_next_start: service_blkg %lu soft_rate %u sects/sec interval %u",
++"service_blkg %lu soft_rate %u sects/sec interval %u",
 +		     bfqq->service_from_backlogged,
 +		     bfqd->bfq_wr_max_softrt_rate,
 +		     jiffies_to_msecs(HZ * bfqq->service_from_backlogged /
@@ -16162,8 +16268,8 @@ index 000000000000..c4df156b1fb4
 +	}
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		"expire (%d, slow %d, num_disp %d, short_ttime %d, weight %d)",
-+		     reason, slow, bfqq->dispatched,
++		"expire (%s, slow %d, num_disp %d, short_ttime %d, weight %d)",
++		     reason_name[reason], slow, bfqq->dispatched,
 +		     bfq_bfqq_has_short_ttime(bfqq), entity->weight);
 +
 +	/*
@@ -16209,7 +16315,7 @@ index 000000000000..c4df156b1fb4
 +static bool bfq_may_expire_for_budg_timeout(struct bfq_queue *bfqq)
 +{
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		"may_budget_timeout: wait_request %d left %d timeout %d",
++		"wait_request %d left %d timeout %d",
 +		bfq_bfqq_wait_request(bfqq),
 +			bfq_bfqq_budget_left(bfqq) >=  bfqq->entity.budget / 3,
 +		bfq_bfqq_budget_timeout(bfqq));
@@ -16470,11 +16576,11 @@ index 000000000000..c4df156b1fb4
 +	 * either boosts the throughput (without issues), or is
 +	 * necessary to preserve service guarantees.
 +	 */
-+	bfq_log_bfqq(bfqd, bfqq, "may_idle: sync %d idling_boosts_thr %d",
++	bfq_log_bfqq(bfqd, bfqq, "sync %d idling_boosts_thr %d",
 +		     bfq_bfqq_sync(bfqq), idling_boosts_thr);
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		     "may_idle: wr_busy %d boosts %d IO-bound %d guar %d",
++		     "wr_busy %d boosts %d IO-bound %d guar %d",
 +		     bfqd->wr_busy_queues,
 +		     idling_boosts_thr_without_issues,
 +		     bfq_bfqq_IO_bound(bfqq),
@@ -16514,7 +16620,7 @@ index 000000000000..c4df156b1fb4
 +	if (!bfqq)
 +		goto new_queue;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "select_queue: already in-service queue");
++	bfq_log_bfqq(bfqd, bfqq, "already in-service queue");
 +
 +	if (bfq_may_expire_for_budg_timeout(bfqq) &&
 +	    !hrtimer_active(&bfqd->idle_slice_timer) &&
@@ -16592,14 +16698,14 @@ index 000000000000..c4df156b1fb4
 +new_queue:
 +	bfqq = bfq_set_in_service_queue(bfqd);
 +	if (bfqq) {
-+		bfq_log_bfqq(bfqd, bfqq, "select_queue: checking new queue");
++		bfq_log_bfqq(bfqd, bfqq, "checking new queue");
 +		goto check_queue;
 +	}
 +keep_queue:
 +	if (bfqq)
-+		bfq_log_bfqq(bfqd, bfqq, "select_queue: returned this queue");
++		bfq_log_bfqq(bfqd, bfqq, "returned this queue");
 +	else
-+		bfq_log(bfqd, "select_queue: no queue returned");
++		bfq_log(bfqd, "no queue returned");
 +
 +	return bfqq;
 +}
@@ -16652,8 +16758,7 @@ index 000000000000..c4df156b1fb4
 +			       /* see comments on max_service_from_wr */
 +			       bfq_bfqq_end_wr(bfqq);
 +			       bfq_log_bfqq(bfqd, bfqq,
-+					       "[%s] too much service",
-+					       __func__);
++					       "too much service");
 +	       }
 +	}
 +	/*
@@ -16782,7 +16887,7 @@ index 000000000000..c4df156b1fb4
 +	struct bfq_data *bfqd = q->elevator->elevator_data;
 +	struct bfq_queue *bfqq;
 +
-+	bfq_log(bfqd, "dispatch requests: %d busy queues", bfqd->busy_queues);
++	bfq_log(bfqd, "%d busy queues", bfqd->busy_queues);
 +
 +	if (bfqd->busy_queues == 0)
 +		return 0;
@@ -16816,7 +16921,7 @@ index 000000000000..c4df156b1fb4
 +	if (!bfq_dispatch_request(bfqd, bfqq))
 +		return 0;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "dispatched %s request",
++	bfq_log_bfqq(bfqd, bfqq, "%s request",
 +			bfq_bfqq_sync(bfqq) ? "sync" : "async");
 +
 +	BUG_ON(bfqq->next_rq == NULL &&
@@ -16839,7 +16944,7 @@ index 000000000000..c4df156b1fb4
 +
 +	BUG_ON(bfqq->ref <= 0);
 +
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "put_queue: %p %d", bfqq, bfqq->ref);
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "%p %d", bfqq, bfqq->ref);
 +	bfqq->ref--;
 +	if (bfqq->ref)
 +		return;
@@ -16881,7 +16986,7 @@ index 000000000000..c4df156b1fb4
 +			bfqq->bfqd->burst_size--;
 +	}
 +
-+	bfq_log_bfqq(bfqq->bfqd, bfqq, "put_queue: %p freed", bfqq);
++	bfq_log_bfqq(bfqq->bfqd, bfqq, "%p freed", bfqq);
 +
 +	kmem_cache_free(bfq_pool, bfqq);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
@@ -16915,7 +17020,7 @@ index 000000000000..c4df156b1fb4
 +		bfq_schedule_dispatch(bfqd);
 +	}
 +
-+	bfq_log_bfqq(bfqd, bfqq, "exit_bfqq: %p, %d", bfqq, bfqq->ref);
++	bfq_log_bfqq(bfqd, bfqq, "%p, %d", bfqq, bfqq->ref);
 +
 +	bfq_put_cooperator(bfqq);
 +
@@ -16995,7 +17100,7 @@ index 000000000000..c4df156b1fb4
 +	bfqq->entity.new_weight = bfq_ioprio_to_weight(bfqq->new_ioprio);
 +	bfqq->entity.prio_changed = 1;
 +	bfq_log_bfqq(bfqq->bfqd, bfqq,
-+		     "set_next_ioprio_data: bic_class %d prio %d class %d",
++		     "bic_class %d prio %d class %d",
 +		     ioprio_class, bfqq->new_ioprio, bfqq->new_ioprio_class);
 +}
 +
@@ -17022,7 +17127,7 @@ index 000000000000..c4df156b1fb4
 +		bfqq = bfq_get_queue(bfqd, bio, BLK_RW_ASYNC, bic);
 +		bic_set_bfqq(bic, bfqq, false);
 +		bfq_log_bfqq(bfqd, bfqq,
-+			     "check_ioprio_change: bfqq %p %d",
++			     "bfqq %p %d",
 +			     bfqq, bfqq->ref);
 +	}
 +
@@ -17157,14 +17262,14 @@ index 000000000000..c4df156b1fb4
 +			      * guarantee that this queue is not freed
 +			      * until its group goes away.
 +			      */
-+		bfq_log_bfqq(bfqd, bfqq, "get_queue, bfqq not in async: %p, %d",
++		bfq_log_bfqq(bfqd, bfqq, "bfqq not in async: %p, %d",
 +			     bfqq, bfqq->ref);
 +		*async_bfqq = bfqq;
 +	}
 +
 +out:
 +	bfqq->ref++; /* get a process reference to this queue */
-+	bfq_log_bfqq(bfqd, bfqq, "get_queue, at end: %p, %d", bfqq, bfqq->ref);
++	bfq_log_bfqq(bfqd, bfqq, "at end: %p, %d", bfqq, bfqq->ref);
 +	rcu_read_unlock();
 +	return bfqq;
 +}
@@ -17223,7 +17328,7 @@ index 000000000000..c4df156b1fb4
 +	     bic->ttime.ttime_mean > bfqd->bfq_slice_idle))
 +		has_short_ttime = false;
 +
-+	bfq_log_bfqq(bfqd, bfqq, "update_has_short_ttime: has_short_ttime %d",
++	bfq_log_bfqq(bfqd, bfqq, "has_short_ttime %d",
 +		has_short_ttime);
 +
 +	if (has_short_ttime)
@@ -17249,7 +17354,7 @@ index 000000000000..c4df156b1fb4
 +	bfq_update_io_seektime(bfqd, bfqq, rq);
 +
 +	bfq_log_bfqq(bfqd, bfqq,
-+		     "rq_enqueued: has_short_ttime=%d (seeky %d)",
++		     "has_short_ttime=%d (seeky %d)",
 +		     bfq_bfqq_has_short_ttime(bfqq), BFQQ_SEEKY(bfqq));
 +
 +	bfqq->last_request_pos = blk_rq_pos(rq) + blk_rq_sectors(rq);
@@ -17424,7 +17529,7 @@ index 000000000000..c4df156b1fb4
 +	 */
 +	delta_us = div_u64(now_ns - bfqd->last_completion, NSEC_PER_USEC);
 +
-+	bfq_log(bfqd, "rq_completed: delta %uus/%luus max_size %u rate %llu/%llu",
++	bfq_log(bfqd, "delta %uus/%luus max_size %u rate %llu/%llu",
 +		delta_us, BFQ_MIN_TT/NSEC_PER_USEC, bfqd->last_rq_max_size,
 +		delta_us > 0 ?
 +		(USEC_PER_SEC*
@@ -17545,7 +17650,7 @@ index 000000000000..c4df156b1fb4
 +		rq->elv.priv[0] = NULL;
 +		rq->elv.priv[1] = NULL;
 +
-+		bfq_log_bfqq(bfqq->bfqd, bfqq, "put_request %p, %d",
++		bfq_log_bfqq(bfqq->bfqd, bfqq, "%p, %d",
 +			     bfqq, bfqq->ref);
 +		bfq_put_queue(bfqq);
 +	}
@@ -17611,7 +17716,7 @@ index 000000000000..c4df156b1fb4
 +		bic_set_bfqq(bic, bfqq, is_sync);
 +		if (split && is_sync) {
 +			bfq_log_bfqq(bfqd, bfqq,
-+				     "set_request: was_in_list %d "
++				     "was_in_list %d "
 +				     "was_in_large_burst %d "
 +				     "large burst in progress %d",
 +				     bic->was_in_burst_list,
@@ -17621,12 +17726,12 @@ index 000000000000..c4df156b1fb4
 +			if ((bic->was_in_burst_list && bfqd->large_burst) ||
 +			    bic->saved_in_large_burst) {
 +				bfq_log_bfqq(bfqd, bfqq,
-+					     "set_request: marking in "
++					     "marking in "
 +					     "large burst");
 +				bfq_mark_bfqq_in_large_burst(bfqq);
 +			} else {
 +				bfq_log_bfqq(bfqd, bfqq,
-+					     "set_request: clearing in "
++					     "clearing in "
 +					     "large burst");
 +				bfq_clear_bfqq_in_large_burst(bfqq);
 +				if (bic->was_in_burst_list)
@@ -17683,7 +17788,7 @@ index 000000000000..c4df156b1fb4
 +
 +	bfqq->allocated[rw]++;
 +	bfqq->ref++;
-+	bfq_log_bfqq(bfqd, bfqq, "set_request: bfqq %p, %d", bfqq, bfqq->ref);
++	bfq_log_bfqq(bfqd, bfqq, "bfqq %p, %d", bfqq, bfqq->ref);
 +
 +	rq->elv.priv[0] = bic;
 +	rq->elv.priv[1] = bfqq;
@@ -17757,7 +17862,7 @@ index 000000000000..c4df156b1fb4
 +	 * case we just expire a queue too early.
 +	 */
 +	if (bfqq) {
-+		bfq_log_bfqq(bfqd, bfqq, "slice_timer expired");
++		bfq_log_bfqq(bfqd, bfqq, "expired");
 +		bfq_clear_bfqq_wait_request(bfqq);
 +
 +		if (bfq_bfqq_budget_timeout(bfqq))
@@ -17800,10 +17905,10 @@ index 000000000000..c4df156b1fb4
 +	struct bfq_group *root_group = bfqd->root_group;
 +	struct bfq_queue *bfqq = *bfqq_ptr;
 +
-+	bfq_log(bfqd, "put_async_bfqq: %p", bfqq);
++	bfq_log(bfqd, "%p", bfqq);
 +	if (bfqq) {
 +		bfq_bfqq_move(bfqd, bfqq, root_group);
-+		bfq_log_bfqq(bfqd, bfqq, "put_async_bfqq: putting %p, %d",
++		bfq_log_bfqq(bfqd, bfqq, "putting %p, %d",
 +			     bfqq, bfqq->ref);
 +		bfq_put_queue(bfqq);
 +		*bfqq_ptr = NULL;
@@ -18381,7 +18486,7 @@ index 000000000000..c4df156b1fb4
 +
 +	ret = elv_register(&iosched_bfq);
 +	if (ret)
-+		goto err_pol_unreg;
++		goto slab_kill;
 +
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	strcat(msg, " (with cgroups support)");
@@ -18390,6 +18495,8 @@ index 000000000000..c4df156b1fb4
 +
 +	return 0;
 +
++slab_kill:
++	bfq_slab_kill();
 +err_pol_unreg:
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	blkcg_policy_unregister(&blkcg_policy_bfq);
@@ -18413,10 +18520,10 @@ index 000000000000..c4df156b1fb4
 +MODULE_LICENSE("GPL");
 diff --git a/block/bfq.h b/block/bfq.h
 new file mode 100644
-index 000000000000..0cd7a3f251a7
+index 000000000000..a25e76c906d9
 --- /dev/null
 +++ b/block/bfq.h
-@@ -0,0 +1,996 @@
+@@ -0,0 +1,1002 @@
 +/*
 + * BFQ v8r12 for 4.11.0: data structures and common functions prototypes.
 + *
@@ -18917,7 +19024,12 @@ index 000000000000..0cd7a3f251a7
 +	u32 last_rq_max_size;
 +	/* time elapsed from first dispatch in current observ. interval (us) */
 +	u64 delta_from_first;
-+	/* current estimate of device peak rate */
++	/*
++	 * Current estimate of the device peak rate, measured in
++	 * [(sectors/usec) / 2^BFQ_RATE_SHIFT]. The left-shift by
++	 * BFQ_RATE_SHIFT is performed to increase precision in
++	 * fixed-point calculations.
++	 */
 +	u32 peak_rate;
 +
 +	/* maximum budget allotted to a bfq_queue before rescheduling */
@@ -19117,37 +19229,37 @@ index 000000000000..0cd7a3f251a7
 +									\
 +	assert_spin_locked((bfqd)->queue->queue_lock);			\
 +	blkg_path(bfqg_to_blkg(bfqq_group(bfqq)), __pbuf, sizeof(__pbuf)); \
-+	pr_crit("%s bfq%d%c %s " fmt "\n", 				\
++	pr_crit("%s bfq%d%c %s [%s] " fmt "\n",				\
 +		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
 +		(bfqq)->pid,						\
 +		bfq_bfqq_sync((bfqq)) ? 'S' : 'A',			\
-+		__pbuf, ##args);					\
++		__pbuf, __func__, ##args);				\
 +} while (0)
 +
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)	do {			\
 +	char __pbuf[128];						\
 +									\
 +	blkg_path(bfqg_to_blkg(bfqg), __pbuf, sizeof(__pbuf));		\
-+	pr_crit("%s %s " fmt "\n",					\
++	pr_crit("%s %s [%s] " fmt "\n",					\
 +	checked_dev_name((bfqd)->queue->backing_dev_info->dev),		\
-+	__pbuf, ##args);						\
++	__pbuf, __func__, ##args);					\
 +} while (0)
 +
 +#else /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)				\
-+	pr_crit("%s bfq%d%c " fmt "\n",					\
++	pr_crit("%s bfq%d%c [%s] " fmt "\n",				\
 +		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
 +		(bfqq)->pid, bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
-+		##args)
++		__func__, ##args)
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)		do {} while (0)
 +
 +#endif /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log(bfqd, fmt, args...) \
-+	pr_crit("%s bfq " fmt "\n",					\
++	pr_crit("%s bfq [%s] " fmt "\n",				\
 +		checked_dev_name((bfqd)->queue->backing_dev_info->dev),	\
-+		##args)
++		__func__, ##args)
 +
 +#else /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
 +
@@ -19174,31 +19286,32 @@ index 000000000000..0cd7a3f251a7
 +									\
 +	assert_spin_locked((bfqd)->queue->queue_lock);			\
 +	blkg_path(bfqg_to_blkg(bfqq_group(bfqq)), __pbuf, sizeof(__pbuf)); \
-+	blk_add_trace_msg((bfqd)->queue, "bfq%d%c %s " fmt, \
++	blk_add_trace_msg((bfqd)->queue, "bfq%d%c %s [%s] " fmt, \
 +			  (bfqq)->pid,			  \
 +			  bfq_bfqq_sync((bfqq)) ? 'S' : 'A',	\
-+			  __pbuf, ##args);				\
++			  __pbuf, __func__, ##args);			\
 +} while (0)
 +
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)	do {			\
 +	char __pbuf[128];						\
 +									\
 +	blkg_path(bfqg_to_blkg(bfqg), __pbuf, sizeof(__pbuf));		\
-+	blk_add_trace_msg((bfqd)->queue, "%s " fmt, __pbuf, ##args);	\
++	blk_add_trace_msg((bfqd)->queue, "%s [%s] " fmt, __pbuf, \
++	__func__, ##args);	\
 +} while (0)
 +
 +#else /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log_bfqq(bfqd, bfqq, fmt, args...)	\
-+	blk_add_trace_msg((bfqd)->queue, "bfq%d%c " fmt, (bfqq)->pid,	\
++	blk_add_trace_msg((bfqd)->queue, "bfq%d%c [%s] " fmt, (bfqq)->pid, \
 +			bfq_bfqq_sync((bfqq)) ? 'S' : 'A',		\
-+				##args)
++				__func__, ##args)
 +#define bfq_log_bfqg(bfqd, bfqg, fmt, args...)		do {} while (0)
 +
 +#endif /* BFQ_GROUP_IOSCHED_ENABLED */
 +
 +#define bfq_log(bfqd, fmt, args...) \
-+	blk_add_trace_msg((bfqd)->queue, "bfq " fmt, ##args)
++	blk_add_trace_msg((bfqd)->queue, "bfq [%s] " fmt, __func__, ##args)
 +
 +#endif /* CONFIG_BLK_DEV_IO_TRACE */
 +#endif /* CONFIG_BFQ_REDIRECT_TO_CONSOLE */
@@ -19347,7 +19460,7 @@ index 000000000000..0cd7a3f251a7
 +
 +	if (bfqq)
 +		bfq_log_bfqq(bfqq->bfqd, bfqq,
-+			     "entity_service_tree %p %d",
++			     "%p %d",
 +			     sched_data->service_tree + idx, idx);
 +#ifdef BFQ_GROUP_IOSCHED_ENABLED
 +	else {
@@ -19355,7 +19468,7 @@ index 000000000000..0cd7a3f251a7
 +			container_of(entity, struct bfq_group, entity);
 +
 +		bfq_log_bfqg((struct bfq_data *)bfqg->bfqd, bfqg,
-+			     "entity_service_tree %p %d",
++			     "%p %d",
 +			     sched_data->service_tree + idx, idx);
 +	}
 +#endif
@@ -19414,7 +19527,7 @@ index 000000000000..0cd7a3f251a7
 +
 +#endif /* _BFQ_H */
 diff --git a/block/elevator.c b/block/elevator.c
-index 7bda083d5968..f1f364f6b219 100644
+index e87e9b43aba0..919057d13a59 100644
 --- a/block/elevator.c
 +++ b/block/elevator.c
 @@ -246,7 +246,11 @@ int elevator_init(struct request_queue *q, char *name)
@@ -19455,23 +19568,23 @@ index 6b423eebfd5d..9824216839a3 100644
  #define MIN_FREQUENCY_UP_THRESHOLD		(1)
  #define MAX_FREQUENCY_UP_THRESHOLD		(100)
 diff --git a/drivers/gpu/drm/amd/display/dc/basics/logger.c b/drivers/gpu/drm/amd/display/dc/basics/logger.c
-index e04e8ecd4874..b890213f81ee 100644
+index 180a9d69d351..62126d512ffe 100644
 --- a/drivers/gpu/drm/amd/display/dc/basics/logger.c
 +++ b/drivers/gpu/drm/amd/display/dc/basics/logger.c
-@@ -337,7 +337,7 @@ void dm_logger_append(
+@@ -345,7 +345,7 @@ void dm_logger_append_va(
  		if (size < LOG_MAX_LINE_SIZE - 1) {
  			append_entry(entry, buffer, size);
  		} else {
 -			append_entry(entry, "LOG_ERROR, line too long\n", 27);
 +			append_entry(entry, "LOG_ERROR, line too long\n", 25);
  		}
- 
- 		va_end(args);
+ 	}
+ }
 diff --git a/drivers/gpu/drm/i915/intel_dp.c b/drivers/gpu/drm/i915/intel_dp.c
-index add4b2434aa3..14a8bef9fdfe 100644
+index a29868cd30c7..b6d07b615b12 100644
 --- a/drivers/gpu/drm/i915/intel_dp.c
 +++ b/drivers/gpu/drm/i915/intel_dp.c
-@@ -1616,7 +1616,8 @@ static bool intel_edp_compare_alt_mode(struct drm_display_mode *m1,
+@@ -1597,7 +1597,8 @@ static bool intel_edp_compare_alt_mode(struct drm_display_mode *m1,
  			m1->vdisplay == m2->vdisplay &&
  			m1->vsync_start == m2->vsync_start &&
  			m1->vsync_end == m2->vsync_end &&
@@ -19482,22 +19595,22 @@ index add4b2434aa3..14a8bef9fdfe 100644
  }
  
 diff --git a/drivers/infiniband/core/addr.c b/drivers/infiniband/core/addr.c
-index f4e8185bccd3..7886362510cf 100644
+index cb1d2ab13c66..d21700f57270 100644
 --- a/drivers/infiniband/core/addr.c
 +++ b/drivers/infiniband/core/addr.c
-@@ -773,6 +773,7 @@ int rdma_addr_find_l2_eth_by_grh(const union ib_gid *sgid,
+@@ -779,6 +779,7 @@ int rdma_addr_find_l2_eth_by_grh(const union ib_gid *sgid,
  		struct sockaddr     _sockaddr;
  		struct sockaddr_in  _sockaddr_in;
  		struct sockaddr_in6 _sockaddr_in6;
 +		struct sockaddr_ib  _sockaddr_ib;
  	} sgid_addr, dgid_addr;
- 
+ 	int ret;
  
 diff --git a/drivers/input/mouse/synaptics.c b/drivers/input/mouse/synaptics.c
-index cd9f61cb3fc6..16f64324d068 100644
+index a246fc686bb7..f16a75d71111 100644
 --- a/drivers/input/mouse/synaptics.c
 +++ b/drivers/input/mouse/synaptics.c
-@@ -1316,7 +1316,9 @@ static void set_input_params(struct psmouse *psmouse,
+@@ -1325,7 +1325,9 @@ static void set_input_params(struct psmouse *psmouse,
  		/* Clickpads report only left button */
  		__clear_bit(BTN_RIGHT, dev->keybit);
  		__clear_bit(BTN_MIDDLE, dev->keybit);
@@ -19539,7 +19652,7 @@ index 97a420c11eed..c8621e9b2e4a 100644
  	tristate "Support for mouse button 2+3 emulation"
  	depends on SYSCTL && INPUT
 diff --git a/drivers/macintosh/adbhid.c b/drivers/macintosh/adbhid.c
-index e091193104f7..19b9a363eda3 100644
+index a261892c03b3..a85192de840c 100644
 --- a/drivers/macintosh/adbhid.c
 +++ b/drivers/macintosh/adbhid.c
 @@ -262,6 +262,15 @@ static struct adb_ids buttons_ids;
@@ -19558,7 +19671,7 @@ index e091193104f7..19b9a363eda3 100644
  static void
  adbhid_keyboard_input(unsigned char *data, int nb, int apoll)
  {
-@@ -406,6 +415,9 @@ static void
+@@ -405,6 +414,9 @@ static void
  adbhid_mouse_input(unsigned char *data, int nb, int autopoll)
  {
  	int id = (data[0] >> 4) & 0x0f;
@@ -19567,8 +19680,8 @@ index e091193104f7..19b9a363eda3 100644
 +#endif
  
  	if (!adbhid[id]) {
- 		printk(KERN_ERR "ADB HID on ID %d not yet registered\n", id);
-@@ -437,66 +449,108 @@ adbhid_mouse_input(unsigned char *data, int nb, int autopoll)
+ 		pr_err("ADB HID on ID %d not yet registered\n", id);
+@@ -436,66 +448,108 @@ adbhid_mouse_input(unsigned char *data, int nb, int autopoll)
  	      high bits of y-axis motion.  XY is additional
  	      high bits of x-axis motion.
  
@@ -19685,7 +19798,7 @@ index e091193104f7..19b9a363eda3 100644
  	input_sync(adbhid[id]->input);
  }
  
-@@ -850,6 +904,15 @@ adbhid_input_register(int id, int default_id, int original_handler_id,
+@@ -849,6 +903,15 @@ adbhid_input_register(int id, int default_id, int original_handler_id,
  		input_dev->keybit[BIT_WORD(BTN_MOUSE)] = BIT_MASK(BTN_LEFT) |
  			BIT_MASK(BTN_MIDDLE) | BIT_MASK(BTN_RIGHT);
  		input_dev->relbit[0] = BIT_MASK(REL_X) | BIT_MASK(REL_Y);
@@ -19701,7 +19814,7 @@ index e091193104f7..19b9a363eda3 100644
  		break;
  
  	case ADB_MISC:
-@@ -1133,7 +1196,11 @@ init_trackpad(int id)
+@@ -1132,7 +1195,11 @@ init_trackpad(int id)
  	            r1_buffer[3],
  	            r1_buffer[4],
  	            r1_buffer[5],
@@ -19714,10 +19827,10 @@ index e091193104f7..19b9a363eda3 100644
  
  	    /* Without this flush, the trackpad may be locked up */
 diff --git a/drivers/platform/x86/Kconfig b/drivers/platform/x86/Kconfig
-index 2c745e8ccad6..62f07abcca0b 100644
+index 51ebc5a6053f..838c7802a881 100644
 --- a/drivers/platform/x86/Kconfig
 +++ b/drivers/platform/x86/Kconfig
-@@ -532,9 +532,28 @@ config THINKPAD_ACPI_HOTKEY_POLL
+@@ -572,9 +572,28 @@ config THINKPAD_ACPI_HOTKEY_POLL
  	  If you are not sure, say Y here.  The driver enables polling only if
  	  it is strictly necessary to do so.
  
@@ -19747,10 +19860,10 @@ index 2c745e8ccad6..62f07abcca0b 100644
  	help
  	  This driver provides support for the IBM Hard Drive Active Protection
 diff --git a/drivers/platform/x86/Makefile b/drivers/platform/x86/Makefile
-index c32b34a72467..369e31fb2966 100644
+index 2ba6cb795338..399f8b88646f 100644
 --- a/drivers/platform/x86/Makefile
 +++ b/drivers/platform/x86/Makefile
-@@ -32,6 +32,8 @@ obj-$(CONFIG_TC1100_WMI)	+= tc1100-wmi.o
+@@ -35,6 +35,8 @@ obj-$(CONFIG_TC1100_WMI)	+= tc1100-wmi.o
  obj-$(CONFIG_SONY_LAPTOP)	+= sony-laptop.o
  obj-$(CONFIG_IDEAPAD_LAPTOP)	+= ideapad-laptop.o
  obj-$(CONFIG_THINKPAD_ACPI)	+= thinkpad_acpi.o
@@ -23022,7 +23135,7 @@ index 8a739b74cfb7..58ec7834a458 100644
 +
  endmenu
 diff --git a/drivers/scsi/Makefile b/drivers/scsi/Makefile
-index fcfd28d2884c..06ddd83fafd6 100644
+index de1b3fce936d..89f9ff693201 100644
 --- a/drivers/scsi/Makefile
 +++ b/drivers/scsi/Makefile
 @@ -155,6 +155,7 @@ obj-$(CONFIG_SCSI_ENCLOSURE)	+= ses.o
@@ -24141,7 +24254,7 @@ index 000000000000..ff30e4cb51b6
 +module_exit(vhba_exit);
 +
 diff --git a/drivers/tty/Kconfig b/drivers/tty/Kconfig
-index cc2b4d9433ed..79b8b5496685 100644
+index b811442c5ce6..61d8583f700b 100644
 --- a/drivers/tty/Kconfig
 +++ b/drivers/tty/Kconfig
 @@ -75,6 +75,19 @@ config VT_CONSOLE_SLEEP
@@ -83058,10 +83171,10 @@ index 000000000000..f4c78972fe58
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 +0 0 0  0 0 0  0 0 0  0 0 0  0 0 0  0 0 0
 diff --git a/fs/Kconfig b/fs/Kconfig
-index 7aee6d699fd6..53731da06f66 100644
+index bc821a86d965..bb5370870de2 100644
 --- a/fs/Kconfig
 +++ b/fs/Kconfig
-@@ -125,6 +125,7 @@ if BLOCK
+@@ -132,6 +132,7 @@ if BLOCK
  menu "DOS/FAT/NT Filesystems"
  
  source "fs/fat/Kconfig"
@@ -83070,7 +83183,7 @@ index 7aee6d699fd6..53731da06f66 100644
  
  endmenu
 diff --git a/fs/Makefile b/fs/Makefile
-index ef772f1eaff8..dc12c6b6e643 100644
+index add789ea270a..75a929d4b95b 100644
 --- a/fs/Makefile
 +++ b/fs/Makefile
 @@ -79,6 +79,7 @@ obj-$(CONFIG_HUGETLBFS)		+= hugetlbfs/
@@ -92607,10 +92720,10 @@ index 000000000000..b6dd7897ab6e
 +#endif /* _EXFAT_OAL_H */
 diff --git a/fs/exfat/exfat_super.c b/fs/exfat/exfat_super.c
 new file mode 100644
-index 000000000000..104ec4455fcc
+index 000000000000..656991645336
 --- /dev/null
 +++ b/fs/exfat/exfat_super.c
-@@ -0,0 +1,2697 @@
+@@ -0,0 +1,2711 @@
 +/* Some of the source code in this file came from "linux/fs/fat/file.c","linux/fs/fat/inode.c" and "linux/fs/fat/misc.c".  */
 +/*
 + *  linux/fs/fat/file.c
@@ -92676,6 +92789,9 @@ index 000000000000..104ec4455fcc
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(3,10,0)
 +#include <linux/aio.h>
 +#endif
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
++#include <linux/iversion.h>
++#endif
 +#include <linux/parser.h>
 +#include <linux/uio.h>
 +#include <linux/writeback.h>
@@ -92710,6 +92826,17 @@ index 000000000000..104ec4455fcc
 +
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)
 +#define current_time(x)	(CURRENT_TIME_SEC)
++#endif
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
++#define USE_NEW_IVERSION_API
++#define INC_IVERSION(x) (inode_inc_iversion(x))
++#define GET_IVERSION(x) (inode_peek_iversion_raw(x))
++#define SET_IVERSION(x,y) (inode_set_iversion(x, y))
++#else
++#define INC_IVERSION(x) (x->i_version++)
++#define GET_IVERSION(x) (x->i_version)
++#define SET_IVERSION(x,y) (x->i_version = y)
 +#endif
 +
 +#define CHECK_ERR(x)	BUG_ON(x)
@@ -93360,7 +93487,7 @@ index 000000000000..104ec4455fcc
 +			err = -EIO;
 +		goto out;
 +	}
-+	dir->i_version++;
++	INC_IVERSION(dir);
 +	dir->i_ctime = dir->i_mtime = dir->i_atime = current_time(dir);
 +	if (IS_DIRSYNC(dir))
 +		(void) exfat_sync_inode(dir);
@@ -93374,11 +93501,11 @@ index 000000000000..104ec4455fcc
 +		err = PTR_ERR(inode);
 +		goto out;
 +	}
-+	inode->i_version++;
++	INC_IVERSION(inode);
 +	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
 +	/* timestamp is already written, so mark_inode_dirty() is unnecessary. */
 +
-+	dentry->d_time = dentry->d_parent->d_inode->i_version;
++	dentry->d_time = GET_IVERSION(dentry->d_parent->d_inode);
 +	d_instantiate(dentry, inode);
 +
 +out:
@@ -93467,18 +93594,18 @@ index 000000000000..104ec4455fcc
 +	}
 +out:
 +	__unlock_super(sb);
-+	dentry->d_time = dentry->d_parent->d_inode->i_version;
++	dentry->d_time = GET_IVERSION(dentry->d_parent->d_inode);
 +#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,38)
 +	dentry->d_op = sb->s_root->d_op;
 +	dentry = d_splice_alias(inode, dentry);
 +	if (dentry) {
 +		dentry->d_op = sb->s_root->d_op;
-+		dentry->d_time = dentry->d_parent->d_inode->i_version;
++		dentry->d_time = GET_IVERSION(dentry->d_parent->d_inode);
 +	}
 +#else
 +	dentry = d_splice_alias(inode, dentry);
 +	if (dentry)
-+		dentry->d_time = dentry->d_parent->d_inode->i_version;
++		dentry->d_time = GET_IVERSION(dentry->d_parent->d_inode);
 +#endif
 +	DPRINTK("exfat_lookup exited 2\n");
 +	return dentry;
@@ -93509,7 +93636,7 @@ index 000000000000..104ec4455fcc
 +			err = -EIO;
 +		goto out;
 +	}
-+	dir->i_version++;
++	INC_IVERSION(dir);
 +	dir->i_mtime = dir->i_atime = current_time(dir);
 +	if (IS_DIRSYNC(dir))
 +		(void) exfat_sync_inode(dir);
@@ -93566,7 +93693,7 @@ index 000000000000..104ec4455fcc
 +		goto out;
 +	}
 +
-+	dir->i_version++;
++	INC_IVERSION(dir);
 +	dir->i_ctime = dir->i_mtime = dir->i_atime = current_time(dir);
 +	if (IS_DIRSYNC(dir))
 +		(void) exfat_sync_inode(dir);
@@ -93580,7 +93707,7 @@ index 000000000000..104ec4455fcc
 +		err = PTR_ERR(inode);
 +		goto out;
 +	}
-+	inode->i_version++;
++	INC_IVERSION(inode);
 +	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
 +	/* timestamp is already written, so mark_inode_dirty() is unneeded. */
 +
@@ -93591,7 +93718,7 @@ index 000000000000..104ec4455fcc
 +	}
 +	memcpy(EXFAT_I(inode)->target, target, len+1);
 +
-+	dentry->d_time = dentry->d_parent->d_inode->i_version;
++	dentry->d_time = GET_IVERSION(dentry->d_parent->d_inode);
 +	d_instantiate(dentry, inode);
 +
 +out:
@@ -93630,7 +93757,7 @@ index 000000000000..104ec4455fcc
 +			err = -EIO;
 +		goto out;
 +	}
-+	dir->i_version++;
++	INC_IVERSION(dir);
 +	dir->i_ctime = dir->i_mtime = dir->i_atime = current_time(dir);
 +	if (IS_DIRSYNC(dir))
 +		(void) exfat_sync_inode(dir);
@@ -93645,11 +93772,11 @@ index 000000000000..104ec4455fcc
 +		err = PTR_ERR(inode);
 +		goto out;
 +	}
-+	inode->i_version++;
++	INC_IVERSION(inode);
 +	inode->i_mtime = inode->i_atime = inode->i_ctime = current_time(inode);
 +	/* timestamp is already written, so mark_inode_dirty() is unneeded. */
 +
-+	dentry->d_time = dentry->d_parent->d_inode->i_version;
++	dentry->d_time = GET_IVERSION(dentry->d_parent->d_inode);
 +	d_instantiate(dentry, inode);
 +
 +out:
@@ -93684,7 +93811,7 @@ index 000000000000..104ec4455fcc
 +			err = -EIO;
 +		goto out;
 +	}
-+	dir->i_version++;
++	INC_IVERSION(dir);
 +	dir->i_mtime = dir->i_atime = current_time(dir);
 +	if (IS_DIRSYNC(dir))
 +		(void) exfat_sync_inode(dir);
@@ -93747,7 +93874,7 @@ index 000000000000..104ec4455fcc
 +			err = -EIO;
 +		goto out;
 +	}
-+	new_dir->i_version++;
++	INC_IVERSION(new_dir);
 +	new_dir->i_ctime = new_dir->i_mtime = new_dir->i_atime = current_time(new_dir);
 +	if (IS_DIRSYNC(new_dir))
 +		(void) exfat_sync_inode(new_dir);
@@ -93769,8 +93896,7 @@ index 000000000000..104ec4455fcc
 +		if (!new_inode)
 +			inc_nlink(new_dir);
 +	}
-+
-+	old_dir->i_version++;
++	INC_IVERSION(old_dir);
 +	old_dir->i_ctime = old_dir->i_mtime = current_time(old_dir);
 +	if (IS_DIRSYNC(old_dir))
 +		(void) exfat_sync_inode(old_dir);
@@ -94485,7 +94611,7 @@ index 000000000000..104ec4455fcc
 +	EXFAT_I(inode)->target = NULL;
 +	inode->i_uid = sbi->options.fs_uid;
 +	inode->i_gid = sbi->options.fs_gid;
-+	inode->i_version++;
++	INC_IVERSION(inode);
 +	inode->i_generation = get_seconds();
 +
 +	if (info.Attr & ATTR_SUBDIR) { /* directory */
@@ -94545,7 +94671,7 @@ index 000000000000..104ec4455fcc
 +		goto out;
 +	}
 +	inode->i_ino = iunique(sb, EXFAT_ROOT_INO);
-+	inode->i_version = 1;
++	SET_IVERSION(inode, 1);
 +	err = exfat_fill_inode(inode, fid);
 +	if (err) {
 +		iput(inode);
@@ -95035,7 +95161,7 @@ index 000000000000..104ec4455fcc
 +
 +	inode->i_uid = sbi->options.fs_uid;
 +	inode->i_gid = sbi->options.fs_gid;
-+	inode->i_version++;
++	INC_IVERSION(inode);
 +	inode->i_generation = 0;
 +	inode->i_mode = exfat_make_mode(sbi, ATTR_SUBDIR, S_IRWXUGO);
 +	inode->i_op = &exfat_dir_inode_operations;
@@ -95143,7 +95269,8 @@ index 000000000000..104ec4455fcc
 +	if (!root_inode)
 +		goto out_fail2;
 +	root_inode->i_ino = EXFAT_ROOT_INO;
-+	root_inode->i_version = 1;
++	SET_IVERSION(root_inode, 1);
++
 +	error = exfat_read_root(root_inode);
 +	if (error < 0)
 +		goto out_fail2;
@@ -95945,10 +96072,10 @@ index 7ea118471dce..8cd3f3660e37 100644
  	}
  	putname(tmp);
 diff --git a/fs/proc/base.c b/fs/proc/base.c
-index 60316b52d659..f79f714b7d20 100644
+index 9298324325ed..0250c8e2d875 100644
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
-@@ -464,7 +464,7 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
+@@ -467,7 +467,7 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
  		seq_printf(m, "0 0 0\n");
  	else
  		seq_printf(m, "%llu %llu %lu\n",
@@ -95958,10 +96085,10 @@ index 60316b52d659..f79f714b7d20 100644
  		   task->sched_info.pcount);
  
 diff --git a/include/linux/blkdev.h b/include/linux/blkdev.h
-index 0ce8a372d506..7a33a91abc0e 100644
+index c9e601dce06f..147bf680ccec 100644
 --- a/include/linux/blkdev.h
 +++ b/include/linux/blkdev.h
-@@ -45,16 +45,20 @@ struct blk_queue_stats;
+@@ -47,16 +47,20 @@ struct blk_queue_stats;
  struct blk_stat_callback;
  
  #define BLKDEV_MIN_RQ	4
@@ -95971,7 +96098,7 @@ index 0ce8a372d506..7a33a91abc0e 100644
  #define BLKDEV_MAX_RQ	128	/* Default maximum */
 +#endif
  
- /* Must be consisitent with blk_mq_poll_stats_bkt() */
+ /* Must be consistent with blk_mq_poll_stats_bkt() */
  #define BLK_MQ_POLL_STATS_BKTS 16
  
  /*
@@ -95983,120 +96110,33 @@ index 0ce8a372d506..7a33a91abc0e 100644
  
  typedef void (rq_end_io_fn)(struct request *, blk_status_t);
  
-@@ -121,6 +125,10 @@ typedef __u32 __bitwise req_flags_t;
- /* Look at ->special_vec for the actual data payload instead of the
-    bio chain. */
- #define RQF_SPECIAL_PAYLOAD	((__force req_flags_t)(1 << 18))
+@@ -129,6 +133,10 @@ typedef __u32 __bitwise req_flags_t;
+ #define RQF_MQ_TIMEOUT_EXPIRED	((__force req_flags_t)(1 << 20))
+ /* already slept for hybrid poll */
+ #define RQF_MQ_POLL_SLEPT	((__force req_flags_t)(1 << 21))
 +/* DEBUG: rq in bfq-mq dispatch list */
-+#define RQF_DISP_LIST	((__force req_flags_t)(1 << 19))
++#define RQF_DISP_LIST	((__force req_flags_t)(1 << 22))
 +/* DEBUG: rq had get_rq_private executed on it */
-+#define RQF_GOT	((__force req_flags_t)(1 << 20))
++#define RQF_GOT	((__force req_flags_t)(1 << 23))
  
  /* flags that prevent us from merging requests: */
  #define RQF_NOMERGE_FLAGS \
 diff --git a/include/linux/init_task.h b/include/linux/init_task.h
-index 6a532629c983..6c1006e47dfc 100644
+index a454b8aeb938..f0a14e08e8e8 100644
 --- a/include/linux/init_task.h
 +++ b/include/linux/init_task.h
-@@ -171,8 +171,6 @@ extern struct cred init_cred;
- # define INIT_VTIME(tsk)
- #endif
+@@ -55,7 +55,11 @@ extern struct cred init_cred;
+ 	.pid = &init_struct_pid,				\
+ }
  
--#define INIT_TASK_COMM "swapper"
--
- #ifdef CONFIG_RT_MUTEXES
- # define INIT_RT_MUTEXES(tsk)						\
- 	.pi_waiters = RB_ROOT_CACHED,					\
-@@ -222,6 +220,80 @@ extern struct cred init_cred;
-  *  INIT_TASK is used to set up the first task table, touch at
-  * your own risk!. Base=0, limit=0x1fffff (=2MB)
-  */
 +#ifdef CONFIG_SCHED_MUQSS
 +#define INIT_TASK_COMM "MuQSS"
-+#define INIT_TASK(tsk)	\
-+{									\
-+	INIT_TASK_TI(tsk)						\
-+	.state		= 0,						\
-+	.stack		= init_stack,					\
-+	.usage		= ATOMIC_INIT(2),				\
-+	.flags		= PF_KTHREAD,					\
-+	.prio		= NORMAL_PRIO,					\
-+	.static_prio	= MAX_PRIO-20,					\
-+	.normal_prio	= NORMAL_PRIO,					\
-+	.deadline	= 0,						\
-+	.policy		= SCHED_NORMAL,					\
-+	.cpus_allowed	= CPU_MASK_ALL,					\
-+	.mm		= NULL,						\
-+	.active_mm	= &init_mm,					\
-+	.restart_block = {						\
-+		.fn = do_no_restart_syscall,				\
-+	},								\
-+	.time_slice	= 1000000,					\
-+	.tasks		= LIST_HEAD_INIT(tsk.tasks),			\
-+	INIT_PUSHABLE_TASKS(tsk)					\
-+	.ptraced	= LIST_HEAD_INIT(tsk.ptraced),			\
-+	.ptrace_entry	= LIST_HEAD_INIT(tsk.ptrace_entry),		\
-+	.real_parent	= &tsk,						\
-+	.parent		= &tsk,						\
-+	.children	= LIST_HEAD_INIT(tsk.children),			\
-+	.sibling	= LIST_HEAD_INIT(tsk.sibling),			\
-+	.group_leader	= &tsk,						\
-+	RCU_POINTER_INITIALIZER(real_cred, &init_cred),			\
-+	RCU_POINTER_INITIALIZER(cred, &init_cred),			\
-+	.comm		= INIT_TASK_COMM,				\
-+	.thread		= INIT_THREAD,					\
-+	.fs		= &init_fs,					\
-+	.files		= &init_files,					\
-+	.signal		= &init_signals,				\
-+	.sighand	= &init_sighand,				\
-+	.nsproxy	= &init_nsproxy,				\
-+	.pending	= {						\
-+		.list = LIST_HEAD_INIT(tsk.pending.list),		\
-+		.signal = {{0}}},					\
-+	.blocked	= {{0}},					\
-+	.alloc_lock	= __SPIN_LOCK_UNLOCKED(tsk.alloc_lock),		\
-+	.journal_info	= NULL,						\
-+	INIT_CPU_TIMERS(tsk)						\
-+	.pi_lock	= __RAW_SPIN_LOCK_UNLOCKED(tsk.pi_lock),		\
-+	.timer_slack_ns = 50000, /* 50 usec default slack */		\
-+	.pids = {							\
-+		[PIDTYPE_PID]  = INIT_PID_LINK(PIDTYPE_PID),		\
-+		[PIDTYPE_PGID] = INIT_PID_LINK(PIDTYPE_PGID),		\
-+		[PIDTYPE_SID]  = INIT_PID_LINK(PIDTYPE_SID),		\
-+	},								\
-+	.thread_group	= LIST_HEAD_INIT(tsk.thread_group),		\
-+	.thread_node	= LIST_HEAD_INIT(init_signals.thread_head),	\
-+	INIT_IDS							\
-+	INIT_PERF_EVENTS(tsk)						\
-+	INIT_TRACE_IRQFLAGS						\
-+	INIT_LOCKDEP							\
-+	INIT_FTRACE_GRAPH						\
-+	INIT_TRACE_RECURSION						\
-+	INIT_TASK_RCU_PREEMPT(tsk)					\
-+	INIT_TASK_RCU_TASKS(tsk)					\
-+	INIT_CPUSET_SEQ(tsk)						\
-+	INIT_RT_MUTEXES(tsk)						\
-+	INIT_PREV_CPUTIME(tsk)						\
-+	INIT_VTIME(tsk)							\
-+	INIT_NUMA_BALANCING(tsk)					\
-+	INIT_KASAN(tsk)							\
-+	INIT_LIVEPATCH(tsk)						\
-+	INIT_TASK_SECURITY						\
-+}
-+#else /* CONFIG_SCHED_MUQSS */
-+#define INIT_TASK_COMM "swapper"
- #define INIT_TASK(tsk)	\
- {									\
- 	INIT_TASK_TI(tsk)						\
-@@ -299,7 +371,7 @@ extern struct cred init_cred;
- 	INIT_LIVEPATCH(tsk)						\
- 	INIT_TASK_SECURITY						\
- }
--
-+#endif /* CONFIG_SCHED_MUQSS */
++#else
+ #define INIT_TASK_COMM "swapper"
++#endif
  
  /* Attach to the init_task data structure for proper alignment */
- #define __init_task_data __attribute__((__section__(".data..init_task")))
+ #ifdef CONFIG_ARCH_TASK_STRUCT_ON_STACK
 diff --git a/include/linux/ioprio.h b/include/linux/ioprio.h
 index 627efac73e6d..e25a094c2f81 100644
 --- a/include/linux/ioprio.h
@@ -96134,7 +96174,7 @@ index 5e3581d76c7f..dbdf85ce007f 100644
  extern const struct linux_logo logo_mac_clut224;
  extern const struct linux_logo logo_parisc_clut224;
 diff --git a/include/linux/sched.h b/include/linux/sched.h
-index d2588263a989..e110fa878908 100644
+index b161ef8a902e..eeb4c76e711c 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
 @@ -27,6 +27,9 @@
@@ -96147,7 +96187,7 @@ index d2588263a989..e110fa878908 100644
  
  /* task_struct member predeclarations (sorted alphabetically): */
  struct audit_context;
-@@ -540,29 +543,46 @@ struct task_struct {
+@@ -544,37 +547,54 @@ struct task_struct {
  	unsigned int			flags;
  	unsigned int			ptrace;
  
@@ -96165,6 +96205,14 @@ index d2588263a989..e110fa878908 100644
  	unsigned long			wakee_flip_decay_ts;
  	struct task_struct		*last_wakee;
  
+ 	/*
+ 	 * recent_used_cpu is initially set as the last CPU used by a task
+ 	 * that wakes affine another task. Waker/wakee relationships can
+ 	 * push tasks around a CPU where each wakeup moves to the next one.
+ 	 * Tracking a recently used CPU allows a quick search for a recently
+ 	 * used CPU that may be idle.
+ 	 */
+ 	int				recent_used_cpu;
  	int				wake_cpu;
  #endif
  	int				on_rq;
@@ -96195,7 +96243,7 @@ index d2588263a989..e110fa878908 100644
  #ifdef CONFIG_CGROUP_SCHED
  	struct task_group		*sched_task_group;
  #endif
-@@ -711,6 +731,10 @@ struct task_struct {
+@@ -723,6 +743,10 @@ struct task_struct {
  #ifdef CONFIG_ARCH_HAS_SCALED_CPUTIME
  	u64				utimescaled;
  	u64				stimescaled;
@@ -96206,7 +96254,7 @@ index d2588263a989..e110fa878908 100644
  #endif
  	u64				gtime;
  	struct prev_cputime		prev_cputime;
-@@ -1105,6 +1129,40 @@ struct task_struct {
+@@ -1117,6 +1141,40 @@ struct task_struct {
  	 */
  };
  
@@ -96319,7 +96367,7 @@ index e5af028c08b4..010b2244e0b6 100644
  }
  
 diff --git a/include/linux/sched/task.h b/include/linux/sched/task.h
-index 05b8650f06f5..27e880d5534c 100644
+index 5be31eb7b266..2cfc0347db0b 100644
 --- a/include/linux/sched/task.h
 +++ b/include/linux/sched/task.h
 @@ -80,7 +80,7 @@ extern long kernel_wait4(pid_t, int *, int, struct rusage *);
@@ -96483,7 +96531,7 @@ index 000000000000..fb634b74adf3
 +/* This part must be outside protection */
 +#include <trace/define_trace.h>
 diff --git a/include/uapi/linux/sched.h b/include/uapi/linux/sched.h
-index 30a9e51bbb1e..0178fd277aaa 100644
+index 22627f80063e..17077cd6fc40 100644
 --- a/include/uapi/linux/sched.h
 +++ b/include/uapi/linux/sched.h
 @@ -37,9 +37,16 @@
@@ -96536,7 +96584,7 @@ index e9d39c48520a..3bceead8da40 100644
  		   consoles 16 and higher (since it returns a short) */
  
 diff --git a/init/Kconfig b/init/Kconfig
-index a9a2e2c86671..df55f1ce58ed 100644
+index e37f4b2a6445..f9e156bf3e7d 100644
 --- a/init/Kconfig
 +++ b/init/Kconfig
 @@ -38,6 +38,47 @@ config THREAD_INFO_IN_TASK
@@ -96677,11 +96725,50 @@ index a9a2e2c86671..df55f1ce58ed 100644
  config CC_OPTIMIZE_FOR_SIZE
  	bool "Optimize for size"
  	help
+diff --git a/init/init_task.c b/init/init_task.c
+index 3ac6e754cf64..a5da207d71cf 100644
+--- a/init/init_task.c
++++ b/init/init_task.c
+@@ -59,24 +59,34 @@ struct task_struct init_task
+ 	.stack		= init_stack,
+ 	.usage		= ATOMIC_INIT(2),
+ 	.flags		= PF_KTHREAD,
++#ifdef CONFIG_SCHED_MUQSS
++	.prio		= NORMAL_PRIO,
++	.static_prio	= MAX_PRIO-20,
++	.normal_prio	= NORMAL_PRIO,
++	.deadline	= 0,
++	.time_slice	= 1000000,
++#else
+ 	.prio		= MAX_PRIO - 20,
+ 	.static_prio	= MAX_PRIO - 20,
+ 	.normal_prio	= MAX_PRIO - 20,
++#endif
+ 	.policy		= SCHED_NORMAL,
+ 	.cpus_allowed	= CPU_MASK_ALL,
+ 	.nr_cpus_allowed= NR_CPUS,
+ 	.mm		= NULL,
+ 	.active_mm	= &init_mm,
+ 	.restart_block	= {
+ 		.fn = do_no_restart_syscall,
+ 	},
++#ifndef CONFIG_SCHED_MUQSS
+ 	.se		= {
+ 		.group_node 	= LIST_HEAD_INIT(init_task.se.group_node),
+ 	},
+ 	.rt		= {
+ 		.run_list	= LIST_HEAD_INIT(init_task.rt.run_list),
+ 		.time_slice	= RR_TIMESLICE,
+ 	},
++#endif
+ 	.tasks		= LIST_HEAD_INIT(init_task.tasks),
+ #ifdef CONFIG_SMP
+ 	.pushable_tasks	= PLIST_NODE_INIT(init_task.pushable_tasks, MAX_PRIO),
 diff --git a/init/main.c b/init/main.c
-index a8100b954839..0cd1dbbbb12d 100644
+index 21efbf6ace93..9eeaa98045b3 100644
 --- a/init/main.c
 +++ b/init/main.c
-@@ -847,7 +847,6 @@ int __init_or_module do_one_initcall(initcall_t fn)
+@@ -848,7 +848,6 @@ int __init_or_module do_one_initcall(initcall_t fn)
  	return ret;
  }
  
@@ -96689,7 +96776,7 @@ index a8100b954839..0cd1dbbbb12d 100644
  extern initcall_t __initcall_start[];
  extern initcall_t __initcall0_start[];
  extern initcall_t __initcall1_start[];
-@@ -1007,6 +1006,8 @@ static int __ref kernel_init(void *unused)
+@@ -1009,6 +1008,8 @@ static int __ref kernel_init(void *unused)
  
  	rcu_end_inkernel_boot();
  
@@ -96699,7 +96786,7 @@ index a8100b954839..0cd1dbbbb12d 100644
  		ret = run_init_process(ramdisk_execute_command);
  		if (!ret)
 diff --git a/kernel/Makefile b/kernel/Makefile
-index 172d151d429c..38b9a81ddffc 100644
+index f85ae5dfa474..78c2c0cc7508 100644
 --- a/kernel/Makefile
 +++ b/kernel/Makefile
 @@ -10,7 +10,7 @@ obj-y     = fork.o exec_domain.o panic.o \
@@ -96760,10 +96847,10 @@ index 995453d9fb55..6156f0cac1c7 100644
  	__unhash_process(tsk, group_dead);
  	write_sequnlock(&sig->stats_lock);
 diff --git a/kernel/fork.c b/kernel/fork.c
-index 2295fc69717f..6f320a216e7d 100644
+index e5d9d405ae4e..c4be89c51f25 100644
 --- a/kernel/fork.c
 +++ b/kernel/fork.c
-@@ -102,6 +102,11 @@
+@@ -103,6 +103,11 @@
  
  #define CREATE_TRACE_POINTS
  #include <trace/events/task.h>
@@ -96775,7 +96862,7 @@ index 2295fc69717f..6f320a216e7d 100644
  
  /*
   * Minimum number of threads to boot the kernel
-@@ -1550,6 +1555,10 @@ static __latent_entropy struct task_struct *copy_process(
+@@ -1591,6 +1596,10 @@ static __latent_entropy struct task_struct *copy_process(
  	if ((clone_flags & (CLONE_NEWUSER|CLONE_FS)) == (CLONE_NEWUSER|CLONE_FS))
  		return ERR_PTR(-EINVAL);
  
@@ -96786,7 +96873,7 @@ index 2295fc69717f..6f320a216e7d 100644
  	/*
  	 * Thread groups must share signals as well, and detached threads
  	 * can only be started up within the thread group.
-@@ -2343,6 +2352,12 @@ SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
+@@ -2385,6 +2394,12 @@ SYSCALL_DEFINE1(unshare, unsigned long, unshare_flags)
  	if (unshare_flags & CLONE_NEWNS)
  		unshare_flags |= CLONE_FS;
  
@@ -96862,10 +96949,10 @@ index cd50e99202b0..0a2deebdfbfa 100644
  	set_bit(KTHREAD_IS_PER_CPU, &to_kthread(p)->flags);
  	to_kthread(p)->cpu = cpu;
 diff --git a/kernel/livepatch/transition.c b/kernel/livepatch/transition.c
-index 56add6327736..dfed6ec06bf6 100644
+index 7c6631e693bc..83451e2d53fa 100644
 --- a/kernel/livepatch/transition.c
 +++ b/kernel/livepatch/transition.c
-@@ -302,15 +302,21 @@ static int klp_check_stack(struct task_struct *task, char *err_buf)
+@@ -290,15 +290,21 @@ static int klp_check_stack(struct task_struct *task, char *err_buf)
  	return 0;
  }
  
@@ -96932,10 +97019,10 @@ index e2f9d4feff40..c8197dc6b904 100644
  obj-$(CONFIG_MEMBARRIER) += membarrier.o
 diff --git a/kernel/sched/MuQSS.c b/kernel/sched/MuQSS.c
 new file mode 100644
-index 000000000000..9397e8939454
+index 000000000000..54f640253659
 --- /dev/null
 +++ b/kernel/sched/MuQSS.c
-@@ -0,0 +1,7187 @@
+@@ -0,0 +1,7231 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + *  kernel/sched/MuQSS.c, was kernel/sched.c
@@ -97051,7 +97138,7 @@ index 000000000000..9397e8939454
 +
 +void print_scheduler_version(void)
 +{
-+	printk(KERN_INFO "MuQSS CPU scheduler v0.170 by Con Kolivas.\n");
++	printk(KERN_INFO "MuQSS CPU scheduler v0.171 by Con Kolivas.\n");
 +}
 +
 +#define RQSHARE_NONE 0
@@ -97511,11 +97598,6 @@ index 000000000000..9397e8939454
 +	}
 +}
 +
-+static inline void prepare_lock_switch(struct rq *rq, struct task_struct *next)
-+{
-+	next->on_cpu = 1;
-+}
-+
 +static inline void smp_sched_reschedule(int cpu)
 +{
 +	if (likely(cpu_online(cpu)))
@@ -97575,71 +97657,6 @@ index 000000000000..9397e8939454
 +{
 +	if (unlikely(next == rq->idle && local_softirq_pending() && !in_interrupt()))
 +		do_softirq_own_stack();
-+}
-+
-+static inline void finish_lock_switch(struct rq *rq, struct task_struct *prev)
-+{
-+#ifdef CONFIG_SMP
-+	/*
-+	 * After ->on_cpu is cleared, the task can be moved to a different CPU.
-+	 * We must ensure this doesn't happen until the switch is completely
-+	 * finished.
-+	 *
-+	 * In particular, the load of prev->state in finish_task_switch() must
-+	 * happen before this.
-+	 *
-+	 * Pairs with the smp_cond_load_acquire() in try_to_wake_up().
-+	 */
-+	smp_store_release(&prev->on_cpu, 0);
-+#endif
-+#ifdef CONFIG_DEBUG_SPINLOCK
-+	/* this is a valid case when another task releases the spinlock */
-+	rq->lock.owner = current;
-+#endif
-+	/*
-+	 * If we are tracking spinlock dependencies then we have to
-+	 * fix up the runqueue lock - which gets 'carried over' from
-+	 * prev into current:
-+	 */
-+	spin_acquire(rq->lock.dep_map, 0, 0, _THIS_IP_);
-+
-+#ifdef CONFIG_SMP
-+	/*
-+	 * If prev was marked as migrating to another CPU in return_task, drop
-+	 * the local runqueue lock but leave interrupts disabled and grab the
-+	 * remote lock we're migrating it to before enabling them.
-+	 */
-+	if (unlikely(task_on_rq_migrating(prev))) {
-+		sched_info_dequeued(rq, prev);
-+		/*
-+		 * We move the ownership of prev to the new cpu now. ttwu can't
-+		 * activate prev to the wrong cpu since it has to grab this
-+		 * runqueue in ttwu_remote.
-+		 */
-+#ifdef CONFIG_THREAD_INFO_IN_TASK
-+		prev->cpu = prev->wake_cpu;
-+#else
-+		task_thread_info(prev)->cpu = prev->wake_cpu;
-+#endif
-+		raw_spin_unlock(rq->lock);
-+
-+		raw_spin_lock(&prev->pi_lock);
-+		rq = __task_rq_lock(prev);
-+		/* Check that someone else hasn't already queued prev */
-+		if (likely(!task_queued(prev))) {
-+			enqueue_task(rq, prev, 0);
-+			prev->on_rq = TASK_ON_RQ_QUEUED;
-+			/* Wake up the CPU if it's not already running */
-+			resched_if_idle(rq);
-+		}
-+		raw_spin_unlock(&prev->pi_lock);
-+	}
-+#endif
-+	rq_unlock(rq);
-+
-+	do_pending_softirq(rq, current);
-+
-+	local_irq_enable();
 +}
 +
 +static inline bool deadline_before(u64 deadline, u64 time)
@@ -98597,15 +98614,15 @@ index 000000000000..9397e8939454
 +	rq = this_rq();
 +
 +#ifdef CONFIG_SMP
-+	if (cpu == rq->cpu)
-+		schedstat_inc(rq->ttwu_local);
-+	else {
++	if (cpu == rq->cpu) {
++		__schedstat_inc(rq->ttwu_local);
++	} else {
 +		struct sched_domain *sd;
 +
 +		rcu_read_lock();
 +		for_each_domain(rq->cpu, sd) {
 +			if (cpumask_test_cpu(cpu, sched_domain_span(sd))) {
-+				schedstat_inc(sd->ttwu_wake_remote);
++				__schedstat_inc(sd->ttwu_wake_remote);
 +				break;
 +			}
 +		}
@@ -98614,7 +98631,7 @@ index 000000000000..9397e8939454
 +
 +#endif /* CONFIG_SMP */
 +
-+	schedstat_inc(rq->ttwu_count);
++	__schedstat_inc(rq->ttwu_count);
 +}
 +
 +static inline void ttwu_activate(struct rq *rq, struct task_struct *p)
@@ -98943,7 +98960,7 @@ index 000000000000..9397e8939454
 +	 * If the owning (remote) CPU is still in the middle of schedule() with
 +	 * this task as prev, wait until its done referencing the task.
 +	 *
-+	 * Pairs with the smp_store_release() in finish_lock_switch().
++	 * Pairs with the smp_store_release() in finish_task().
 +	 *
 +	 * This ensures that tasks getting woken will be fully ordered against
 +	 * their previous state and preserve Program Order.
@@ -99460,6 +99477,96 @@ index 000000000000..9397e8939454
 +
 +#endif /* CONFIG_PREEMPT_NOTIFIERS */
 +
++static inline void prepare_task(struct task_struct *next)
++{
++	/*
++	 * Claim the task as running, we do this before switching to it
++	 * such that any running task will have this set.
++	 */
++	next->on_cpu = 1;
++}
++
++static inline void finish_task(struct task_struct *prev)
++{
++#ifdef CONFIG_SMP
++	/*
++	 * After ->on_cpu is cleared, the task can be moved to a different CPU.
++	 * We must ensure this doesn't happen until the switch is completely
++	 * finished.
++	 *
++	 * In particular, the load of prev->state in finish_task_switch() must
++	 * happen before this.
++	 *
++	 * Pairs with the smp_cond_load_acquire() in try_to_wake_up().
++	 */
++	smp_store_release(&prev->on_cpu, 0);
++#endif
++}
++
++static inline void
++prepare_lock_switch(struct rq *rq, struct task_struct *next)
++{
++	/*
++	 * Since the runqueue lock will be released by the next
++	 * task (which is an invalid locking op but in the case
++	 * of the scheduler it's an obvious special-case), so we
++	 * do an early lockdep release here:
++	 */
++	spin_release(&rq->lock.dep_map, 1, _THIS_IP_);
++#ifdef CONFIG_DEBUG_SPINLOCK
++	/* this is a valid case when another task releases the spinlock */
++	rq->lock.owner = next;
++#endif
++}
++
++static inline void finish_lock_switch(struct rq *rq, struct task_struct *prev)
++{
++	/*
++	 * If we are tracking spinlock dependencies then we have to
++	 * fix up the runqueue lock - which gets 'carried over' from
++	 * prev into current:
++	 */
++	spin_acquire(&rq->lock.dep_map, 0, 0, _THIS_IP_);
++
++#ifdef CONFIG_SMP
++	/*
++	 * If prev was marked as migrating to another CPU in return_task, drop
++	 * the local runqueue lock but leave interrupts disabled and grab the
++	 * remote lock we're migrating it to before enabling them.
++	 */
++	if (unlikely(task_on_rq_migrating(prev))) {
++		sched_info_dequeued(rq, prev);
++		/*
++		 * We move the ownership of prev to the new cpu now. ttwu can't
++		 * activate prev to the wrong cpu since it has to grab this
++		 * runqueue in ttwu_remote.
++		 */
++#ifdef CONFIG_THREAD_INFO_IN_TASK
++		prev->cpu = prev->wake_cpu;
++#else
++		task_thread_info(prev)->cpu = prev->wake_cpu;
++#endif
++		raw_spin_unlock(rq->lock);
++
++		raw_spin_lock(&prev->pi_lock);
++		rq = __task_rq_lock(prev);
++		/* Check that someone else hasn't already queued prev */
++		if (likely(!task_queued(prev))) {
++			enqueue_task(rq, prev, 0);
++			prev->on_rq = TASK_ON_RQ_QUEUED;
++			/* Wake up the CPU if it's not already running */
++			resched_if_idle(rq);
++		}
++		raw_spin_unlock(&prev->pi_lock);
++	}
++#endif
++	rq_unlock(rq);
++
++	do_pending_softirq(rq, current);
++
++	local_irq_enable();
++}
++
 +/**
 + * prepare_task_switch - prepare to switch tasks
 + * @rq: the runqueue preparing to switch
@@ -99479,7 +99586,7 @@ index 000000000000..9397e8939454
 +	sched_info_switch(rq, prev, next);
 +	perf_event_task_sched_out(prev, next);
 +	fire_sched_out_preempt_notifiers(prev, next);
-+	prepare_lock_switch(rq, next);
++	prepare_task(next);
 +	prepare_arch_switch(next);
 +}
 +
@@ -99535,29 +99642,34 @@ index 000000000000..9397e8939454
 +	 * the scheduled task must drop that reference.
 +	 *
 +	 * We must observe prev->state before clearing prev->on_cpu (in
-+	 * finish_lock_switch), otherwise a concurrent wakeup can get prev
++	 * finish_task), otherwise a concurrent wakeup can get prev
 +	 * running on another CPU and we could rave with its RUNNING -> DEAD
 +	 * transition, resulting in a double drop.
 +	 */
 +	prev_state = prev->state;
 +	vtime_task_switch(prev);
 +	perf_event_task_sched_in(prev, current);
-+	/*
-+	 * The membarrier system call requires a full memory barrier
-+	 * after storing to rq->curr, before going back to user-space.
-+	 *
-+	 * TODO: This smp_mb__after_unlock_lock can go away if PPC end
-+	 * up adding a full barrier to switch_mm(), or we should figure
-+	 * out if a smp_mb__after_unlock_lock is really the proper API
-+	 * to use.
-+	 */
-+	smp_mb__after_unlock_lock();
++	finish_task(prev);
 +	finish_lock_switch(rq, prev);
 +	finish_arch_post_lock_switch();
 +
 +	fire_sched_in_preempt_notifiers(current);
-+	if (mm)
++	/*
++	 * When switching through a kernel thread, the loop in
++	 * membarrier_{private,global}_expedited() may have observed that
++	 * kernel thread and not issued an IPI. It is therefore possible to
++	 * schedule between user->kernel->user threads without passing though
++	 * switch_mm(). Membarrier requires a barrier after storing to
++	 * rq->curr, before returning to userspace, so provide them here:
++	 *
++	 * - a full memory barrier for {PRIVATE,GLOBAL}_EXPEDITED, implicitly
++	 *   provided by mmdrop(),
++	 * - a sync_core for SYNC_CORE.
++	 */
++	if (mm) {
++		membarrier_mm_sync_core_before_usermode(mm);
 +		mmdrop(mm);
++	}
 +	if (unlikely(prev_state == TASK_DEAD)) {
 +		/*
 +		 * Remove function-return probe instances associated with this
@@ -99614,6 +99726,13 @@ index 000000000000..9397e8939454
 +	 */
 +	arch_start_context_switch(prev);
 +
++	/*
++	 * If mm is non-NULL, we pass through switch_mm(). If mm is
++	 * NULL, we will pass through mmdrop() in finish_task_switch().
++	 * Both of these contain the full memory barrier required by
++	 * membarrier after storing to rq->curr, before returning to
++	 * user-space.
++	 */
 +	if (!mm) {
 +		next->active_mm = oldmm;
 +		mmgrab(oldmm);
@@ -99625,13 +99744,7 @@ index 000000000000..9397e8939454
 +		prev->active_mm = NULL;
 +		rq->prev_mm = oldmm;
 +	}
-+	/*
-+	 * Since the runqueue lock will be released by the next
-+	 * task (which is an invalid locking op but in the case
-+	 * of the scheduler it's an obvious special-case), so we
-+	 * do an early lockdep release here:
-+	 */
-+	spin_release(rq->lock.dep_map, 1, _THIS_IP_);
++	prepare_lock_switch(rq, next);
 +
 +	/* Here we just switch the register state and the stack. */
 +	switch_to(prev, next, prev);
@@ -100662,6 +100775,9 @@ index 000000000000..9397e8939454
 +	 * Make sure that signal_pending_state()->signal_pending() below
 +	 * can't be reordered with __set_current_state(TASK_INTERRUPTIBLE)
 +	 * done by the caller to avoid the race with signal_wake_up().
++	 *
++	 * The membarrier system call requires a full memory barrier
++	 * after coming from user-space, before storing to rq->curr.
 +	 */
 +	rq_lock(rq);
 +	smp_mb__after_spinlock();
@@ -100758,17 +100874,16 @@ index 000000000000..9397e8939454
 +		/*
 +		 * The membarrier system call requires each architecture
 +		 * to have a full memory barrier after updating
-+		 * rq->curr, before returning to user-space. For TSO
-+		 * (e.g. x86), the architecture must provide its own
-+		 * barrier in switch_mm(). For weakly ordered machines
-+		 * for which spin_unlock() acts as a full memory
-+		 * barrier, finish_lock_switch() in common code takes
-+		 * care of this barrier. For weakly ordered machines for
-+		 * which spin_unlock() acts as a RELEASE barrier (only
-+		 * arm64 and PowerPC), arm64 has a full barrier in
-+		 * switch_to(), and PowerPC has
-+		 * smp_mb__after_unlock_lock() before
-+		 * finish_lock_switch().
++		 * rq->curr, before returning to user-space.
++		 *
++		 * Here are the schemes providing that barrier on the
++		 * various architectures:
++		 * - mm ? switch_mm() : mmdrop() for x86, s390, sparc, PowerPC.
++		 *   switch_mm() rely on membarrier_arch_switch_mm() on PowerPC.
++		 * - finish_lock_switch() for weakly-ordered
++		 *   architectures where spin_unlock is a full barrier,
++		 * - switch_to() for arm64 (weakly-ordered, spin_unlock
++		 *   is a RELEASE barrier),
 +		 */
 +		++*switch_count;
 +
@@ -101349,13 +101464,12 @@ index 000000000000..9397e8939454
 +	return match;
 +}
 +
-+static int
-+__sched_setscheduler(struct task_struct *p, int policy,
-+		     const struct sched_param *param, bool user, bool pi)
++static int __sched_setscheduler(struct task_struct *p,
++				const struct sched_attr *attr,
++				bool user, bool pi)
 +{
-+	struct sched_param zero_param = { .sched_priority = 0 };
++	int retval, policy = attr->sched_policy, oldpolicy = -1, priority = attr->sched_priority;
 +	unsigned long flags, rlim_rtprio = 0;
-+	int retval, oldpolicy = -1;
 +	int reset_on_fork;
 +	struct rq *rq;
 +
@@ -101377,7 +101491,7 @@ index 000000000000..9397e8939454
 +		 * We also set the parameter to zero to pass the checks.
 +		 */
 +		policy = SCHED_ISO;
-+		param = &zero_param;
++		priority = 0;
 +	}
 +recheck:
 +	/* Double check policy once rq lock held */
@@ -101392,16 +101506,19 @@ index 000000000000..9397e8939454
 +			return -EINVAL;
 +	}
 +
++	if (attr->sched_flags & ~(SCHED_FLAG_ALL | SCHED_FLAG_SUGOV))
++		return -EINVAL;
++
 +	/*
 +	 * Valid priorities for SCHED_FIFO and SCHED_RR are
 +	 * 1..MAX_USER_RT_PRIO-1, valid priority for SCHED_NORMAL and
 +	 * SCHED_BATCH is 0.
 +	 */
-+	if (param->sched_priority < 0 ||
-+	    (p->mm && param->sched_priority > MAX_USER_RT_PRIO - 1) ||
-+	    (!p->mm && param->sched_priority > MAX_RT_PRIO - 1))
++	if (priority < 0 ||
++	    (p->mm && priority > MAX_USER_RT_PRIO - 1) ||
++	    (!p->mm && priority > MAX_RT_PRIO - 1))
 +		return -EINVAL;
-+	if (is_rt_policy(policy) != (param->sched_priority != 0))
++	if (is_rt_policy(policy) != (priority != 0))
 +		return -EINVAL;
 +
 +	/*
@@ -101417,8 +101534,8 @@ index 000000000000..9397e8939454
 +				return -EPERM;
 +
 +			/* Can't increase priority */
-+			if (param->sched_priority > p->rt_priority &&
-+			    param->sched_priority > rlim_rtprio)
++			if (priority > p->rt_priority &&
++			    priority > rlim_rtprio)
 +				return -EPERM;
 +		} else {
 +			switch (p->policy) {
@@ -101484,7 +101601,7 @@ index 000000000000..9397e8939454
 +	 * If not changing anything there's no need to proceed further:
 +	 */
 +	if (unlikely(policy == p->policy && (!is_rt_policy(policy) ||
-+			param->sched_priority == p->rt_priority))) {
++	    priority == p->rt_priority))) {
 +		task_rq_unlock(rq, p, &flags);
 +		return 0;
 +	}
@@ -101497,7 +101614,7 @@ index 000000000000..9397e8939454
 +	}
 +	p->sched_reset_on_fork = reset_on_fork;
 +
-+	__setscheduler(p, rq, policy, param->sched_priority, pi);
++	__setscheduler(p, rq, policy, priority, pi);
 +	task_rq_unlock(rq, p, &flags);
 +
 +	if (pi)
@@ -101506,6 +101623,17 @@ index 000000000000..9397e8939454
 +	return 0;
 +}
 +
++static int _sched_setscheduler(struct task_struct *p, int policy,
++			       const struct sched_param *param, bool check)
++{
++	struct sched_attr attr = {
++		.sched_policy   = policy,
++		.sched_priority = param->sched_priority,
++		.sched_nice	= PRIO_TO_NICE(p->static_prio),
++	};
++
++	return __sched_setscheduler(p, &attr, check, true);
++}
 +/**
 + * sched_setscheduler - change the scheduling policy and/or RT priority of a thread.
 + * @p: the task in question.
@@ -101519,19 +101647,21 @@ index 000000000000..9397e8939454
 +int sched_setscheduler(struct task_struct *p, int policy,
 +		       const struct sched_param *param)
 +{
-+	return __sched_setscheduler(p, policy, param, true, true);
++	return _sched_setscheduler(p, policy, param, true);
 +}
 +
 +EXPORT_SYMBOL_GPL(sched_setscheduler);
 +
 +int sched_setattr(struct task_struct *p, const struct sched_attr *attr)
 +{
-+	const struct sched_param param = { .sched_priority = attr->sched_priority };
-+	int policy = attr->sched_policy;
-+
-+	return __sched_setscheduler(p, policy, &param, true, true);
++	return __sched_setscheduler(p, attr, true, true);
 +}
 +EXPORT_SYMBOL_GPL(sched_setattr);
++
++int sched_setattr_nocheck(struct task_struct *p, const struct sched_attr *attr)
++{
++	return __sched_setscheduler(p, attr, false, true);
++}
 +
 +/**
 + * sched_setscheduler_nocheck - change the scheduling policy and/or RT priority of a thread from kernelspace.
@@ -101549,7 +101679,7 @@ index 000000000000..9397e8939454
 +int sched_setscheduler_nocheck(struct task_struct *p, int policy,
 +			       const struct sched_param *param)
 +{
-+	return __sched_setscheduler(p, policy, param, false, true);
++	return _sched_setscheduler(p, policy, param, false);
 +}
 +EXPORT_SYMBOL_GPL(sched_setscheduler_nocheck);
 +
@@ -102028,7 +102158,7 @@ index 000000000000..9397e8939454
 +
 +	ret = sched_getaffinity(pid, mask);
 +	if (ret == 0) {
-+		size_t retlen = min_t(size_t, len, cpumask_size());
++		unsigned int retlen = min(len, cpumask_size());
 +
 +		if (copy_to_user(user_mask_ptr, mask, retlen))
 +			ret = -EFAULT;
@@ -102617,7 +102747,8 @@ index 000000000000..9397e8939454
 +	unsigned long flags;
 +
 +	rq_lock_irqsave(rq, &flags);
-+	resched_task(cpu_curr(cpu));
++	if (cpu_online(cpu) || cpu == smp_processor_id())
++		resched_curr(rq);
 +	rq_unlock_irqrestore(rq, &flags);
 +}
 +
@@ -104125,10 +104256,10 @@ index 000000000000..9397e8939454
 +#endif	/* CONFIG_CGROUP_SCHED */
 diff --git a/kernel/sched/MuQSS.h b/kernel/sched/MuQSS.h
 new file mode 100644
-index 000000000000..fc8f1f47f7db
+index 000000000000..4784a9486aa2
 --- /dev/null
 +++ b/kernel/sched/MuQSS.h
-@@ -0,0 +1,729 @@
+@@ -0,0 +1,768 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#ifndef MUQSS_SCHED_H
 +#define MUQSS_SCHED_H
@@ -104857,40 +104988,62 @@ index 000000000000..fc8f1f47f7db
 +}
 +#endif
 +
++#ifndef arch_scale_freq_capacity
++static __always_inline
++unsigned long arch_scale_freq_capacity(int cpu)
++{
++	return SCHED_CAPACITY_SCALE;
++}
++#endif
++
++#ifndef arch_scale_cpu_capacity
++static __always_inline
++unsigned long arch_scale_cpu_capacity(struct sched_domain *sd, int cpu)
++{
++	if (sd && (sd->flags & SD_SHARE_CPUCAPACITY) && (sd->span_weight > 1))
++		return sd->smt_gain / sd->span_weight;
++
++	return SCHED_CAPACITY_SCALE;
++}
++#endif
++
++#define SCHED_FLAG_SUGOV	0x10000000
++
++#ifdef CONFIG_CPU_FREQ_GOV_SCHEDUTIL
++
++static inline unsigned long cpu_util_dl(struct rq *rq)
++{
++	return 0;
++}
++
++static inline unsigned long cpu_util_cfs(struct rq *rq)
++{
++	unsigned long ret = rq->load_avg;
++
++	if (ret > SCHED_CAPACITY_SCALE)
++		ret = SCHED_CAPACITY_SCALE;
++	return ret;
++}
++
++#endif
++
 +#endif /* MUQSS_SCHED_H */
 diff --git a/kernel/sched/cpufreq_schedutil.c b/kernel/sched/cpufreq_schedutil.c
-index d6717a3331a1..b129dc064919 100644
+index 7936f548e071..02ca5f74565b 100644
 --- a/kernel/sched/cpufreq_schedutil.c
 +++ b/kernel/sched/cpufreq_schedutil.c
-@@ -176,16 +176,28 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
- 	return cpufreq_driver_resolve_freq(policy, freq);
- }
- 
+@@ -480,7 +480,11 @@ static int sugov_kthread_create(struct sugov_policy *sg_policy)
+ 	struct task_struct *thread;
+ 	struct sched_attr attr = {
+ 		.size = sizeof(struct sched_attr),
 +#ifdef CONFIG_SCHED_MUQSS
-+static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
-+{
-+	struct rq *rq = cpu_rq(cpu);
-+
-+	*util = rq->load_avg;
-+	if (*util > SCHED_CAPACITY_SCALE)
-+		*util = SCHED_CAPACITY_SCALE;
-+	*max = SCHED_CAPACITY_SCALE;
-+}
-+#else /* CONFIG_SCHED_MUQSS */
- static void sugov_get_util(unsigned long *util, unsigned long *max, int cpu)
- {
- 	struct rq *rq = cpu_rq(cpu);
- 	unsigned long cfs_max;
- 
- 	cfs_max = arch_scale_cpu_capacity(NULL, cpu);
- 
- 	*util = min(rq->cfs.avg.util_avg, cfs_max);
- 	*max = cfs_max;
- }
-+#endif /* CONFIG_SCHED_MUQSS */
- 
- static void sugov_set_iowait_boost(struct sugov_cpu *sg_cpu, u64 time,
- 				   unsigned int flags)
++		.sched_policy = SCHED_ISO,
++#else
+ 		.sched_policy = SCHED_DEADLINE,
++#endif
+ 		.sched_flags = SCHED_FLAG_SUGOV,
+ 		.sched_nice = 0,
+ 		.sched_priority = 0,
 diff --git a/kernel/sched/cputime.c b/kernel/sched/cputime.c
 index bac6ac9a4ec7..e3153ba66834 100644
 --- a/kernel/sched/cputime.c
@@ -104932,7 +105085,7 @@ index bac6ac9a4ec7..e3153ba66834 100644
  
  	task_cputime(p, &cputime.utime, &cputime.stime);
 diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
-index 26a71ebcd3c2..0a2978d7048d 100644
+index 5eb3ffc9be84..4100452ddc12 100644
 --- a/kernel/sched/fair.c
 +++ b/kernel/sched/fair.c
 @@ -52,78 +52,103 @@
@@ -105078,7 +105231,7 @@ index 7dae9eb8c042..0a374d84c2ef 100644
  
  	/*
 diff --git a/kernel/sched/sched.h b/kernel/sched/sched.h
-index 74b57279e3ff..e204fc54f42b 100644
+index fb5fc458547f..ba3d008c1538 100644
 --- a/kernel/sched/sched.h
 +++ b/kernel/sched/sched.h
 @@ -1,5 +1,8 @@
@@ -105090,11 +105243,12 @@ index 74b57279e3ff..e204fc54f42b 100644
  #include <linux/sched.h>
  #include <linux/sched/autogroup.h>
  #include <linux/sched/sysctl.h>
-@@ -2127,3 +2130,29 @@ static inline void cpufreq_update_util(struct rq *rq, unsigned int flags) {}
- #else /* arch_scale_freq_capacity */
- #define arch_scale_freq_invariant()	(false)
+@@ -2133,3 +2136,30 @@ static inline unsigned long cpu_util_cfs(struct rq *rq)
+ }
+ 
  #endif
 +
++/* MuQSS compatibility functions */
 +static inline bool softirq_pending(int cpu)
 +{
 +	return false;
@@ -105321,7 +105475,7 @@ index 000000000000..bf5c6e97e139
 +	l->entries--;
 +}
 diff --git a/kernel/sysctl.c b/kernel/sysctl.c
-index 557d46728577..cdda61d13358 100644
+index f98f28c12020..8bc9f2e9fb38 100644
 --- a/kernel/sysctl.c
 +++ b/kernel/sysctl.c
 @@ -105,29 +105,38 @@ extern int core_uses_pid;
@@ -105365,7 +105519,7 @@ index 557d46728577..cdda61d13358 100644
  #ifdef CONFIG_PRINTK
  static int ten_thousand = 10000;
  #endif
-@@ -286,23 +295,24 @@ static struct ctl_table sysctl_base_table[] = {
+@@ -288,23 +297,24 @@ static struct ctl_table sysctl_base_table[] = {
  	{ }
  };
  
@@ -105391,7 +105545,7 @@ index 557d46728577..cdda61d13358 100644
  	{
  		.procname	= "sched_child_runs_first",
  		.data		= &sysctl_sched_child_runs_first,
-@@ -465,6 +475,7 @@ static struct ctl_table kern_table[] = {
+@@ -467,6 +477,7 @@ static struct ctl_table kern_table[] = {
  		.extra1		= &one,
  	},
  #endif
@@ -105399,7 +105553,7 @@ index 557d46728577..cdda61d13358 100644
  #ifdef CONFIG_PROVE_LOCKING
  	{
  		.procname	= "prove_locking",
-@@ -513,6 +524,15 @@ static struct ctl_table kern_table[] = {
+@@ -515,6 +526,15 @@ static struct ctl_table kern_table[] = {
  		.proc_handler	= proc_dointvec,
  	},
  #endif
@@ -105415,7 +105569,7 @@ index 557d46728577..cdda61d13358 100644
  #ifdef CONFIG_PROC_SYSCTL
  	{
  		.procname	= "tainted",
-@@ -1023,6 +1043,44 @@ static struct ctl_table kern_table[] = {
+@@ -1025,6 +1045,44 @@ static struct ctl_table kern_table[] = {
  		.proc_handler	= proc_dointvec,
  	},
  #endif
@@ -105479,10 +105633,10 @@ index 16c027e9cc73..fcc3fe0a1cc0 100644
  /**
   * clockevents_increase_min_delta - raise minimum delta of a clock event device
 diff --git a/kernel/time/posix-cpu-timers.c b/kernel/time/posix-cpu-timers.c
-index 1f27887aa194..bfd51c9e3590 100644
+index 5a6251ac6f7a..5d838674666d 100644
 --- a/kernel/time/posix-cpu-timers.c
 +++ b/kernel/time/posix-cpu-timers.c
-@@ -818,29 +818,29 @@ static void check_thread_timers(struct task_struct *tsk,
+@@ -830,29 +830,29 @@ static void check_thread_timers(struct task_struct *tsk,
  	tsk_expires->virt_exp = expires;
  
  	tsk_expires->sched_exp = check_timers_list(++timers, firing,
@@ -105515,7 +105669,7 @@ index 1f27887aa194..bfd51c9e3590 100644
  			/*
  			 * At the soft limit, send a SIGXCPU every second.
  			 */
-@@ -1081,7 +1081,7 @@ static inline int fastpath_timer_check(struct task_struct *tsk)
+@@ -1096,7 +1096,7 @@ static inline int fastpath_timer_check(struct task_struct *tsk)
  		struct task_cputime task_sample;
  
  		task_cputime(tsk, &task_sample.utime, &task_sample.stime);
@@ -105525,10 +105679,10 @@ index 1f27887aa194..bfd51c9e3590 100644
  			return 1;
  	}
 diff --git a/kernel/time/timer.c b/kernel/time/timer.c
-index 0bcf00e3ce48..a820db5cd790 100644
+index 4a4fd567fb26..b03e2ca20847 100644
 --- a/kernel/time/timer.c
 +++ b/kernel/time/timer.c
-@@ -1471,24 +1471,27 @@ static unsigned long __next_timer_interrupt(struct timer_base *base)
+@@ -1479,24 +1479,27 @@ static unsigned long __next_timer_interrupt(struct timer_base *base)
   * Check, if the next hrtimer event is before the next timer wheel
   * event:
   */
@@ -105557,7 +105711,7 @@ index 0bcf00e3ce48..a820db5cd790 100644
  	/*
  	 * Round up to the next jiffie. High resolution timers are
  	 * off, so the hrtimers are expired in the tick and we need to
-@@ -1558,7 +1561,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
+@@ -1566,7 +1569,7 @@ u64 get_next_timer_interrupt(unsigned long basej, u64 basem)
  	}
  	raw_spin_unlock(&base->lock);
  
@@ -105605,10 +105759,10 @@ index 246d4d4ce5c7..4ceada38d166 100644
  static DEFINE_MUTEX(userns_state_mutex);
  
 diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
-index f55c15ab6f93..3fcb9a65a851 100644
+index 64155e310a9f..92a2f4ecd439 100644
 --- a/lib/Kconfig.debug
 +++ b/lib/Kconfig.debug
-@@ -987,7 +987,7 @@ config SCHED_INFO
+@@ -986,7 +986,7 @@ config SCHED_INFO
  
  config SCHEDSTATS
  	bool "Collect scheduler statistics"
@@ -105617,7 +105771,7 @@ index f55c15ab6f93..3fcb9a65a851 100644
  	select SCHED_INFO
  	help
  	  If you say Y here, additional code will be inserted into the
-@@ -1567,6 +1567,7 @@ config LATENCYTOP
+@@ -1580,6 +1580,7 @@ config LATENCYTOP
  	depends on DEBUG_KERNEL
  	depends on STACKTRACE_SUPPORT
  	depends on PROC_FS
@@ -105625,8 +105779,20 @@ index f55c15ab6f93..3fcb9a65a851 100644
  	select FRAME_POINTER if !MIPS && !PPC && !S390 && !MICROBLAZE && !ARM_UNWIND && !ARC && !X86
  	select KALLSYMS
  	select KALLSYMS_ALL
+diff --git a/lib/swiotlb.c b/lib/swiotlb.c
+index 44f7eb408fdb..0bb1bb65ad6b 100644
+--- a/lib/swiotlb.c
++++ b/lib/swiotlb.c
+@@ -1016,6 +1016,7 @@ swiotlb_map_sg_attrs(struct device *hwdev, struct scatterlist *sgl, int nelems,
+ 	}
+ 	return nelems;
+ }
++EXPORT_SYMBOL(swiotlb_map_sg_attrs);
+ 
+ /*
+  * Unmap a set of streaming mode DMA translations.  Again, cpu read rules
 diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 586f31261c83..112bcbd38f99 100644
+index 8369572e1f7d..152705aaa7f8 100644
 --- a/mm/page-writeback.c
 +++ b/mm/page-writeback.c
 @@ -71,24 +71,32 @@ static long ratelimit_pages = 32;
