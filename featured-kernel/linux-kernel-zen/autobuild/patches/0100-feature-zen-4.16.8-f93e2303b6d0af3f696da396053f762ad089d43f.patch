@@ -24,6 +24,7 @@
  drivers/cpufreq/cpufreq_ondemand.c               |    12 +-
  drivers/gpu/drm/amd/display/dc/basics/logger.c   |     2 +-
  drivers/gpu/drm/i915/intel_dp.c                  |     3 +-
+ drivers/gpu/drm/i915/intel_dp_link_training.c    |    26 +-
  drivers/infiniband/core/addr.c                   |     1 +
  drivers/input/mouse/synaptics.c                  |     4 +-
  drivers/input/mouse/synaptics.h                  |     1 +
@@ -132,7 +133,7 @@
  mm/page-writeback.c                              |     8 +
  net/ipv4/Kconfig                                 |     4 +
  scripts/mkcompile_h                              |     4 +-
- 134 files changed, 102714 insertions(+), 569 deletions(-)
+ 135 files changed, 102723 insertions(+), 586 deletions(-)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
 index 1d1d53f85ddd..44a34daedc8a 100644
@@ -1393,13 +1394,13 @@ index 000000000000..a249678a8866
 +thinkpad_ec module and the H8S hardware documentation:
 +http://documentation.renesas.com/eng/products/mpumcu/rej09b0300_2140bhm.pdf
 diff --git a/Makefile b/Makefile
-index 1c5d5d8c45e2..7c14769abd93 100644
+index 5da6ffd69209..03c064768f12 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -2,8 +2,8 @@
  VERSION = 4
  PATCHLEVEL = 16
- SUBLEVEL = 7
+ SUBLEVEL = 8
 -EXTRAVERSION =
 -NAME = Fearless Coyote
 +EXTRAVERSION = -zen
@@ -19594,6 +19595,42 @@ index a29868cd30c7..b6d07b615b12 100644
  	return bres;
  }
  
+diff --git a/drivers/gpu/drm/i915/intel_dp_link_training.c b/drivers/gpu/drm/i915/intel_dp_link_training.c
+index cf8fef8b6f58..05907fa8a553 100644
+--- a/drivers/gpu/drm/i915/intel_dp_link_training.c
++++ b/drivers/gpu/drm/i915/intel_dp_link_training.c
+@@ -328,22 +328,14 @@ intel_dp_start_link_train(struct intel_dp *intel_dp)
+ 	return;
+ 
+  failure_handling:
+-	/* Dont fallback and prune modes if its eDP */
+-	if (!intel_dp_is_edp(intel_dp)) {
+-		DRM_DEBUG_KMS("[CONNECTOR:%d:%s] Link Training failed at link rate = %d, lane count = %d",
+-			      intel_connector->base.base.id,
+-			      intel_connector->base.name,
+-			      intel_dp->link_rate, intel_dp->lane_count);
+-		if (!intel_dp_get_link_train_fallback_values(intel_dp,
+-							     intel_dp->link_rate,
+-							     intel_dp->lane_count))
+-			/* Schedule a Hotplug Uevent to userspace to start modeset */
+-			schedule_work(&intel_connector->modeset_retry_work);
+-	} else {
+-		DRM_ERROR("[CONNECTOR:%d:%s] Link Training failed at link rate = %d, lane count = %d",
+-			  intel_connector->base.base.id,
+-			  intel_connector->base.name,
+-			  intel_dp->link_rate, intel_dp->lane_count);
+-	}
++	DRM_DEBUG_KMS("[CONNECTOR:%d:%s] Link Training failed at link rate = %d, lane count = %d",
++		      intel_connector->base.base.id,
++		      intel_connector->base.name,
++		      intel_dp->link_rate, intel_dp->lane_count);
++	if (!intel_dp_get_link_train_fallback_values(intel_dp,
++						     intel_dp->link_rate,
++						     intel_dp->lane_count))
++		/* Schedule a Hotplug Uevent to userspace to start modeset */
++		schedule_work(&intel_connector->modeset_retry_work);
+ 	return;
+ }
 diff --git a/drivers/infiniband/core/addr.c b/drivers/infiniband/core/addr.c
 index cb1d2ab13c66..d21700f57270 100644
 --- a/drivers/infiniband/core/addr.c
@@ -19827,7 +19864,7 @@ index a261892c03b3..a85192de840c 100644
  
  	    /* Without this flush, the trackpad may be locked up */
 diff --git a/drivers/platform/x86/Kconfig b/drivers/platform/x86/Kconfig
-index 51ebc5a6053f..838c7802a881 100644
+index 51a1b49760ea..e56c6b254aaf 100644
 --- a/drivers/platform/x86/Kconfig
 +++ b/drivers/platform/x86/Kconfig
 @@ -572,9 +572,28 @@ config THINKPAD_ACPI_HOTKEY_POLL
@@ -105780,7 +105817,7 @@ index 64155e310a9f..92a2f4ecd439 100644
  	select KALLSYMS
  	select KALLSYMS_ALL
 diff --git a/lib/swiotlb.c b/lib/swiotlb.c
-index 44f7eb408fdb..0bb1bb65ad6b 100644
+index 0331de0e9144..c7f46e42ba86 100644
 --- a/lib/swiotlb.c
 +++ b/lib/swiotlb.c
 @@ -1016,6 +1016,7 @@ swiotlb_map_sg_attrs(struct device *hwdev, struct scatterlist *sgl, int nelems,
