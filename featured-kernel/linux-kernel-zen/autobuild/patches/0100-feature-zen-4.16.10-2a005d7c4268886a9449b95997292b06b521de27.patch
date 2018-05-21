@@ -1395,13 +1395,13 @@ index 000000000000..a249678a8866
 +thinkpad_ec module and the H8S hardware documentation:
 +http://documentation.renesas.com/eng/products/mpumcu/rej09b0300_2140bhm.pdf
 diff --git a/Makefile b/Makefile
-index ea3cb221d7c5..2fb99da62268 100644
+index 33f3c94f02ca..d45fe5862dbc 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -2,8 +2,8 @@
  VERSION = 4
  PATCHLEVEL = 16
- SUBLEVEL = 9
+ SUBLEVEL = 10
 -EXTRAVERSION =
 -NAME = Fearless Coyote
 +EXTRAVERSION = -zen
@@ -96123,7 +96123,7 @@ index 7ea118471dce..8cd3f3660e37 100644
  	}
  	putname(tmp);
 diff --git a/fs/proc/base.c b/fs/proc/base.c
-index 9298324325ed..0250c8e2d875 100644
+index f034eccd8616..864f1e453bf2 100644
 --- a/fs/proc/base.c
 +++ b/fs/proc/base.c
 @@ -467,7 +467,7 @@ static int proc_pid_schedstat(struct seq_file *m, struct pid_namespace *ns,
