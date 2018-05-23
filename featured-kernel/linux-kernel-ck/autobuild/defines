@@ -1,11 +1,11 @@
-PKGNAME=linux-kernel-ck-4.16.10
+PKGNAME=linux-kernel-ck-4.16.11
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
 if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
     BUILDDEP+=" grub"
 fi
-PKGDES="Linux Kernel version 4.16.10 with CK patchset, optimized for desktop usage"
+PKGDES="Linux Kernel version 4.16.11 with CK patchset, optimized for desktop usage"
 
 ABSTRIP=no
 ABELFDEP=no
