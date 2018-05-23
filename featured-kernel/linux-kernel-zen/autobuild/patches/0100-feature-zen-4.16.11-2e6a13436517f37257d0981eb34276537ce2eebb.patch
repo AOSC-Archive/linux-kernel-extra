@@ -41,7 +41,6 @@
  drivers/scsi/vhba/Makefile                       |     4 +
  drivers/scsi/vhba/vhba.c                         |  1076 +
  drivers/tty/Kconfig                              |    13 +
- drivers/usb/host/xhci-hub.c                      |     2 +-
  drivers/video/logo/Kconfig                       |    95 +-
  drivers/video/logo/Makefile                      |    12 +
  drivers/video/logo/logo.c                        |   190 +-
@@ -134,13 +133,13 @@
  mm/page-writeback.c                              |     8 +
  net/ipv4/Kconfig                                 |     4 +
  scripts/mkcompile_h                              |     4 +-
- 136 files changed, 102724 insertions(+), 587 deletions(-)
+ 135 files changed, 102723 insertions(+), 586 deletions(-)
 
 diff --git a/Documentation/admin-guide/kernel-parameters.txt b/Documentation/admin-guide/kernel-parameters.txt
-index 1d1d53f85ddd..44a34daedc8a 100644
+index 9824d049367e..6fcbb10bb31a 100644
 --- a/Documentation/admin-guide/kernel-parameters.txt
 +++ b/Documentation/admin-guide/kernel-parameters.txt
-@@ -3812,6 +3812,14 @@
+@@ -3815,6 +3815,14 @@
  			Memory area to be used by remote processor image,
  			managed by CMA.
  
@@ -1395,13 +1394,13 @@ index 000000000000..a249678a8866
 +thinkpad_ec module and the H8S hardware documentation:
 +http://documentation.renesas.com/eng/products/mpumcu/rej09b0300_2140bhm.pdf
 diff --git a/Makefile b/Makefile
-index 33f3c94f02ca..d45fe5862dbc 100644
+index 79c191442771..ee25274c3f8e 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -2,8 +2,8 @@
  VERSION = 4
  PATCHLEVEL = 16
- SUBLEVEL = 10
+ SUBLEVEL = 11
 -EXTRAVERSION =
 -NAME = Fearless Coyote
 +EXTRAVERSION = -zen
@@ -24315,19 +24314,6 @@ index b811442c5ce6..61d8583f700b 100644
  config HW_CONSOLE
  	bool
  	depends on VT && !UML
-diff --git a/drivers/usb/host/xhci-hub.c b/drivers/usb/host/xhci-hub.c
-index 72ebbc908e19..32cd52ca8318 100644
---- a/drivers/usb/host/xhci-hub.c
-+++ b/drivers/usb/host/xhci-hub.c
-@@ -354,7 +354,7 @@ int xhci_find_slot_id_by_port(struct usb_hcd *hcd, struct xhci_hcd *xhci,
- 
- 	slot_id = 0;
- 	for (i = 0; i < MAX_HC_SLOTS; i++) {
--		if (!xhci->devs[i])
-+		if (!xhci->devs[i] || !xhci->devs[i]->udev)
- 			continue;
- 		speed = xhci->devs[i]->udev->speed;
- 		if (((speed >= USB_SPEED_SUPER) == (hcd->speed >= HCD_USB3))
 diff --git a/drivers/video/logo/Kconfig b/drivers/video/logo/Kconfig
 index 0037104d66ac..2dae13136fbd 100644
 --- a/drivers/video/logo/Kconfig
@@ -96225,7 +96211,7 @@ index 5e3581d76c7f..dbdf85ce007f 100644
  extern const struct linux_logo logo_mac_clut224;
  extern const struct linux_logo logo_parisc_clut224;
 diff --git a/include/linux/sched.h b/include/linux/sched.h
-index b161ef8a902e..eeb4c76e711c 100644
+index 710508af02c8..2509ac6becef 100644
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
 @@ -27,6 +27,9 @@
