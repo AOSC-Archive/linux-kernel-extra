@@ -1,4 +1,4 @@
-PKGNAME=linux-kernel-ck-4.16.12
+PKGNAME=linux-kernel-ck-tickless-4.16.12
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
