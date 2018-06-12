@@ -1,2 +1,0 @@
-VER=4.7.2
-SRCTBL="https://kernel.org/pub/linux/kernel/v${VER:0:1}.x/linux-${VER}.tar.xz"

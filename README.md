@@ -22,13 +22,3 @@ will be all retained.
 These kernels should work on all architectures. However, some kernels might be
 somewhat platform-specific. If you are not sure, please first check upstreams of
 these kernel improvements.
-
-### `machine-kernel`
-
-This class of packages provides Linux Kernel with machine-specific
-optimizations, while retaining all the features that a mainline
-[AOSC kernel](https://github.com/AOSC-Dev/aosc-os-abbs/tree/staging/extra-kernel/linux-kernel)
-provides. For instance, `linux-kernel-broadwell` is a Kernel configuration with
-standard features, but specifically optimized for Intel Broadwell processors
-during build-time. Which should provide a significant boost in performance on
-machines with the respective processor family.
