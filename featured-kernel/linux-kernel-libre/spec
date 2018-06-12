@@ -1,2 +1,3 @@
-VER=4.10.8
-SRCTBL="http://linux-libre.fsfla.org/pub/linux-libre/releases/${VER}-gnu/linux-libre-${VER}-gnu.tar.xz"
+VER=4.16.15
+SRCTBL="https://linux-libre.fsfla.org/pub/linux-libre/releases/${VER}-gnu/linux-libre-${VER}-gnu.tar.xz"
+CHKSUM="sha256::95a0931627cfc5f31877e25f4abd3e85daba7d15a6640062834daf8d94dc9bec"
