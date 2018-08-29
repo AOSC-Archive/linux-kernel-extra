@@ -1,3 +1,2 @@
 eval "LOCALNAME=$(cat .config | grep ^CONFIG_LOCALVERSION= | cut -d = -f 2-)"
-CKVER=$(cat 'autobuild/patches/0100-feature-ck-patchset-4.16-ck1.patch' | grep 'CKVERSION =' | cut -d '=' -f 2 | tr -d '[:space:]')
-version="$PKGVER""$CKVER"
+version="$PKGVER-ck1"
