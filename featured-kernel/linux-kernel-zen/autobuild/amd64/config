@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Linux/x86 4.19.5-zen1 Kernel Configuration
+# Linux/x86 4.19.7-zen1 Kernel Configuration
 #
 
 #
@@ -31,8 +31,8 @@ CONFIG_HAVE_KERNEL_LZO=y
 CONFIG_HAVE_KERNEL_LZ4=y
 # CONFIG_KERNEL_GZIP is not set
 # CONFIG_KERNEL_BZIP2 is not set
-CONFIG_KERNEL_LZMA=y
-# CONFIG_KERNEL_XZ is not set
+# CONFIG_KERNEL_LZMA is not set
+CONFIG_KERNEL_XZ=y
 # CONFIG_KERNEL_LZO is not set
 # CONFIG_KERNEL_LZ4 is not set
 CONFIG_DEFAULT_HOSTNAME="(none)"
@@ -2474,7 +2474,7 @@ CONFIG_RAID_ATTRS=y
 CONFIG_SCSI=y
 CONFIG_SCSI_DMA=y
 CONFIG_SCSI_NETLINK=y
-# CONFIG_SCSI_MQ_DEFAULT is not set
+CONFIG_SCSI_MQ_DEFAULT=y
 CONFIG_SCSI_PROC_FS=y
 
 #
