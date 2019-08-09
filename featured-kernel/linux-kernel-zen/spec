@@ -1,3 +1,3 @@
-VER=5.2.5
+VER=5.2.7
 SRCTBL="https://github.com/zen-kernel/zen-kernel/archive/v${VER}-zen1.tar.gz"
-CHKSUM="SHA256::20a2e65ca61ecfdff94057087d320deac8a7a43fec82766503735ee188bdd0ae"
+CHKSUM="SHA256::fb55bb6b750a1cde505b69a7acbc35f26d52828d8c43c3821dd085c5b7a503d3"
