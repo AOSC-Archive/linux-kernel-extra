@@ -1,0 +1,12 @@
+PKGNAME=linux-kernel-libre-ck-5.3.7
+PKGSEC=kernel
+PKGDEP=""
+BUILDDEP="bc dracut git"
+if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
+    BUILDDEP+=" grub"
+fi
+PKGDES="Linux Kernel version 5.3.7 with non-Free components removed and CK patchset applied"
+
+ABSTRIP=no
+ABELFDEP=no
+ABRPMAUTOPROVONLY=yes

@@ -36,6 +36,10 @@ This kernel is AOSC mainline kernel without binary blobs.
 
 See https://www.fsfla.org/ikiwiki/selibre/linux-libre/ for more information.
 
+## `linux-kernel-libre-ck`
+
+This variant is basically `linux-kernel-libre` plus `linux-kernel-ck`.
+
 ## `linux-kernel-zen`
 
 This variant is [ZEN kernel](https://github.com/zen-kernel/zen-kernel) with AOSC
