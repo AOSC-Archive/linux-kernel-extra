@@ -1,12 +1,10 @@
-PKGNAME=linux-kernel-zen-5.3.7
+PKGNAME=linux-kernel-zen-5.4.2
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
-if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
-    BUILDDEP+=" grub"
-fi
-PKGDES="ZEN Linux Kernel version 5.3.7, optimized for desktop usage"
+BUILDDEP__AMD64="grub"
+PKGDES="ZEN Linux Kernel v5.4.2 for AOSC OS, optimized for desktop and laptop"
 
-ABSTRIP=no
-ABELFDEP=no
-ABRPMAUTOPROVONLY=yes
+ABSTRIP=0
+ABELFDEP=0
+ABRPMAUTOPROVONLY=1
