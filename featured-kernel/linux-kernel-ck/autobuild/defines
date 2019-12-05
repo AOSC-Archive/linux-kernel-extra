@@ -1,12 +1,10 @@
-PKGNAME=linux-kernel-ck-5.3.7
+PKGNAME=linux-kernel-ck-5.4.2
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
-if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
-    BUILDDEP+=" grub"
-fi
-PKGDES="Linux Kernel version 5.3.7 with CK patchset, optimized for desktop usage"
+BUILDDEP__AMD64="grub"
+PKGDES="CK-patched Linux Kernel v5.4.2 for AOSC OS, optimized for desktop and laptop"
 
-ABSTRIP=no
-ABELFDEP=no
-ABRPMAUTOPROVONLY=yes
+ABSTRIP=0
+ABELFDEP=0
+ABRPMAUTOPROVONLY=1
