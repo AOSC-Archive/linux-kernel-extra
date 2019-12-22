@@ -1,9 +1,9 @@
-PKGNAME=linux-kernel-ck-5.4.2
+PKGNAME=linux-kernel-ck-5.4.6
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
 BUILDDEP__AMD64="grub"
-PKGDES="CK-patched Linux Kernel v5.4.2 for AOSC OS, optimized for desktop and laptop"
+PKGDES="CK-patched Linux Kernel v5.4.6 for AOSC OS, optimized for desktop and laptop"
 
 ABSTRIP=0
 ABELFDEP=0
