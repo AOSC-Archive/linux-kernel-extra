@@ -1,3 +1,3 @@
-VER=5.3.7
+VER=5.4.6
 SRCTBL="https://linux-libre.fsfla.org/pub/linux-libre/releases/${VER}-gnu/linux-libre-${VER}-gnu.tar.xz"
-CHKSUM="sha256::61a4aafd0a602f6d82be03d9a83d5e56861f4e3bf66dd97e2fc72c9ba68e4030"
+CHKSUM="sha256::3276703c08da8d3cd235174fb972a0a9563631cd2a305de7c4e4ef091e4bc643"
