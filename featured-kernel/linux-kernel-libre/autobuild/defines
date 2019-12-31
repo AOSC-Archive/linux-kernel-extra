@@ -1,12 +1,10 @@
-PKGNAME=linux-kernel-libre-5.3.7
+PKGNAME=linux-kernel-libre-5.4.6
 PKGSEC=kernel
 PKGDEP=""
 BUILDDEP="bc dracut git"
-if [[ "${CROSS:-$ARCH}" = "amd64" ]]; then
-    BUILDDEP+=" grub"
-fi
-PKGDES="Linux Kernel version 5.3.7 with non-Free components removed"
+BUILDDEP__AMD64="grub"
+PKGDES="Deblobbed, libre Linux Kernel v5.4.6 for AOSC OS"
 
-ABSTRIP=no
-ABELFDEP=no
-ABRPMAUTOPROVONLY=yes
+ABSTRIP=0
+ABELFDEP=0
+ABRPMAUTOPROVONLY=1
