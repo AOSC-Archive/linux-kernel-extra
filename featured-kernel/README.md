@@ -19,13 +19,6 @@ have set the tick rate to 100Hz (`CONFIG_HZ=100`), to (as MuQSS describes)
 and (hopefully) reduce heating and power drain. This kernel is suitable for
 laptop computers.
 
-## `linux-kernel-grsec`
-
-This variant of Linux Kernel adds [PaX/Grsecurity](https://en.wikipedia.org/wiki/Grsecurity)
-to enhance security of Linux Kernel.
-
-Due to the upstream decision, this kernel is not being maintained now.
-
 ## `linux-kernel-libre`
 
 This variant of Linux Kernel does not add anything; instead, it removes all
