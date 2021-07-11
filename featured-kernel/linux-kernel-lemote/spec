@@ -1,0 +1,3 @@
+VER=5.4.110+git20210408
+SRCS="git::commit=284f80108a8c57630d5753b288c07890c65f3aed::https://github.com/chenhuacai/linux"
+CHKSUMS="SKIP"
