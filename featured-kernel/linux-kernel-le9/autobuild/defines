@@ -1,0 +1,12 @@
+PKGNAME=linux-kernel-le9-${PKGVER}
+PKGSEC=kernel
+PKGDEP=""
+BUILDDEP="bc git pahole"
+PKGDES="Generic Linux Kernel v${PKGVER} for AOSC OS (Mainline, with LE9 patch)"
+
+ABSTRIP=0
+ABELFDEP=0
+
+PKGEPOCH=1
+
+PKGBREAK="zfs<=2.0.0"
